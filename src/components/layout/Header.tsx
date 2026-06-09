@@ -7,6 +7,7 @@ interface HeaderProps {
 }
 
 const tabs: { id: TabId; label: string }[] = [
+  { id: 'issuanceRequest', label: '보증 발행 의뢰' },
   { id: 'issuance', label: '보증서 발행 관리' },
   { id: 'period', label: '보증연한' },
   { id: 'externalTest', label: '외부 공인 기관 시험' },

@@ -114,4 +114,16 @@ export interface ExternalTestRecord {
   institution: string
 }
 
-export type TabId = 'issuance' | 'period' | 'externalTest'
+export interface WarrantyIssuanceRequest {
+  colorName: string
+  resin: string
+  material: string
+  region: string
+  detailRegion: string
+  language: string
+  customer: string
+  warrantyTermMode: string
+  warrantyTermCustom: string
+}
+
+export type TabId = 'issuanceRequest' | 'issuance' | 'period' | 'externalTest'
