@@ -356,7 +356,7 @@
     }
   },
   "notCovered": {
-    "title": "보증 불가 대상",
+    "title": "보증 제외 대상",
     "items": [
       "채도가 높은 유색(Orange, Yellow, Blue, Red 등)",
       "Metallic Color",

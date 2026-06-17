@@ -55,7 +55,11 @@ function normalizeWarrantyPeriod(parsed: Partial<WarrantyPeriodData>): WarrantyP
     highRisk: normalizeRiskSection(defaults.highRisk, parsed.highRisk),
     lowRisk: normalizeRiskSection(defaults.lowRisk, parsed.lowRisk),
     coastalAl: normalizeCoastal(parsed.coastalAl),
-    notCovered: parsed.notCovered ?? defaults.notCovered,
+    notCovered: {
+      ...defaults.notCovered,
+      ...parsed.notCovered,
+      title: defaults.notCovered.title,
+    },
   }
 }
 

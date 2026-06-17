@@ -7,12 +7,14 @@ import { CoastalGuideTables } from '../components/warranty-period/CoastalGuideTa
 import { NotCoveredGuide } from '../components/warranty-period/NotCoveredGuide'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
 import { RiskBadge } from '../components/warranty-period/RiskBadge'
+import { useAuth } from '../contexts/AuthContext'
 import type {
   CoastalDistanceRow,
   CountryEntry,
   ProductWarranty,
   WarrantyPeriodData,
 } from '../types'
+import { canEditWarrantyPeriod } from '../utils/authValidation'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
 import { periodInputClass } from '../components/warranty-period/periodTheme'
 
@@ -22,7 +24,7 @@ const tabs: { id: PeriodTab; label: string }[] = [
   { id: 'highRisk', label: '고위험 지역' },
   { id: 'lowRisk', label: '저위험 지역' },
   { id: 'coastalAl', label: 'AL 소재 불소 제품' },
-  { id: 'notCovered', label: '보증 불가 대상' },
+  { id: 'notCovered', label: '보증 제외 대상' },
 ]
 
 function filterProducts(products: ProductWarranty[]): { product: ProductWarranty; index: number }[] {
@@ -122,8 +124,15 @@ function EditToolbar({
 }
 
 type ProductHighlight = { section: 'highRisk' | 'lowRisk'; index: number }
+type CoastalInsertAnchor = { side: 'highRisk' | 'lowRisk'; index: number }
+
+function createEmptyCoastalRow(): CoastalDistanceRow {
+  return { distance: '', coat2: '', coat3: '' }
+}
 
 export function WarrantyPeriodPage() {
+  const { user } = useAuth()
+  const canEdit = canEditWarrantyPeriod(user?.email)
   const [data, setData] = useState<WarrantyPeriodData>(() => loadWarrantyPeriod())
   const [activeTab, setActiveTab] = useState<PeriodTab>('highRisk')
   const [editing, setEditing] = useState(false)
@@ -134,6 +143,15 @@ export function WarrantyPeriodPage() {
   const [productAddTick, setProductAddTick] = useState(0)
   const [productInsertAnchor, setProductInsertAnchor] = useState<ProductHighlight | null>(null)
   const [notCoveredInsertAnchor, setNotCoveredInsertAnchor] = useState<number | null>(null)
+  const [coastalInsertAnchor, setCoastalInsertAnchor] = useState<CoastalInsertAnchor | null>(null)
+
+  const effectiveEditing = canEdit && editing
+
+  useEffect(() => {
+    if (!canEdit && editing) {
+      setEditing(false)
+    }
+  }, [canEdit, editing])
 
   useEffect(() => {
     if (!highlightedProduct) return
@@ -148,9 +166,11 @@ export function WarrantyPeriodPage() {
   }, [highlightedNotCoveredIndex])
 
   const handleEdit = () => {
+    if (!canEdit) return
     setEditing(true)
     setProductInsertAnchor(null)
     setNotCoveredInsertAnchor(null)
+    setCoastalInsertAnchor(null)
     setSaveMessage('')
   }
 
@@ -176,7 +196,14 @@ export function WarrantyPeriodPage() {
   }
 
   const canToolbarAdd =
-    activeTab === 'highRisk' || activeTab === 'lowRisk' || activeTab === 'notCovered'
+    activeTab === 'highRisk' ||
+    activeTab === 'lowRisk' ||
+    activeTab === 'notCovered' ||
+    activeTab === 'coastalAl'
+
+  const canToolbarAddNow =
+    canToolbarAdd &&
+    (activeTab !== 'coastalAl' || coastalInsertAnchor !== null)
 
   const handleToolbarAdd = () => {
     if (activeTab === 'highRisk') {
@@ -191,6 +218,8 @@ export function WarrantyPeriodPage() {
       addProduct('lowRisk', atIndex)
     } else if (activeTab === 'notCovered') {
       addNotCoveredItem(notCoveredInsertAnchor ?? undefined)
+    } else if (activeTab === 'coastalAl' && coastalInsertAnchor) {
+      addCoastalRow(coastalInsertAnchor.side, coastalInsertAnchor.index)
     }
   }
 
@@ -250,6 +279,75 @@ export function WarrantyPeriodPage() {
         [side]: { ...prev.coastalAl[side], warrantyNote: value },
       },
     }))
+    setSaveMessage('')
+  }
+
+  const addCoastalRow = (side: 'highRisk' | 'lowRisk', atIndex?: number) => {
+    setData((prev) => {
+      const rows = [...prev.coastalAl[side].rows]
+      const insertAt =
+        atIndex !== undefined && atIndex >= 0 && atIndex <= rows.length ? atIndex : rows.length
+      rows.splice(insertAt, 0, createEmptyCoastalRow())
+      return {
+        ...prev,
+        coastalAl: {
+          ...prev.coastalAl,
+          [side]: { ...prev.coastalAl[side], rows },
+        },
+      }
+    })
+    setCoastalInsertAnchor((prev) => {
+      if (!prev || prev.side !== side) return prev
+      if (prev.index >= (atIndex ?? Number.MAX_SAFE_INTEGER)) {
+        return { side, index: prev.index + 1 }
+      }
+      return prev
+    })
+    setSaveMessage('')
+  }
+
+  const deleteCoastalRow = (side: 'highRisk' | 'lowRisk', rowIndex: number) => {
+    setData((prev) => ({
+      ...prev,
+      coastalAl: {
+        ...prev.coastalAl,
+        [side]: {
+          ...prev.coastalAl[side],
+          rows: prev.coastalAl[side].rows.filter((_, i) => i !== rowIndex),
+        },
+      },
+    }))
+    setCoastalInsertAnchor((prev) => {
+      if (!prev || prev.side !== side) return prev
+      if (prev.index === rowIndex) return null
+      if (prev.index > rowIndex) return { ...prev, index: prev.index - 1 }
+      return prev
+    })
+    setSaveMessage('')
+  }
+
+  const reorderCoastalRow = (
+    side: 'highRisk' | 'lowRisk',
+    fromIndex: number,
+    toIndex: number
+  ) => {
+    if (fromIndex === toIndex) return
+    setData((prev) => {
+      const rows = [...prev.coastalAl[side].rows]
+      const [moved] = rows.splice(fromIndex, 1)
+      rows.splice(toIndex, 0, moved)
+      return {
+        ...prev,
+        coastalAl: {
+          ...prev.coastalAl,
+          [side]: { ...prev.coastalAl[side], rows },
+        },
+      }
+    })
+    setCoastalInsertAnchor((prev) => {
+      if (!prev || prev.side !== side) return prev
+      return { side, index: adjustIndexAfterReorder(prev.index, fromIndex, toIndex) }
+    })
     setSaveMessage('')
   }
 
@@ -387,6 +485,26 @@ export function WarrantyPeriodPage() {
     setSaveMessage('')
   }
 
+  const reorderNotCoveredItem = (fromIndex: number, toIndex: number) => {
+    if (fromIndex === toIndex) return
+    setData((prev) => {
+      const items = [...prev.notCovered.items]
+      const [moved] = items.splice(fromIndex, 1)
+      items.splice(toIndex, 0, moved)
+      return {
+        ...prev,
+        notCovered: { ...prev.notCovered, items },
+      }
+    })
+    setHighlightedNotCoveredIndex((prev) =>
+      prev === null ? null : adjustIndexAfterReorder(prev, fromIndex, toIndex)
+    )
+    setNotCoveredInsertAnchor((prev) =>
+      prev === null ? null : adjustIndexAfterReorder(prev, fromIndex, toIndex)
+    )
+    setSaveMessage('')
+  }
+
   const highRiskProducts = filterProducts(data.highRisk.products)
   const lowRiskProducts = filterProducts(data.lowRisk.products)
 
@@ -426,6 +544,7 @@ export function WarrantyPeriodPage() {
               setHighlightedNotCoveredIndex(null)
               setProductInsertAnchor(null)
               setNotCoveredInsertAnchor(null)
+              setCoastalInsertAnchor(null)
             }}
             className={`rounded-md px-4 py-2 text-xs font-medium whitespace-nowrap transition-all sm:px-5 sm:text-sm ${
               activeTab === tab.id
@@ -443,34 +562,36 @@ export function WarrantyPeriodPage() {
           {sectionBadge}
         </div>
 
-        <EditToolbar
-          editing={editing}
-          saveMessage={saveMessage}
-          canAdd={canToolbarAdd}
-          onEdit={handleEdit}
-          onSave={handleSave}
-          onAdd={handleToolbarAdd}
-          onReset={handleReset}
-        />
+        {canEdit && (
+          <EditToolbar
+            editing={effectiveEditing}
+            saveMessage={saveMessage}
+            canAdd={canToolbarAddNow}
+            onEdit={handleEdit}
+            onSave={handleSave}
+            onAdd={handleToolbarAdd}
+            onReset={handleReset}
+          />
+        )}
 
         {activeTab === 'highRisk' && (
           <>
             <h3 className="mb-3 text-sm font-semibold text-text-primary">고위험 국가 LIST</h3>
             <CountryGuideGrid
               countries={data.highRisk.countries}
-              editing={editing}
+              editing={effectiveEditing}
               onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
             />
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
             <ProductGuideTable
               items={highRiskProducts}
-              editing={editing}
+              editing={effectiveEditing}
               addTick={productAddTick}
               insertAnchorIndex={
                 productInsertAnchor?.section === 'highRisk' ? productInsertAnchor.index : null
               }
               onSelectInsertAnchor={
-                editing
+                effectiveEditing
                   ? (index) => setProductInsertAnchor({ section: 'highRisk', index })
                   : undefined
               }
@@ -479,8 +600,10 @@ export function WarrantyPeriodPage() {
               }
               highlightSequence={productHighlightSeq}
               onUpdate={(index, field, value) => updateProduct('highRisk', index, field, value)}
-              onDelete={(index) => deleteProduct('highRisk', index)}
-              onReorder={(from, to) => reorderProduct('highRisk', from, to)}
+              onDelete={effectiveEditing ? (index) => deleteProduct('highRisk', index) : undefined}
+              onReorder={
+                effectiveEditing ? (from, to) => reorderProduct('highRisk', from, to) : undefined
+              }
             />
           </>
         )}
@@ -490,11 +613,11 @@ export function WarrantyPeriodPage() {
             <h3 className="mb-3 text-sm font-semibold text-text-primary">저위험 국가 LIST</h3>
             <CountryGuideGrid
               countries={data.lowRisk.countries}
-              editing={editing}
+              editing={effectiveEditing}
               onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
             />
             <div className="mb-4 rounded-lg border border-amber-900/40 bg-amber-950/30 px-4 py-3">
-              {editing ? (
+              {effectiveEditing ? (
                 <textarea
                   rows={2}
                   value={data.lowRisk.note}
@@ -508,13 +631,13 @@ export function WarrantyPeriodPage() {
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
             <ProductGuideTable
               items={lowRiskProducts}
-              editing={editing}
+              editing={effectiveEditing}
               addTick={productAddTick}
               insertAnchorIndex={
                 productInsertAnchor?.section === 'lowRisk' ? productInsertAnchor.index : null
               }
               onSelectInsertAnchor={
-                editing
+                effectiveEditing
                   ? (index) => setProductInsertAnchor({ section: 'lowRisk', index })
                   : undefined
               }
@@ -523,8 +646,10 @@ export function WarrantyPeriodPage() {
               }
               highlightSequence={productHighlightSeq}
               onUpdate={(index, field, value) => updateProduct('lowRisk', index, field, value)}
-              onDelete={(index) => deleteProduct('lowRisk', index)}
-              onReorder={(from, to) => reorderProduct('lowRisk', from, to)}
+              onDelete={effectiveEditing ? (index) => deleteProduct('lowRisk', index) : undefined}
+              onReorder={
+                effectiveEditing ? (from, to) => reorderProduct('lowRisk', from, to) : undefined
+              }
             />
           </>
         )}
@@ -532,21 +657,28 @@ export function WarrantyPeriodPage() {
         {activeTab === 'coastalAl' && (
           <CoastalGuideTables
             coastal={data.coastalAl}
-            editing={editing}
+            editing={effectiveEditing}
+            insertAnchor={coastalInsertAnchor}
+            onSelectInsertAnchor={
+              effectiveEditing ? (side, index) => setCoastalInsertAnchor({ side, index }) : undefined
+            }
             onUpdateRow={updateCoastalRow}
             onUpdateWarrantyNote={updateCoastalWarrantyNote}
+            onDeleteRow={effectiveEditing ? deleteCoastalRow : undefined}
+            onReorderRow={effectiveEditing ? reorderCoastalRow : undefined}
           />
         )}
 
         {activeTab === 'notCovered' && (
           <NotCoveredGuide
             section={data.notCovered}
-            editing={editing}
+            editing={effectiveEditing}
             highlightedIndex={highlightedNotCoveredIndex}
             insertAnchorIndex={notCoveredInsertAnchor}
-            onSelectInsertAnchor={editing ? setNotCoveredInsertAnchor : undefined}
+            onSelectInsertAnchor={effectiveEditing ? setNotCoveredInsertAnchor : undefined}
             onUpdateItem={updateNotCoveredItem}
-            onDeleteItem={deleteNotCoveredItem}
+            onDeleteItem={effectiveEditing ? deleteNotCoveredItem : undefined}
+            onReorderItem={effectiveEditing ? reorderNotCoveredItem : undefined}
           />
         )}
       </Card>

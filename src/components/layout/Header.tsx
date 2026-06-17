@@ -1,4 +1,6 @@
 import type { TabId } from '../../types'
+import { useAuth } from '../../contexts/AuthContext'
+import { canAccessExternalTestTab } from '../../utils/authValidation'
 import { SeahLogo } from './SeahLogo'
 import { UserAccountBar } from './UserAccountBar'
 
@@ -15,16 +17,21 @@ const tabs: { id: TabId; label: string }[] = [
 ]
 
 export function Header({ activeTab, onTabChange }: HeaderProps) {
+  const { user } = useAuth()
+  const visibleTabs = tabs.filter(
+    (tab) => tab.id !== 'externalTest' || canAccessExternalTestTab(user?.email)
+  )
+
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-bg-primary/95 backdrop-blur-sm">
       <div className="mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-4 py-3 sm:px-6">
         <div className="flex min-w-0 flex-1 items-center gap-4 sm:gap-8">
           <div className="flex shrink-0 items-center">
-            <SeahLogo className="h-7 w-auto" />
+            <SeahLogo />
           </div>
 
           <nav className="flex min-w-0 items-center justify-start gap-1 overflow-x-auto sm:gap-2">
-            {tabs.map((tab) => (
+            {visibleTabs.map((tab) => (
               <button
                 key={tab.id}
                 type="button"

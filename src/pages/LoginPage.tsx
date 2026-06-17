@@ -6,11 +6,11 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#2a2d35] p-6">
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white px-8 py-10 text-center shadow-2xl">
-        <div className="mx-auto mb-5 max-w-[160px]">
+        <div className="relative mx-auto mb-3 h-11 w-full overflow-hidden">
           <img
             src="/seahcm_logo.jpg"
             alt="SeAH Coated Metal"
-            className="mx-auto h-8 w-auto object-contain"
+            className="absolute left-1/2 top-1/2 w-full h-auto -translate-x-1/2 -translate-y-1/2 scale-[1.2] mix-blend-multiply"
           />
         </div>
 

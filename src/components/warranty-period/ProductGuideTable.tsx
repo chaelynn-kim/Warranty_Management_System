@@ -162,7 +162,6 @@ export function ProductGuideTable({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map())
-  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const headerRowRef = useRef<HTMLTableRowElement>(null)
   const [headerRowHeight, setHeaderRowHeight] = useState(0)
 
@@ -211,15 +210,9 @@ export function ProductGuideTable({
 
     const scrollToHighlightedRow = () => {
       const row = rowRefs.current.get(highlightedIndex)
-      const container = scrollContainerRef.current
-      if (!row || !container) return false
+      if (!row) return false
 
-      const targetTop =
-        row.offsetTop - container.clientHeight / 2 + row.offsetHeight / 2
-      container.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: 'smooth',
-      })
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
 
       const textarea = row.querySelector('textarea')
       if (textarea instanceof HTMLTextAreaElement) {
@@ -257,10 +250,7 @@ export function ProductGuideTable({
         </div>
       )}
 
-    <div
-      ref={scrollContainerRef}
-      className="max-h-[calc(100dvh-420px)] min-h-[240px] overflow-auto rounded-lg border border-border"
-    >
+    <div className="overflow-x-auto rounded-lg border border-border">
       <table className="w-full min-w-[960px] border-separate border-spacing-0 text-sm">
         <thead>
           <tr ref={headerRowRef}>
@@ -296,9 +286,6 @@ export function ProductGuideTable({
             <th colSpan={3} className={`${periodThClass} ${periodThStickyRow1}`}>
               CHALK (백화/묻어남)
             </th>
-            <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} min-w-[140px]`}>
-              비고
-            </th>
           </tr>
           <tr>
             <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
@@ -325,7 +312,7 @@ export function ProductGuideTable({
           {filteredItems.length === 0 ? (
             <tr>
               <td
-                colSpan={editing && (onDelete || onReorder) ? 11 : 10}
+                colSpan={editing && (onDelete || onReorder) ? 10 : 9}
                 className="border border-border/50 px-4 py-8 text-center text-sm text-text-muted"
               >
                 선택한 제품군에 해당하는 항목이 없습니다.
@@ -539,14 +526,6 @@ export function ProductGuideTable({
                       </td>
                     </>
                   )}
-                  <td className={periodTdClass}>
-                    <GuideCell
-                      value={product.notes}
-                      editing={editing}
-                      multiline
-                      onChange={(v) => onUpdate(index, 'notes', v)}
-                    />
-                  </td>
                 </tr>
               )
             })
