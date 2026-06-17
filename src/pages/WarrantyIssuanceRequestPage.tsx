@@ -219,12 +219,12 @@ export function WarrantyIssuanceRequestPage() {
                   onChange={(value) => patch('warrantyTermMode', value)}
                 />
                 {showCustomWarrantyTerm && (
-                  <input
-                    type="text"
+                  <textarea
+                    rows={3}
                     value={form.warrantyTermCustom}
                     onChange={(e) => patch('warrantyTermCustom', e.target.value)}
                     placeholder="보증 연한 직접 입력"
-                    className={fieldInput}
+                    className={`${fieldInput} min-h-[80px] resize-y leading-relaxed`}
                     aria-label="보증 연한 직접 입력"
                   />
                 )}

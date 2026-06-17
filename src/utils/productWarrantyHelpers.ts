@@ -1,4 +1,4 @@
-import type { ProductWarranty } from '../types'
+import type { ProductLine, ProductWarranty } from '../types'
 
 export type SectionDisplayMode = 'detail' | 'merged'
 
@@ -42,9 +42,21 @@ export function resolveChalkMode(product: ProductWarranty): SectionDisplayMode {
   return inferChalkMode(product)
 }
 
+export function isPrintProductGroup(productGroup: string): boolean {
+  return productGroup.toLowerCase().includes('print')
+}
+
+export function resolveProductLine(product: ProductWarranty): ProductLine {
+  if (product.productLine === 'paint' || product.productLine === 'print') {
+    return product.productLine
+  }
+  return isPrintProductGroup(product.productGroup) ? 'print' : 'paint'
+}
+
 export function normalizeProductWarranty(product: ProductWarranty): ProductWarranty {
   return {
     ...product,
+    productLine: resolveProductLine(product),
     colorFadingMode: resolveColorFadingMode(product),
     chalkMode: resolveChalkMode(product),
   }

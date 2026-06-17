@@ -28,8 +28,11 @@ export interface CountryEntry {
   countries: string
 }
 
+export type ProductLine = 'paint' | 'print'
+
 export interface ProductWarranty {
   productGroup: string
+  productLine?: ProductLine
   peelFlake: string
   perforation: string
   colorFadingMode?: 'detail' | 'merged'

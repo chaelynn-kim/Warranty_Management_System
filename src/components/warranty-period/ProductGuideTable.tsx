@@ -1,10 +1,27 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, GripVertical, X } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Check, ChevronDown, Filter, GripVertical, X } from 'lucide-react'
 import type { ProductWarranty } from '../../types'
-import { resolveChalkMode, resolveColorFadingMode, type SectionDisplayMode } from '../../utils/productWarrantyHelpers'
+import {
+  resolveProductLine,
+  resolveChalkMode,
+  resolveColorFadingMode,
+  type SectionDisplayMode,
+} from '../../utils/productWarrantyHelpers'
 import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
 import { GuideCell } from './GuideCell'
-import { periodInputClass, periodRowClass, periodTdClass, periodThClass, periodThStickyRow1, periodThStickyRow2, periodThStickyRowSpan, periodThSubClass } from './periodTheme'
+import {
+  periodInputClass,
+  periodRowClass,
+  periodTdClass,
+  periodThClass,
+  periodThStickyRow1,
+  periodThStickyRow2,
+  periodThStickyRowSpan,
+  periodThSubClass,
+  periodTableClass,
+  periodDataColCount,
+  periodRowHoverClass,
+} from './periodTheme'
 
 type ProductField = keyof ProductWarranty
 
@@ -27,16 +44,18 @@ interface ProductGuideTableProps {
   onSelectInsertAnchor?: (index: number) => void
   onDelete?: (index: number) => void
   onReorder?: (fromIndex: number, toIndex: number) => void
+  splitByPrintPaint?: boolean
+  riskVariant?: 'high' | 'low'
 }
 
-function ProductGroupHeaderFilter({
+function ProductGroupMultiSelectFilter({
   options,
-  selected,
+  selectedGroups,
   onChange,
 }: {
   options: string[]
-  selected: string
-  onChange: (value: string) => void
+  selectedGroups: string[]
+  onChange: (groups: string[]) => void
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -51,54 +70,83 @@ function ProductGroupHeaderFilter({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [])
 
-  const label = selected || '제품군'
-  const isFiltered = Boolean(selected)
+  const isAll = selectedGroups.length === 0
+
+  const buttonLabel = useMemo(() => {
+    if (isAll) return '제품군 선택'
+    if (selectedGroups.length === 1) return selectedGroups[0].replace(/\n/g, ' ')
+    return `${selectedGroups[0].replace(/\n/g, ' ')} 외 ${selectedGroups.length - 1}건`
+  }, [isAll, selectedGroups])
+
+  const toggleGroup = (group: string) => {
+    onChange(
+      selectedGroups.includes(group)
+        ? selectedGroups.filter((g) => g !== group)
+        : [...selectedGroups, group]
+    )
+  }
 
   return (
-    <div ref={ref} className="relative mx-auto min-w-[88px] max-w-[160px]">
+    <div ref={ref} className="relative mb-3 max-w-md">
+      <Filter className="pointer-events-none absolute top-1/2 left-2.5 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className={`inline-flex w-full items-center justify-center gap-1 font-semibold transition-colors ${
-          isFiltered ? 'text-accent' : 'text-text-secondary hover:text-text-primary'
+        className={`${periodInputClass} flex h-9 w-full items-center pr-8 pl-8 text-left ${
+          isAll ? 'text-text-muted' : 'font-medium text-text-primary'
         }`}
-        title={selected || '제품군 필터'}
+        aria-label="제품군 선택"
+        aria-expanded={open}
       >
-        <span className="truncate">{label}</span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-        />
+        <span className="truncate">{buttonLabel}</span>
       </button>
+      <ChevronDown
+        className={`pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-text-muted transition-transform ${
+          open ? 'rotate-180' : ''
+        }`}
+      />
 
       {open && (
-        <div className="absolute top-full left-1/2 z-50 mt-1 max-h-56 min-w-[180px] -translate-x-1/2 overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 text-left shadow-xl">
+        <div className="absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
           <button
             type="button"
-            onClick={() => {
-              onChange('')
-              setOpen(false)
-            }}
-            className={`block w-full px-3 py-2 text-xs transition-colors hover:bg-bg-tertiary ${
-              !selected ? 'font-semibold text-accent' : 'text-text-primary'
+            onClick={() => onChange([])}
+            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
+              isAll ? 'font-semibold text-accent' : 'text-text-primary'
             }`}
           >
-            전체
-          </button>
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              onClick={() => {
-                onChange(option)
-                setOpen(false)
-              }}
-              className={`block w-full px-3 py-2 text-xs whitespace-pre-line transition-colors hover:bg-bg-tertiary ${
-                selected === option ? 'font-semibold text-accent' : 'text-text-primary'
+            <span
+              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                isAll ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
               }`}
             >
-              {option}
-            </button>
-          ))}
+              {isAll && <Check className="h-3 w-3" strokeWidth={3} />}
+            </span>
+            전체
+          </button>
+          {options.map((option) => {
+            const checked = selectedGroups.includes(option)
+            const display = option.replace(/\n/g, ' ')
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => toggleGroup(option)}
+                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
+                  checked ? 'font-medium text-accent' : 'text-text-primary'
+                }`}
+              >
+                <span
+                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                    checked ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
+                  }`}
+                >
+                  {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+                </span>
+                <span className="whitespace-pre-line">{display}</span>
+              </button>
+            )
+          })}
         </div>
       )}
     </div>
@@ -146,46 +194,62 @@ function SectionModeToggle({
   )
 }
 
-export function ProductGuideTable({
+function ProductCategoryBox({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className="border-b border-border bg-bg-tertiary px-4 py-2.5">
+        <span className="text-xs font-bold tracking-[0.14em] text-text-primary">{title}</span>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+interface ProductGuideTableGridProps {
+  items: ProductGuideTableItem[]
+  editing: boolean
+  highlightedIndex: number | null
+  groupHeader: ReactNode
+  insertAnchorIndex: number | null
+  onSelectInsertAnchor?: (index: number) => void
+  onDelete?: (index: number) => void
+  onReorder?: (fromIndex: number, toIndex: number) => void
+  onUpdate: (index: number, field: ProductField, value: string) => void
+  canReorder: boolean
+  selectedGroups: string[]
+  rowRefs: React.MutableRefObject<Map<number, HTMLTableRowElement>>
+  draggingIndex: number | null
+  setDraggingIndex: (index: number | null) => void
+  dragOverIndex: number | null
+  setDragOverIndex: (index: number | null | ((prev: number | null) => number | null)) => void
+  emptyMessage: string
+  bordered?: boolean
+  riskVariant?: 'high' | 'low'
+}
+
+function ProductGuideTableGrid({
   items,
   editing,
-  highlightedIndex = null,
-  highlightSequence = 0,
-  onUpdate,
-  addTick = 0,
-  insertAnchorIndex = null,
+  highlightedIndex,
+  groupHeader,
+  insertAnchorIndex,
   onSelectInsertAnchor,
   onDelete,
   onReorder,
-}: ProductGuideTableProps) {
-  const [selectedGroup, setSelectedGroup] = useState('')
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
-  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map())
+  onUpdate,
+  canReorder,
+  selectedGroups,
+  rowRefs,
+  draggingIndex,
+  setDraggingIndex,
+  dragOverIndex,
+  setDragOverIndex,
+  emptyMessage,
+  bordered = true,
+  riskVariant,
+}: ProductGuideTableGridProps) {
   const headerRowRef = useRef<HTMLTableRowElement>(null)
   const [headerRowHeight, setHeaderRowHeight] = useState(0)
-
-  useEffect(() => {
-    if (addTick > 0) setSelectedGroup('')
-  }, [addTick])
-
-  const productGroupOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const options: string[] = []
-    for (const { product } of items) {
-      const group = product.productGroup
-      if (!seen.has(group)) {
-        seen.add(group)
-        options.push(group)
-      }
-    }
-    return options
-  }, [items])
-
-  const filteredItems = useMemo(() => {
-    if (!selectedGroup) return items
-    return items.filter(({ product }) => product.productGroup === selectedGroup)
-  }, [items, selectedGroup])
 
   useEffect(() => {
     const row = headerRowRef.current
@@ -199,62 +263,21 @@ export function ProductGuideTable({
     return () => observer.disconnect()
   }, [editing])
 
-  useEffect(() => {
-    if (selectedGroup && !productGroupOptions.includes(selectedGroup)) {
-      setSelectedGroup('')
-    }
-  }, [productGroupOptions, selectedGroup])
-
-  useEffect(() => {
-    if (highlightedIndex === null) return
-
-    const scrollToHighlightedRow = () => {
-      const row = rowRefs.current.get(highlightedIndex)
-      if (!row) return false
-
-      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
-
-      const textarea = row.querySelector('textarea')
-      if (textarea instanceof HTMLTextAreaElement) {
-        textarea.focus({ preventScroll: true })
-      }
-      return true
-    }
-
-    const timer = window.setTimeout(() => {
-      if (!scrollToHighlightedRow()) {
-        window.setTimeout(scrollToHighlightedRow, 120)
-      }
-    }, 80)
-
-    return () => clearTimeout(timer)
-  }, [highlightedIndex, highlightSequence, filteredItems.length, items.length])
-
   const headerRow2Top = headerRowHeight > 0 ? headerRowHeight : 43
-  const canReorder = editing && Boolean(onReorder) && !selectedGroup
+  const hasActionColumn = editing && (onDelete || onReorder)
 
   return (
-    <div>
-      {editing && (
-        <div className="mb-3 flex flex-wrap items-center gap-3">
-          <p className="text-xs text-text-muted">
-            행을 클릭해 선택한 뒤 <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 행{' '}
-            <span className="text-amber-400/90">위</span>에 새 행이 추가됩니다.
-          </p>
-          {onReorder && canReorder && (
-            <p className="text-xs text-text-muted">⋮⋮ 드래그로 순서를 변경할 수 있습니다.</p>
-          )}
-          {onReorder && selectedGroup && (
-            <p className="text-xs text-amber-400/90">제품군 필터 해제 후 순서 변경이 가능합니다.</p>
-          )}
-        </div>
-      )}
-
-    <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[960px] border-separate border-spacing-0 text-sm">
+    <div className={bordered ? 'overflow-x-auto rounded-lg border border-border' : 'overflow-x-auto'}>
+      <table className={periodTableClass}>
+        <colgroup>
+          {hasActionColumn && <col className="w-11" />}
+          {Array.from({ length: periodDataColCount }, (_, index) => (
+            <col key={index} />
+          ))}
+        </colgroup>
         <thead>
           <tr ref={headerRowRef}>
-            {editing && (onDelete || onReorder) && (
+            {hasActionColumn && (
               <th
                 rowSpan={2}
                 className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} w-11 min-w-11 align-middle`}
@@ -262,20 +285,16 @@ export function ProductGuideTable({
             )}
             <th
               rowSpan={2}
-              className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} min-w-[100px] align-middle`}
+              className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} align-middle`}
             >
-              <ProductGroupHeaderFilter
-                options={productGroupOptions}
-                selected={selectedGroup}
-                onChange={setSelectedGroup}
-              />
+              {groupHeader}
             </th>
-            <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} min-w-[72px]`}>
+            <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
               PEEL/FLAKE
               <br />
               (도막박리)
             </th>
-            <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan} min-w-[72px]`}>
+            <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
               PERFORATION
               <br />
               (천공)
@@ -309,17 +328,17 @@ export function ProductGuideTable({
           </tr>
         </thead>
         <tbody>
-          {filteredItems.length === 0 ? (
+          {items.length === 0 ? (
             <tr>
               <td
-                colSpan={editing && (onDelete || onReorder) ? 10 : 9}
+                colSpan={hasActionColumn ? periodDataColCount + 1 : periodDataColCount}
                 className="border border-border/50 px-4 py-8 text-center text-sm text-text-muted"
               >
-                선택한 제품군에 해당하는 항목이 없습니다.
+                {emptyMessage}
               </td>
             </tr>
           ) : (
-            filteredItems.map(({ product, index }) => {
+            items.map(({ product, index }) => {
               const colorFadingMode = resolveColorFadingMode(product)
               const chalkMode = resolveChalkMode(product)
               const isColorFadingMerged = colorFadingMode === 'merged'
@@ -359,7 +378,7 @@ export function ProductGuideTable({
                     setDraggingIndex(null)
                     setDragOverIndex(null)
                   }}
-                  className={`group ${periodRowClass} transition-all duration-300 ${
+                  className={`group ${periodRowClass} transition-colors duration-200 ${periodRowHoverClass(riskVariant)} ${
                     editing && onSelectInsertAnchor ? 'cursor-pointer' : ''
                   } ${isHighlighted ? highlightRowClass : ''} ${
                     isInsertAnchor ? insertAnchorRowClass : ''
@@ -367,7 +386,7 @@ export function ProductGuideTable({
                     isDragOver ? 'bg-accent/15 ring-1 ring-inset ring-accent/50' : ''
                   }`}
                 >
-                  {editing && (onDelete || onReorder) && (
+                  {hasActionColumn && (
                     <td className={`${periodTdClass} w-11 px-1 align-middle`}>
                       <div className="flex flex-col items-center gap-1">
                         {onDelete && (
@@ -398,7 +417,7 @@ export function ProductGuideTable({
                               setDragOverIndex(null)
                             }}
                             title={
-                              selectedGroup
+                              selectedGroups.length > 0
                                 ? '제품군 필터 해제 후 순서 변경'
                                 : '드래그하여 행 이동'
                             }
@@ -415,14 +434,14 @@ export function ProductGuideTable({
                       </div>
                     </td>
                   )}
-                  <td className={`${periodTdClass} text-center font-semibold whitespace-pre-line text-text-primary`}>
+                  <td className={`${periodTdClass} break-words text-center font-semibold whitespace-pre-line text-text-primary`}>
                     {editing ? (
                       <>
                         <textarea
                           rows={2}
                           value={product.productGroup}
                           onChange={(e) => onUpdate(index, 'productGroup', e.target.value)}
-                          className={`${periodInputClass} min-h-[52px] resize-y text-center font-semibold leading-snug`}
+                          className={`${periodInputClass} h-full max-h-full min-h-0 resize-y text-center font-semibold leading-snug !py-0`}
                           placeholder="제품군"
                         />
                         <div className="mt-2 space-y-1">
@@ -533,6 +552,180 @@ export function ProductGuideTable({
         </tbody>
       </table>
     </div>
+  )
+}
+
+export function ProductGuideTable({
+  items,
+  editing,
+  highlightedIndex = null,
+  highlightSequence = 0,
+  onUpdate,
+  addTick = 0,
+  insertAnchorIndex = null,
+  onSelectInsertAnchor,
+  onDelete,
+  onReorder,
+  splitByPrintPaint = false,
+  riskVariant,
+}: ProductGuideTableProps) {
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+  const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map())
+
+  useEffect(() => {
+    if (addTick > 0) setSelectedGroups([])
+  }, [addTick])
+
+  const productGroupOptions = useMemo(() => {
+    const seen = new Set<string>()
+    const options: string[] = []
+    for (const { product } of items) {
+      const group = product.productGroup
+      if (!seen.has(group)) {
+        seen.add(group)
+        options.push(group)
+      }
+    }
+    return options
+  }, [items])
+
+  const filteredItems = useMemo(() => {
+    if (selectedGroups.length === 0) return items
+    const selected = new Set(selectedGroups)
+    return items.filter(({ product }) => selected.has(product.productGroup))
+  }, [items, selectedGroups])
+
+  const paintItems = useMemo(
+    () => filteredItems.filter(({ product }) => resolveProductLine(product) === 'paint'),
+    [filteredItems]
+  )
+
+  const printItems = useMemo(
+    () => filteredItems.filter(({ product }) => resolveProductLine(product) === 'print'),
+    [filteredItems]
+  )
+
+  useEffect(() => {
+    setSelectedGroups((prev) => prev.filter((group) => productGroupOptions.includes(group)))
+  }, [productGroupOptions])
+
+  useEffect(() => {
+    if (highlightedIndex === null) return
+
+    const scrollToHighlightedRow = () => {
+      const row = rowRefs.current.get(highlightedIndex)
+      if (!row) return false
+
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+      const textarea = row.querySelector('textarea')
+      if (textarea instanceof HTMLTextAreaElement) {
+        textarea.focus({ preventScroll: true })
+      }
+      return true
+    }
+
+    const timer = window.setTimeout(() => {
+      if (!scrollToHighlightedRow()) {
+        window.setTimeout(scrollToHighlightedRow, 120)
+      }
+    }, 80)
+
+    return () => clearTimeout(timer)
+  }, [highlightedIndex, highlightSequence, filteredItems.length, items.length])
+
+  const canReorder = editing && Boolean(onReorder) && selectedGroups.length === 0
+
+  const groupHeader = <span className="font-semibold text-text-secondary">제품군</span>
+
+  const emptyMessage = selectedGroups.length > 0
+    ? '선택한 제품군에 해당하는 항목이 없습니다.'
+    : '등록된 항목이 없습니다.'
+
+  const handleUpdate = (index: number, field: ProductField, value: string) => {
+    if (field === 'productGroup') {
+      const current = items.find((item) => item.index === index)
+      if (current && selectedGroups.includes(current.product.productGroup)) {
+        setSelectedGroups((prev) =>
+          prev.map((group) => (group === current.product.productGroup ? value : group))
+        )
+      }
+    }
+    onUpdate(index, field, value)
+  }
+
+  const gridProps = {
+    editing,
+    highlightedIndex,
+    insertAnchorIndex,
+    onSelectInsertAnchor,
+    onDelete,
+    onReorder,
+    onUpdate: handleUpdate,
+    canReorder,
+    selectedGroups,
+    rowRefs,
+    draggingIndex,
+    setDraggingIndex,
+    dragOverIndex,
+    setDragOverIndex,
+    emptyMessage,
+    riskVariant,
+  }
+
+  return (
+    <div>
+      {editing && (
+        <div className="mb-3 flex flex-wrap items-center gap-3">
+          <p className="text-xs text-text-muted">
+            행을 클릭해 선택한 뒤 <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 행{' '}
+            <span className="text-amber-400/90">위</span>에 새 행이 추가됩니다.
+          </p>
+          {onReorder && canReorder && (
+            <p className="text-xs text-text-muted">⋮⋮ 드래그로 순서를 변경할 수 있습니다.</p>
+          )}
+          {onReorder && selectedGroups.length > 0 && (
+            <p className="text-xs text-amber-400/90">제품군 필터 해제 후 순서 변경이 가능합니다.</p>
+          )}
+        </div>
+      )}
+
+      {productGroupOptions.length > 0 && (
+        <ProductGroupMultiSelectFilter
+          options={productGroupOptions}
+          selectedGroups={selectedGroups}
+          onChange={setSelectedGroups}
+        />
+      )}
+
+      {splitByPrintPaint ? (
+        <div className="space-y-5">
+          <ProductCategoryBox title="PAINT">
+            <ProductGuideTableGrid
+              {...gridProps}
+              items={paintItems}
+              groupHeader={groupHeader}
+              bordered={false}
+            />
+          </ProductCategoryBox>
+          <ProductCategoryBox title="PRINT">
+            <ProductGuideTableGrid
+              {...gridProps}
+              items={printItems}
+              groupHeader={groupHeader}
+              bordered={false}
+            />
+          </ProductCategoryBox>
+        </div>
+      ) : (
+        <ProductGuideTableGrid
+          {...gridProps}
+          items={filteredItems}
+          groupHeader={groupHeader}
+        />
+      )}
     </div>
   )
 }

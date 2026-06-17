@@ -10,12 +10,12 @@ import type { TabId } from './types'
 
 function App() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabId>('issuance')
+  const [activeTab, setActiveTab] = useState<TabId>('issuanceRequest')
   const canAccessExternalTest = canAccessExternalTestTab(user?.email)
 
   useEffect(() => {
     if (activeTab === 'externalTest' && !canAccessExternalTest) {
-      setActiveTab('issuance')
+      setActiveTab('issuanceRequest')
     }
   }, [activeTab, canAccessExternalTest])
 

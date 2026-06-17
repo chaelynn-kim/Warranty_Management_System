@@ -31,7 +31,7 @@ export function GuideCell({
   if (!editing) {
     return (
       <span
-        className={`block whitespace-pre-line text-center text-sm ${guideValueClass(display)} ${className}`}
+        className={`flex h-full w-full items-center justify-center whitespace-pre-line text-center text-sm ${guideValueClass(display)} overflow-hidden ${className}`}
       >
         {display || '-'}
       </span>
@@ -44,7 +44,7 @@ export function GuideCell({
         rows={2}
         value={display}
         onChange={(e) => onChange(e.target.value)}
-        className={`${periodInputClass} min-h-[52px] resize-y leading-snug`}
+        className={`${periodInputClass} h-full max-h-full min-h-0 resize-y leading-snug !py-0`}
       />
     )
   }
@@ -54,7 +54,7 @@ export function GuideCell({
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className={periodInputClass}
+      className={`${periodInputClass} h-full min-h-0 !py-0`}
     />
   )
 }

@@ -1,5 +1,5 @@
 import defaultData from '../data/warrantyPeriod.json'
-import type { CoastalAlSection, ProductWarranty, WarrantyPeriodData } from '../types'
+import type { CoastalAlSection, ProductLine, ProductWarranty, WarrantyPeriodData } from '../types'
 import { normalizeProductWarranty } from './productWarrantyHelpers'
 
 const STORAGE_KEY = 'warranty-period-data'
@@ -17,9 +17,10 @@ function normalizeCoastal(coastal: unknown): CoastalAlSection {
   return (defaultData as WarrantyPeriodData).coastalAl
 }
 
-export function createEmptyProductWarranty(): ProductWarranty {
+export function createEmptyProductWarranty(productLine: ProductLine = 'paint'): ProductWarranty {
   return {
     productGroup: '',
+    productLine,
     peelFlake: '',
     perforation: '',
     colorFadingMode: 'detail',

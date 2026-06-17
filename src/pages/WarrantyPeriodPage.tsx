@@ -15,6 +15,7 @@ import type {
   WarrantyPeriodData,
 } from '../types'
 import { canEditWarrantyPeriod } from '../utils/authValidation'
+import { resolveProductLine } from '../utils/productWarrantyHelpers'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
 import { periodInputClass } from '../components/warranty-period/periodTheme'
 
@@ -398,7 +399,15 @@ export function WarrantyPeriodPage() {
       const insertAt =
         atIndex !== undefined && atIndex >= 0 && atIndex <= products.length ? atIndex : products.length
       newIndex = insertAt
-      products.splice(insertAt, 0, createEmptyProductWarranty())
+      const referenceIndex =
+        atIndex !== undefined && atIndex >= 0 && atIndex < products.length
+          ? atIndex
+          : products.length > 0
+            ? products.length - 1
+            : -1
+      const productLine =
+        referenceIndex >= 0 ? resolveProductLine(products[referenceIndex]) : 'paint'
+      products.splice(insertAt, 0, createEmptyProductWarranty(productLine))
       return {
         ...prev,
         [section]: {
@@ -580,11 +589,14 @@ export function WarrantyPeriodPage() {
             <CountryGuideGrid
               countries={data.highRisk.countries}
               editing={effectiveEditing}
+              riskVariant="high"
               onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
             />
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
             <ProductGuideTable
               items={highRiskProducts}
+              splitByPrintPaint
+              riskVariant="high"
               editing={effectiveEditing}
               addTick={productAddTick}
               insertAnchorIndex={
@@ -614,6 +626,7 @@ export function WarrantyPeriodPage() {
             <CountryGuideGrid
               countries={data.lowRisk.countries}
               editing={effectiveEditing}
+              riskVariant="low"
               onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
             />
             <div className="mb-4 rounded-lg border border-amber-900/40 bg-amber-950/30 px-4 py-3">
@@ -631,6 +644,8 @@ export function WarrantyPeriodPage() {
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
             <ProductGuideTable
               items={lowRiskProducts}
+              splitByPrintPaint
+              riskVariant="low"
               editing={effectiveEditing}
               addTick={productAddTick}
               insertAnchorIndex={

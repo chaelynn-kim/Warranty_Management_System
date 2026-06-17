@@ -1,15 +1,21 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import type { CountryEntry } from '../../types'
-import { periodInputClass } from './periodTheme'
+import { periodCardHoverClass, periodInputClass } from './periodTheme'
 
 interface CountryGuideGridProps {
   countries: CountryEntry[]
   editing: boolean
   onUpdate: (index: number, field: keyof CountryEntry, value: string) => void
+  riskVariant?: 'high' | 'low'
 }
 
-export function CountryGuideGrid({ countries, editing, onUpdate }: CountryGuideGridProps) {
+export function CountryGuideGrid({
+  countries,
+  editing,
+  onUpdate,
+  riskVariant,
+}: CountryGuideGridProps) {
   const [search, setSearch] = useState('')
 
   const filteredEntries = useMemo(() => {
@@ -45,7 +51,7 @@ export function CountryGuideGrid({ countries, editing, onUpdate }: CountryGuideG
           {filteredEntries.map(({ country, index }) => (
             <div
               key={`${country.region}-${index}`}
-              className="rounded-lg border border-border bg-bg-tertiary/40 px-4 py-3"
+              className={`rounded-lg border border-border bg-bg-tertiary/40 px-4 py-3 ${periodCardHoverClass(riskVariant)}`}
             >
               {editing ? (
                 <>
