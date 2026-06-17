@@ -1,5 +1,6 @@
 import type { TabId } from '../../types'
 import { SeahLogo } from './SeahLogo'
+import { UserAccountBar } from './UserAccountBar'
 
 interface HeaderProps {
   activeTab: TabId
@@ -43,10 +44,8 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           </nav>
         </div>
 
-        <div className="hidden shrink-0 sm:block">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-bg-tertiary text-sm font-medium text-text-secondary">
-            U
-          </div>
+        <div className="shrink-0">
+          <UserAccountBar />
         </div>
       </div>
     </header>
