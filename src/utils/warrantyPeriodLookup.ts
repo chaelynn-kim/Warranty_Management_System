@@ -17,8 +17,8 @@ function normalizeKey(value: string): string {
 }
 
 export function regionToRiskSection(region: string): WarrantyRiskSection | null {
-  if (region === '고위험지역') return 'highRisk'
-  if (region === '저위험지역') return 'lowRisk'
+  if (region === '고위험국가') return 'highRisk'
+  if (region === '저위험국가') return 'lowRisk'
   return null
 }
 

@@ -23,7 +23,9 @@ export const WARRANTY_REQUEST_COATING_STRUCTURES = ['2 Coat / 2 Bake', '3 Coat /
 
 export const WARRANTY_REQUEST_MATERIALS = ['GI', 'GL', 'AL'] as const
 
-export const WARRANTY_REQUEST_REGIONS = ['고위험지역', '저위험지역'] as const
+export const WARRANTY_REQUEST_PAINT_COMPANIES = ['NCC', 'KCC', 'AK', 'PPG', '삼화', '발스파'] as const
+
+export const WARRANTY_REQUEST_REGIONS = ['고위험국가', '저위험국가'] as const
 
 export const HIGH_RISK_DETAIL_REGIONS = [
   '에콰도르',
@@ -68,12 +70,12 @@ export const WARRANTY_REQUEST_LANGUAGES = ['영문', '국문'] as const
 
 export const WARRANTY_TERM_COMPANY = '당사 보증 연한'
 
-export const WARRANTY_TERM_OPTIONS = [WARRANTY_TERM_COMPANY, '기타'] as const
+export const WARRANTY_TERM_OPTIONS = [WARRANTY_TERM_COMPANY, '직접 입력'] as const
 
-export const WARRANTY_TERM_OTHER = '기타'
+export const WARRANTY_TERM_OTHER = '직접 입력'
 
 export function detailRegionsForArea(region: string): readonly string[] {
-  if (region === '고위험지역') return HIGH_RISK_DETAIL_REGIONS
-  if (region === '저위험지역') return LOW_RISK_DETAIL_REGIONS
+  if (region === '고위험국가') return HIGH_RISK_DETAIL_REGIONS
+  if (region === '저위험국가') return LOW_RISK_DETAIL_REGIONS
   return []
 }

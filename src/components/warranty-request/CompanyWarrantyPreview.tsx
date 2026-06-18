@@ -178,8 +178,8 @@ export function CompanyWarrantyPreview({
     return (
       <p className="rounded-lg border border-border/70 bg-bg-primary/30 px-3 py-2.5 text-sm text-text-muted">
         {isPrint
-          ? '품목, 수지, 도장구조, 지역을 선택하면 당사 보증 연한이 표시됩니다.'
-          : '품목, 수지, 지역을 선택하면 당사 보증 연한이 표시됩니다.'}
+          ? '품목, 수지, 도장구조, 국가를 선택하면 당사 보증 연한이 표시됩니다.'
+          : '품목, 수지, 국가를 선택하면 당사 보증 연한이 표시됩니다.'}
       </p>
     )
   }

@@ -124,6 +124,7 @@ export interface WarrantyIssuanceRequest {
   requesterName: string
   colorName: string
   resin: string
+  paintCompany: string
   material: string
   coatingStructure: string
   productItem: string
