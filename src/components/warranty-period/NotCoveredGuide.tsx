@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import type { NotCoveredSection } from '../../types'
 import { periodInputClass } from './periodTheme'
@@ -6,6 +6,35 @@ import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/t
 
 const highlightItemClass =
   'rounded-md bg-accent/20 ring-2 ring-inset ring-accent shadow-[inset_0_0_0_1px_rgba(59,130,246,0.35)]'
+
+/** public/not-covered/{파일명}.png — 항목 문구에 키워드가 포함되면 해당 아이콘 표시 */
+const NOT_COVERED_ICON_MATCHES: { keywords: string[]; file: string; tintItemText?: boolean }[] = [
+  { keywords: ['멀티글로스'], file: '멀티글로스', tintItemText: true },
+  { keywords: ['Metallic', '메탈릭'], file: '메탈릭', tintItemText: true },
+  { keywords: ['고광', '고광택'], file: '고광', tintItemText: true },
+  { keywords: ['유색'], file: '유색.재첨부', tintItemText: true },
+]
+
+function resolveNotCoveredIcon(item: string): { src: string; tintItemText: boolean } | null {
+  const text = item.trim()
+  for (const { keywords, file, tintItemText } of NOT_COVERED_ICON_MATCHES) {
+    if (keywords.some((keyword) => text.includes(keyword))) {
+      return { src: `/not-covered/${file}.png`, tintItemText: tintItemText ?? false }
+    }
+  }
+  return null
+}
+
+const notCoveredIconMaskStyle = (src: string): CSSProperties => ({
+  maskImage: `url(${src})`,
+  WebkitMaskImage: `url(${src})`,
+  maskSize: 'contain',
+  WebkitMaskSize: 'contain',
+  maskRepeat: 'no-repeat',
+  WebkitMaskRepeat: 'no-repeat',
+  maskPosition: 'center',
+  WebkitMaskPosition: 'center',
+})
 
 interface NotCoveredGuideProps {
   section: NotCoveredSection
@@ -43,16 +72,6 @@ export function NotCoveredGuide({
 
   return (
     <div>
-      <div className="mb-4 space-y-2 text-sm leading-relaxed text-text-secondary">
-        <p>
-          ※ 본 WARRANTY GUIDE는 판매 활성화를 위한 기준이며, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라
-          기준이 달라질 수 있습니다.
-        </p>
-        <p>
-   또한, 특수 환경(강산, 강알칼리 지역 등) 및 특수 용도의 경우 반드시 사전 협의가 필요합니다.
-        </p>
-      </div>
-
       {editing && (onDeleteItem || onReorderItem) && (
         <p className="mb-3 text-xs text-text-muted">
           항목을 클릭해 선택한 뒤 <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 항목{' '}
@@ -72,6 +91,7 @@ export function NotCoveredGuide({
             const isInsertAnchor = editing && insertAnchorIndex === index
             const isDragging = draggingIndex === index
             const isDragOver = dragOverIndex === index && draggingIndex !== index
+            const icon = resolveNotCoveredIcon(item)
             return (
               <li
                 key={`not-covered-${index}`}
@@ -153,7 +173,24 @@ export function NotCoveredGuide({
                     )}
                   </div>
                 )}
-                <span className="mt-0.5 shrink-0 font-semibold text-rose-300/90">•</span>
+                {icon ? (
+                  icon.tintItemText ? (
+                    <span
+                      aria-hidden
+                      className="mt-0.5 h-6 w-6 shrink-0 bg-rose-100/95"
+                      style={notCoveredIconMaskStyle(icon.src)}
+                    />
+                  ) : (
+                    <img
+                      src={icon.src}
+                      alt=""
+                      aria-hidden
+                      className="mt-0.5 h-6 w-6 shrink-0 object-contain"
+                    />
+                  )
+                ) : (
+                  <span className="mt-0.5 shrink-0 font-semibold text-rose-300/90">•</span>
+                )}
                 {editing ? (
                   <input
                     type="text"

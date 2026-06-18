@@ -4,7 +4,7 @@ import { normalizeProductWarranty } from './productWarrantyHelpers'
 
 const STORAGE_KEY = 'warranty-period-data'
 const STORAGE_VERSION_KEY = 'warranty-period-version'
-const CURRENT_VERSION = '4'
+const CURRENT_VERSION = '5'
 
 function isCoastalAlSection(value: unknown): value is CoastalAlSection {
   if (!value || typeof value !== 'object') return false

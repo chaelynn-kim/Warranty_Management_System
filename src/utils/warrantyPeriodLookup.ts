@@ -30,6 +30,9 @@ export function productItemToLine(productItem: string): ProductLine | null {
 
 export function coatingStructureToCode(structure: string): '2C2B' | '3C3B' | null {
   const key = normalizeKey(structure)
+  const compact = key.replace(/[\s/]/g, '')
+  if (key.includes('2C2B') || (compact.includes('2COAT') && compact.includes('2BAKE'))) return '2C2B'
+  if (key.includes('3C3B') || (compact.includes('3COAT') && compact.includes('3BAKE'))) return '3C3B'
   if (key.includes('2 COAT') && key.includes('2 BAKE')) return '2C2B'
   if (key.includes('3 COAT') && key.includes('3 BAKE')) return '3C3B'
   return null
@@ -43,7 +46,8 @@ function paintResinMatchesProduct(resin: string, product: ProductWarranty): bool
 
   if (resinKey === 'RMP') return group === 'RMP'
   if (resinKey === 'RMP MATT') return group === 'RMP MATT'
-  if (resinKey === 'ADP' || resinKey === 'NDP') return group === 'ADP (NDP)'
+  if (resinKey === 'ADP') return group === 'ADP'
+  if (resinKey === 'NDP') return group === 'NDP'
   if (resinKey === 'HDP') return group === 'HDP'
   if (resinKey === 'SMP') return group === 'SMP'
   if (resinKey === 'URETHANE') return group === 'URETHANE'
@@ -61,14 +65,17 @@ function printResinMatchesProduct(
   if (resolveProductLine(product) !== 'print') return false
 
   const group = normalizeKey(product.productGroup)
-  if (!group.includes('PRINT') || !group.includes(coatCode)) return false
+  if (!group.includes(coatCode)) return false
 
+  const resinPrefix = group.split(' ')[0]
   const resinKey = normalizeKey(resin)
-  if (resinKey === 'RMP') return group.includes('RMP')
-  if (resinKey === 'MVP') return group.includes('MVP')
-  if (resinKey === 'ADP' || resinKey === 'NDP') return group.includes('ADP')
 
-  return group.includes(resinKey)
+  if (resinKey === 'RMP') return resinPrefix === 'RMP'
+  if (resinKey === 'MVP') return resinPrefix === 'MVP'
+  if (resinKey === 'ADP' || resinKey === 'NDP') return resinPrefix === 'ADP'
+  if (resinKey === 'PVDF') return resinPrefix === 'PVDF'
+
+  return resinPrefix === resinKey
 }
 
 function appendUniqueProduct(matched: ProductWarranty[], seen: Set<string>, product: ProductWarranty) {

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Pencil, Plus, RotateCcw, Save } from 'lucide-react'
 import { Card } from '../components/ui/Card'
-import { PageHeader } from '../components/layout/PageHeader'
+import { PageHeader, PageHeaderCautionIcon } from '../components/layout/PageHeader'
 import { CountryGuideGrid } from '../components/warranty-period/CountryGuideGrid'
 import { CoastalGuideTables } from '../components/warranty-period/CoastalGuideTables'
 import { NotCoveredGuide } from '../components/warranty-period/NotCoveredGuide'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
+import { RiskBadge } from '../components/warranty-period/RiskBadge'
 import { useAuth } from '../contexts/AuthContext'
 import type {
   CoastalDistanceRow,
@@ -516,20 +517,34 @@ export function WarrantyPeriodPage() {
   const lowRiskProducts = filterProducts(data.lowRisk.products)
 
   const sectionTitle =
-    activeTab === 'highRisk'
-      ? '위도 5~30° (고위험 국가)'
-      : activeTab === 'lowRisk'
-        ? '위도 30° 이상 (저위험 국가)'
-        : activeTab === 'coastalAl'
-          ? data.coastalAl.title
-          : data.notCovered.title
+    activeTab === 'highRisk' ? (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        위도 5~30° <RiskBadge variant="high" />
+      </span>
+    ) : activeTab === 'lowRisk' ? (
+      <span className="inline-flex flex-wrap items-center gap-2">
+        위도 30° 이상 <RiskBadge variant="low" />
+      </span>
+    ) : activeTab === 'coastalAl' ? (
+      data.coastalAl.title
+    ) : (
+      data.notCovered.title
+    )
 
   return (
     <div>
       <PageHeader
-        subtitle="Warranty Period Guide"
+        subtitle="SEAH·CM WARRANTY GUIDE"
         title="세아씨엠 보증연한"
-        description="제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다."
+        description={
+          <>
+            <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
+            <p className="flex items-center gap-1.5">
+              <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
+              <span>단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.</span>
+            </p>
+          </>
+        }
       />
 
       <nav className="mb-6 flex flex-wrap gap-1 rounded-lg border border-border bg-bg-tertiary p-1">
@@ -558,6 +573,12 @@ export function WarrantyPeriodPage() {
       </nav>
 
       <Card label="WARRANTY GUIDE" title={sectionTitle}>
+        {activeTab === 'notCovered' && (
+            <p className="mb-4 flex items-center gap-1.5 text-sm leading-relaxed text-text-secondary">
+              <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
+              <span>다음 항목은 보증 대상에서 제외됩니다.</span>
+            </p>
+        )}
         {canEdit && (
           <EditToolbar
             editing={effectiveEditing}
