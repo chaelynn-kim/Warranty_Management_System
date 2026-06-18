@@ -348,7 +348,7 @@ export function EditableWarrantyTable({
         </p>
       )}
     <div className="max-h-[calc(100dvh-380px)] min-h-[240px] overflow-auto rounded-lg border border-border">
-      <table className="w-full min-w-[1500px] border-separate border-spacing-0">
+      <table className="w-full min-w-[1180px] border-separate border-spacing-0">
         <thead>
           <tr ref={headerRowRef} className="border-b border-border bg-bg-tertiary">
             <th
@@ -373,10 +373,7 @@ export function EditableWarrantyTable({
               색상 정보
             </th>
             <th colSpan={5} className={`${thCenter} ${thStickyRow1} border-r border-border/60`}>
-              당사 보증
-            </th>
-            <th colSpan={5} className={`${thCenter} ${thStickyRow1} border-r border-border/60`}>
-              도료사 보증
+              보증 연한
             </th>
             <th
               rowSpan={2}
@@ -428,31 +425,13 @@ export function EditableWarrantyTable({
             >
               백화(벽체)
             </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[48px]`} style={{ top: headerRow2Top }}>
-              박리
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              변색(지붕)
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              변색(벽체)
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              백화(지붕)
-            </th>
-            <th
-              className={`${thCenter} ${thStickyRow2Base} min-w-[88px] border-r border-border/60`}
-              style={{ top: headerRow2Top }}
-            >
-              백화(벽체)
-            </th>
           </tr>
         </thead>
         <tbody>
           <WarrantyTableFilterRow filters={filters} onChange={onFiltersChange} />
           {records.length === 0 ? (
             <tr>
-              <td colSpan={21} className="px-4 py-12 text-center text-sm text-text-muted">
+              <td colSpan={16} className="px-4 py-12 text-center text-sm text-text-muted">
                 조회 결과가 없습니다.
               </td>
             </tr>
@@ -632,56 +611,6 @@ export function EditableWarrantyTable({
                       <EditableCell value={record.bake} onChange={(v) => onUpdate(record.id, 'bake', v)} align="center" />
                     ) : (
                       <ReadOnlyCell value={record.bake} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <PeelCell
-                        value={record.companyPeel}
-                        onChange={(v) => onUpdate(record.id, 'companyPeel', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatPeelDisplay(record.companyPeel)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.companyFadeRoof}
-                        onChange={(v) => onUpdate(record.id, 'companyFadeRoof', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.companyFadeRoof)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.companyFadeWall}
-                        onChange={(v) => onUpdate(record.id, 'companyFadeWall', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.companyFadeWall)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.companyChalkRoof}
-                        onChange={(v) => onUpdate(record.id, 'companyChalkRoof', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.companyChalkRoof)} align="center" />
-                    )}
-                  </td>
-                  <td className="border-r border-border/40 px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.companyChalkWall}
-                        onChange={(v) => onUpdate(record.id, 'companyChalkWall', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.companyChalkWall)} align="center" />
                     )}
                   </td>
                   <td className="px-1 py-1 text-center align-top">

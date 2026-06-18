@@ -9,11 +9,6 @@ export interface WarrantyTableFilters {
   primerThickness: string
   coat: string
   bake: string
-  companyPeel: string
-  companyFadeRoof: string
-  companyFadeWall: string
-  companyChalkRoof: string
-  companyChalkWall: string
   supplierPeel: string
   supplierFadeRoof: string
   supplierFadeWall: string
@@ -33,11 +28,6 @@ export const emptyWarrantyTableFilters: WarrantyTableFilters = {
   primerThickness: '',
   coat: '',
   bake: '',
-  companyPeel: '',
-  companyFadeRoof: '',
-  companyFadeWall: '',
-  companyChalkRoof: '',
-  companyChalkWall: '',
   supplierPeel: '',
   supplierFadeRoof: '',
   supplierFadeWall: '',
@@ -92,11 +82,6 @@ const filterCells: { field: FilterField; placeholder: string; className?: string
   { field: 'primerThickness', placeholder: '프라이머', className: 'min-w-[64px]' },
   { field: 'coat', placeholder: 'COAT', className: 'w-[48px] min-w-[48px]' },
   { field: 'bake', placeholder: 'BAKE', className: 'w-[48px] min-w-[48px] border-r border-border/40' },
-  { field: 'companyPeel', placeholder: '박리', className: 'min-w-[48px]' },
-  { field: 'companyFadeRoof', placeholder: '변색(지붕)', className: 'min-w-[88px]' },
-  { field: 'companyFadeWall', placeholder: '변색(벽체)', className: 'min-w-[88px]' },
-  { field: 'companyChalkRoof', placeholder: '백화(지붕)', className: 'min-w-[88px]' },
-  { field: 'companyChalkWall', placeholder: '백화(벽체)', className: 'min-w-[88px] border-r border-border/40' },
   { field: 'supplierPeel', placeholder: '박리', className: 'min-w-[48px]' },
   { field: 'supplierFadeRoof', placeholder: '변색(지붕)', className: 'min-w-[88px]' },
   { field: 'supplierFadeWall', placeholder: '변색(벽체)', className: 'min-w-[88px]' },

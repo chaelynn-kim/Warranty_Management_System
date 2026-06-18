@@ -6,7 +6,6 @@ import { CountryGuideGrid } from '../components/warranty-period/CountryGuideGrid
 import { CoastalGuideTables } from '../components/warranty-period/CoastalGuideTables'
 import { NotCoveredGuide } from '../components/warranty-period/NotCoveredGuide'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
-import { RiskBadge } from '../components/warranty-period/RiskBadge'
 import { useAuth } from '../contexts/AuthContext'
 import type {
   CoastalDistanceRow,
@@ -17,13 +16,12 @@ import type {
 import { canEditWarrantyPeriod } from '../utils/authValidation'
 import { resolveProductLine } from '../utils/productWarrantyHelpers'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
-import { periodInputClass } from '../components/warranty-period/periodTheme'
 
 type PeriodTab = 'highRisk' | 'lowRisk' | 'coastalAl' | 'notCovered'
 
 const tabs: { id: PeriodTab; label: string }[] = [
-  { id: 'highRisk', label: '고위험 지역' },
-  { id: 'lowRisk', label: '저위험 지역' },
+  { id: 'highRisk', label: '고위험 국가' },
+  { id: 'lowRisk', label: '저위험 국가' },
   { id: 'coastalAl', label: 'AL 소재 불소 제품' },
   { id: 'notCovered', label: '보증 제외 대상' },
 ]
@@ -33,7 +31,7 @@ function filterProducts(products: ProductWarranty[]): { product: ProductWarranty
     .map((product, index) => ({ product, index }))
     .filter(({ product }) => {
       if (product.productGroup === '제품군') return false
-      if (product.productGroup.startsWith('* 위 LIST')) return false
+      if (product.productGroup.includes('위 LIST')) return false
       if (product.productGroup === '유럽' && !product.peelFlake) return false
       return true
     })
@@ -526,13 +524,6 @@ export function WarrantyPeriodPage() {
           ? data.coastalAl.title
           : data.notCovered.title
 
-  const sectionBadge =
-    activeTab === 'highRisk' ? (
-      <RiskBadge variant="high" />
-    ) : activeTab === 'lowRisk' ? (
-      <RiskBadge variant="low" />
-    ) : null
-
   return (
     <div>
       <PageHeader
@@ -567,10 +558,6 @@ export function WarrantyPeriodPage() {
       </nav>
 
       <Card label="WARRANTY GUIDE" title={sectionTitle}>
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          {sectionBadge}
-        </div>
-
         {canEdit && (
           <EditToolbar
             editing={effectiveEditing}
@@ -627,20 +614,10 @@ export function WarrantyPeriodPage() {
               countries={data.lowRisk.countries}
               editing={effectiveEditing}
               riskVariant="low"
+              note={data.lowRisk.note}
+              onNoteChange={effectiveEditing ? updateLowRiskNote : undefined}
               onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
             />
-            <div className="mb-4 rounded-lg border border-amber-900/40 bg-amber-950/30 px-4 py-3">
-              {effectiveEditing ? (
-                <textarea
-                  rows={2}
-                  value={data.lowRisk.note}
-                  onChange={(e) => updateLowRiskNote(e.target.value)}
-                  className={`${periodInputClass} resize-y text-left text-amber-200`}
-                />
-              ) : (
-                <p className="text-sm text-amber-200/90">{data.lowRisk.note}</p>
-              )}
-            </div>
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
             <ProductGuideTable
               items={lowRiskProducts}

@@ -28,11 +28,6 @@ function recordMatchesFilters(record: WarrantyRecord, filters: typeof emptyWarra
     matchesTextFilter(filters.primerThickness, record.primerThickness) &&
     matchesTextFilter(filters.coat, record.coat) &&
     matchesTextFilter(filters.bake, record.bake) &&
-    matchesTextFilter(filters.companyPeel, record.companyPeel) &&
-    matchesTextFilter(filters.companyFadeRoof, record.companyFadeRoof) &&
-    matchesTextFilter(filters.companyFadeWall, record.companyFadeWall) &&
-    matchesTextFilter(filters.companyChalkRoof, record.companyChalkRoof) &&
-    matchesTextFilter(filters.companyChalkWall, record.companyChalkWall) &&
     matchesTextFilter(filters.supplierPeel, record.supplierPeel) &&
     matchesTextFilter(filters.supplierFadeRoof, record.supplierFadeRoof) &&
     matchesTextFilter(filters.supplierFadeWall, record.supplierFadeWall) &&
@@ -148,7 +143,7 @@ export function WarrantyIssuancePage() {
       <PageHeader
         subtitle="Warranty Management System"
         title="보증서 발행 관리"
-        description="보증서 발행 내역을 조회하고 관리합니다. 발행일자, 지역, 수요가, 색상 정보 및 당사/도료사 보증 조건을 확인할 수 있습니다."
+        description="보증서 발행 내역을 조회하고 관리합니다. 발행일자, 지역, 수요가, 색상 정보 및 보증 연한을 확인할 수 있습니다."
       />
 
       <Card label="WARRANTY LOG" title="보증서 발행 내역">

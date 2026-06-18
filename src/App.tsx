@@ -23,10 +23,20 @@ function App() {
     <div className="min-h-screen bg-bg-primary">
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
       <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
-        {activeTab === 'issuanceRequest' && <WarrantyIssuanceRequestPage />}
-        {activeTab === 'issuance' && <WarrantyIssuancePage />}
-        {activeTab === 'period' && <WarrantyPeriodPage />}
-        {activeTab === 'externalTest' && canAccessExternalTest && <ExternalTestPage />}
+        <div className={activeTab === 'issuanceRequest' ? undefined : 'hidden'}>
+          <WarrantyIssuanceRequestPage />
+        </div>
+        <div className={activeTab === 'issuance' ? undefined : 'hidden'}>
+          <WarrantyIssuancePage />
+        </div>
+        <div className={activeTab === 'period' ? undefined : 'hidden'}>
+          <WarrantyPeriodPage />
+        </div>
+        {canAccessExternalTest && (
+          <div className={activeTab === 'externalTest' ? undefined : 'hidden'}>
+            <ExternalTestPage />
+          </div>
+        )}
       </main>
     </div>
   )

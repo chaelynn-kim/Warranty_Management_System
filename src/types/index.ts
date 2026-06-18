@@ -118,15 +118,24 @@ export interface ExternalTestRecord {
 }
 
 export interface WarrantyIssuanceRequest {
+  requestDate: string
+  requestTeam: string
+  requestTeamCustom: string
+  requesterName: string
   colorName: string
   resin: string
   material: string
+  coatingStructure: string
+  productItem: string
   region: string
   detailRegion: string
-  language: string
+  detailRegionCustom: string
   customer: string
+  usage: string
+  language: string
   warrantyTermMode: string
   warrantyTermCustom: string
+  additionalRequest: string
 }
 
 export type TabId = 'issuanceRequest' | 'issuance' | 'period' | 'externalTest'

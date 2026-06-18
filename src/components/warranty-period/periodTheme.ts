@@ -47,3 +47,15 @@ export function periodCardHoverClass(variant?: 'high' | 'low') {
   }
   return 'transition-colors duration-200 hover:bg-bg-tertiary/55'
 }
+
+export function periodRiskBorderClass(variant?: 'high' | 'low') {
+  if (variant === 'high') return 'border-[#9c5c4a]/60'
+  if (variant === 'low') return 'border-[#4a7ab0]/60'
+  return 'border-border'
+}
+
+export function periodRiskHeaderBorderClass(variant?: 'high' | 'low') {
+  if (variant === 'high') return 'border-[#9c5c4a]/30'
+  if (variant === 'low') return 'border-[#4a7ab0]/30'
+  return 'border-border'
+}

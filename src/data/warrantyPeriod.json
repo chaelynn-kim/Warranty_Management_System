@@ -16,14 +16,17 @@
       },
       {
         "region": "동남아",
-        "countries": "인도, 스리랑카(인도 남부), 말레이시아, 태국, 인도네시아, 필리핀, 베트남"
+        "countries": "인도, 스리랑카, 말레이시아, 태국, 필리핀, 베트남"
       }
     ],
     "products": [
       {
         "productGroup": "RMP",
+        "productLine": "paint",
         "peelFlake": "5Y",
         "perforation": "5Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "merged",
         "colorFading": "보증 불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
@@ -33,21 +36,12 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP (태국)",
-        "peelFlake": "10Y",
-        "perforation": "5Y",
-        "colorFading": "5Y",
-        "colorFadingRoof": "≤ΔE8\n(5Y)",
-        "colorFadingWall": "≤ΔE8\n(5Y)",
-        "chalk": "5Y",
-        "chalkRoof": "≥#2\n(5Y)",
-        "chalkWall": "≥#2\n(5Y)",
-        "notes": "* 태국 : RMP, 담색의 경우 삼화 보증"
-      },
-      {
         "productGroup": "HDP",
+        "productLine": "paint",
         "peelFlake": "7Y",
         "perforation": "7Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "3Y",
         "colorFadingRoof": "≤ΔE8\n(3Y)",
         "colorFadingWall": "≤ΔE6\n(3Y)",
@@ -58,8 +52,11 @@
       },
       {
         "productGroup": "SMP",
+        "productLine": "paint",
         "peelFlake": "10Y",
         "perforation": "10Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "3Y",
         "colorFadingRoof": "≤ΔE8\n(3Y)",
         "colorFadingWall": "≤ΔE6\n(3Y)",
@@ -69,9 +66,27 @@
         "notes": ""
       },
       {
-        "productGroup": "ADP (NDP)",
+        "productGroup": "ADP",
+        "productLine": "paint",
         "peelFlake": "20Y",
         "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
+        "colorFading": "15Y",
+        "colorFadingRoof": "≤ΔE8\n(15Y)",
+        "colorFadingWall": "≤ΔE6\n(20Y)",
+        "chalk": "15Y",
+        "chalkRoof": "≥#4\n(15Y)",
+        "chalkWall": "≥#6\n(15Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "NDP",
+        "productLine": "paint",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "15Y",
         "colorFadingRoof": "≤ΔE8\n(15Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -82,8 +97,11 @@
       },
       {
         "productGroup": "URETHANE",
+        "productLine": "paint",
         "peelFlake": "20Y",
         "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "15Y",
         "colorFadingRoof": "≤ΔE8\n(15Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -94,8 +112,11 @@
       },
       {
         "productGroup": "SQP40",
+        "productLine": "paint",
         "peelFlake": "20Y",
         "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "15Y",
         "colorFadingRoof": "≤ΔE8\n(15Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -106,8 +127,11 @@
       },
       {
         "productGroup": "PVDF",
+        "productLine": "paint",
         "peelFlake": "20Y",
         "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "20Y",
         "colorFadingRoof": "≤ΔE5\n(20Y)",
         "colorFadingWall": "≤ΔE5\n(20Y)",
@@ -118,8 +142,11 @@
       },
       {
         "productGroup": "RMP MATT",
+        "productLine": "paint",
         "peelFlake": "5Y",
         "perforation": "5Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "merged",
         "colorFading": "보증 불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
@@ -129,10 +156,13 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP PRINT 2C2B",
+        "productGroup": "RMP\n2C2B",
+        "productLine": "print",
         "peelFlake": "3Y",
         "perforation": "3Y",
-        "colorFading": "N/A",
+        "colorFadingMode": "merged",
+        "chalkMode": "merged",
+        "colorFading": "측정불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
         "chalk": "보증 불가",
@@ -141,10 +171,13 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP PRINT 3C3B",
+        "productGroup": "RMP\n3C3B",
+        "productLine": "print",
         "peelFlake": "5Y",
         "perforation": "5Y",
-        "colorFading": "N/A",
+        "colorFadingMode": "merged",
+        "chalkMode": "merged",
+        "colorFading": "측정불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
         "chalk": "보증 불가",
@@ -153,16 +186,49 @@
         "notes": ""
       },
       {
-        "productGroup": "ADP PRINT 3C3B\n(MVP)",
+        "productGroup": "ADP\n3C3B",
+        "productLine": "print",
         "peelFlake": "15Y",
         "perforation": "15Y",
-        "colorFading": "N/A",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
         "chalk": "10Y",
         "chalkRoof": "≥#6\n(10Y)",
         "chalkWall": "≥#8\n(10Y)",
-        "notes": "* WARRANTY GUIDE에는 도막박리, 천공 : 10Y으로 되어있음."
+        "notes": ""
+      },
+      {
+        "productGroup": "MVP\n3C3B",
+        "productLine": "print",
+        "peelFlake": "15Y",
+        "perforation": "15Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "10Y",
+        "chalkRoof": "≥#6\n(10Y)",
+        "chalkWall": "≥#8\n(10Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "PVDF\n3C3B",
+        "productLine": "print",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "15Y",
+        "chalkRoof": "≥#6\n(15Y)",
+        "chalkWall": "≥#8\n(15Y)",
+        "notes": ""
       }
     ]
   },
@@ -182,48 +248,15 @@
         "countries": "포르투갈"
       }
     ],
-    "note": "* 위 LIST 외에, 호주, 뉴질랜드, 남미국가 (UV 지수 고위험 국가) 제외한 모든 지역",
+    "note": "※ 위 LIST 국가 외에, 호주, 뉴질랜드, 남미국가 (UV 지수 고위험 국가) 제외한 모든 국가",
     "products": [
       {
-        "productGroup": "유럽",
-        "peelFlake": "",
-        "perforation": "",
-        "colorFading": "",
-        "colorFadingRoof": "",
-        "colorFadingWall": "",
-        "chalk": "",
-        "chalkRoof": "",
-        "chalkWall": "",
-        "notes": ""
-      },
-      {
-        "productGroup": "* 위 LIST 외에, 호주, 뉴질랜드, 남미국가 (UV 지수 고위험 국가) 제외한 모든 지역",
-        "peelFlake": "",
-        "perforation": "",
-        "colorFading": "",
-        "colorFadingRoof": "",
-        "colorFadingWall": "",
-        "chalk": "",
-        "chalkRoof": "",
-        "chalkWall": "",
-        "notes": ""
-      },
-      {
-        "productGroup": "제품군",
-        "peelFlake": "PEEL/FLAKE\n (도막박리)",
-        "perforation": "PERFORATION (천공)",
-        "colorFading": "COLOR FADING (변색/탈색)",
-        "colorFadingRoof": "",
-        "colorFadingWall": "",
-        "chalk": "CHALK (백화)",
-        "chalkRoof": "",
-        "chalkWall": "",
-        "notes": ""
-      },
-      {
         "productGroup": "RMP",
+        "productLine": "paint",
         "peelFlake": "10Y",
         "perforation": "10Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "10Y",
         "colorFadingRoof": "≤ΔE8\n(10Y)",
         "colorFadingWall": "≤ΔE6\n(10Y)",
@@ -234,8 +267,11 @@
       },
       {
         "productGroup": "HDP",
+        "productLine": "paint",
         "peelFlake": "15Y",
         "perforation": "15Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "15Y",
         "colorFadingRoof": "≤ΔE8\n(15Y)",
         "colorFadingWall": "≤ΔE6\n(15Y)",
@@ -246,8 +282,11 @@
       },
       {
         "productGroup": "SMP",
+        "productLine": "paint",
         "peelFlake": "25Y",
         "perforation": "25Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "20Y",
         "colorFadingRoof": "≤ΔE8\n(20Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -257,9 +296,27 @@
         "notes": ""
       },
       {
-        "productGroup": "ADP (NDP)",
+        "productGroup": "ADP",
+        "productLine": "paint",
         "peelFlake": "25Y",
         "perforation": "25Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
+        "colorFading": "20Y",
+        "colorFadingRoof": "≤ΔE8\n(20Y)",
+        "colorFadingWall": "≤ΔE6\n(20Y)",
+        "chalk": "20Y",
+        "chalkRoof": "≥#4\n(20Y)",
+        "chalkWall": "≥#6\n(20Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "NDP",
+        "productLine": "paint",
+        "peelFlake": "25Y",
+        "perforation": "25Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "20Y",
         "colorFadingRoof": "≤ΔE8\n(20Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -270,8 +327,11 @@
       },
       {
         "productGroup": "URETHANE",
+        "productLine": "paint",
         "peelFlake": "25Y",
         "perforation": "25Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "20Y",
         "colorFadingRoof": "≤ΔE8\n(20Y)",
         "colorFadingWall": "≤ΔE6\n(20Y)",
@@ -282,8 +342,11 @@
       },
       {
         "productGroup": "SQP40",
+        "productLine": "paint",
         "peelFlake": "40Y",
         "perforation": "40Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "30Y",
         "colorFadingRoof": "≤ΔE8\n(30Y)",
         "colorFadingWall": "≤ΔE6\n(30Y)",
@@ -294,8 +357,11 @@
       },
       {
         "productGroup": "PVDF",
+        "productLine": "paint",
         "peelFlake": "40Y",
         "perforation": "40Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "30Y",
         "colorFadingRoof": "≤ΔE5\n(30Y)",
         "colorFadingWall": "≤ΔE5\n(30Y)",
@@ -306,8 +372,11 @@
       },
       {
         "productGroup": "RMP MATT",
+        "productLine": "paint",
         "peelFlake": "10Y",
         "perforation": "10Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
         "colorFading": "10Y",
         "colorFadingRoof": "≤ΔE8\n(10Y)",
         "colorFadingWall": "≤ΔE6\n(10Y)",
@@ -317,15 +386,78 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP PRINT 2C2B",
+        "productGroup": "RMP\n2C2B",
+        "productLine": "print",
         "peelFlake": "5Y",
         "perforation": "5Y",
-        "colorFading": "N/A",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
         "colorFadingRoof": "",
         "colorFadingWall": "",
-        "chalk": "5Y (AK)",
+        "chalk": "5Y",
         "chalkRoof": "≥#4\n(5Y)",
         "chalkWall": "≥#6\n(5Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "RMP\n3C3B",
+        "productLine": "print",
+        "peelFlake": "10Y",
+        "perforation": "10Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "10Y",
+        "chalkRoof": "≥#4\n(10Y)",
+        "chalkWall": "≥#6\n(10Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "ADP\n3C3B",
+        "productLine": "print",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "20Y",
+        "chalkRoof": "≥#4\n(20Y)",
+        "chalkWall": "≥#6\n(20Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "MVP\n3C3B",
+        "productLine": "print",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "20Y",
+        "chalkRoof": "≥#4\n(20Y)",
+        "chalkWall": "≥#6\n(20Y)",
+        "notes": ""
+      },
+      {
+        "productGroup": "PVDF\n3C3B",
+        "productLine": "print",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "merged",
+        "chalkMode": "detail",
+        "colorFading": "측정불가",
+        "colorFadingRoof": "",
+        "colorFadingWall": "",
+        "chalk": "20Y",
+        "chalkRoof": "≥#6\n(20Y)",
+        "chalkWall": "≥#8\n(20Y)",
         "notes": ""
       }
     ]
@@ -334,25 +466,53 @@
     "title": "AL 소재 적용 불소 제품 (해안 거리별 보증)",
     "highRisk": {
       "rows": [
-        { "distance": "0 ~ 500 M", "coat2": "NO Warranty", "coat3": "NO Warranty" },
-        { "distance": "500 ~ 1,000 M", "coat2": "NO Warranty", "coat3": "NO Warranty" },
-        { "distance": "1,000 ~ 2,000 M", "coat2": "10Y", "coat3": "15Y" },
-        { "distance": "2,000 ~ 3,000 M", "coat2": "15Y", "coat3": "20Y" },
-        { "distance": "3,000 ~ 5,000 M", "coat2": "15Y", "coat3": "20Y" },
-        { "distance": "5,000 M 이상", "coat2": "20Y", "coat3": "25Y" }
+        {
+          "distance": "0 ~ 500 M",
+          "coat2": "보증 불가",
+          "coat3": "보증 불가"
+        },
+        {
+          "distance": "500 ~ 1,000 M",
+          "coat2": "보증 불가",
+          "coat3": "보증 불가"
+        },
+        {
+          "distance": "1,000 ~ 5,000 M",
+          "coat2": "10Y",
+          "coat3": "15Y"
+        },
+        {
+          "distance": "5,000 M 이상",
+          "coat2": "15Y",
+          "coat3": "20Y"
+        }
       ],
-      "warrantyNote": "CHALK\nROOF / WALL\nΔE 5.0 NO.8"
+      "warrantyNote": "CHALK\nROOF / WALL\nΔE5.0 NO.8"
     },
     "lowRisk": {
       "rows": [
-        { "distance": "0 ~ 500 M", "coat2": "15Y", "coat3": "20Y" },
-        { "distance": "500 ~ 1,000 M", "coat2": "15Y", "coat3": "20Y" },
-        { "distance": "1,000 ~ 2,000 M", "coat2": "20Y", "coat3": "25Y" },
-        { "distance": "2,000 ~ 3,000 M", "coat2": "20Y", "coat3": "25Y" },
-        { "distance": "3,000 ~ 5,000 M", "coat2": "25Y", "coat3": "30Y" },
-        { "distance": "5,000 M 이상", "coat2": "25Y", "coat3": "30Y" }
+        {
+          "distance": "0 ~ 500 M",
+          "coat2": "15Y",
+          "coat3": "15Y"
+        },
+        {
+          "distance": "500 ~ 1,000 M",
+          "coat2": "15Y",
+          "coat3": "20Y"
+        },
+        {
+          "distance": "1,000 ~ 5,000 M",
+          "coat2": "20Y",
+          "coat3": "25Y"
+        },
+        {
+          "distance": "5,000 M 이상",
+          "coat2": "25Y",
+          "coat3": "30Y"
+        }
       ],
-      "warrantyNote": "CHALK\nROOF / WALL\nΔE 5.0 NO.8"
+      "warrantyNote": "CHALK\nROOF / WALL\nΔE5.0 NO.8"
     }
   },
   "notCovered": {

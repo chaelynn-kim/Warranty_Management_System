@@ -1,3 +1,5 @@
+export const WARRANTY_REQUEST_RESIN_ALL = '전체'
+
 export const WARRANTY_REQUEST_RESINS = [
   'RMP',
   'HDP',
@@ -5,10 +7,19 @@ export const WARRANTY_REQUEST_RESINS = [
   'ADP',
   'NDP',
   'URETHANE',
+  'MVP',
   'SQP40',
   'PVDF',
   'RMP MATT',
 ] as const
+
+export const WARRANTY_REQUEST_PRODUCT_ITEMS = ['PRINT', 'PAINT'] as const
+
+export const WARRANTY_REQUEST_TEAMS = ['영업1팀', '영업2팀', '수출팀', '기타'] as const
+
+export const WARRANTY_REQUEST_TEAM_OTHER = '기타'
+
+export const WARRANTY_REQUEST_COATING_STRUCTURES = ['2 Coat / 2 Bake', '3 Coat / 3 Bake'] as const
 
 export const WARRANTY_REQUEST_MATERIALS = ['GI', 'GL', 'AL'] as const
 
@@ -33,10 +44,9 @@ export const HIGH_RISK_DETAIL_REGIONS = [
   '남아공',
   '케냐',
   '인도',
-  '스리랑카(인도 남부)',
+  '스리랑카',
   '말레이시아',
   '태국',
-  '인도네시아',
   '필리핀',
   '베트남',
 ] as const
@@ -48,12 +58,17 @@ export const LOW_RISK_DETAIL_REGIONS = [
   '일본',
   '중국',
   '한국',
+  '유럽',
   '포르투갈',
 ] as const
 
+export const WARRANTY_REQUEST_DETAIL_REGION_CUSTOM = '직접 입력'
+
 export const WARRANTY_REQUEST_LANGUAGES = ['영문', '국문'] as const
 
-export const WARRANTY_TERM_OPTIONS = ['당사 보증 연한', '기타'] as const
+export const WARRANTY_TERM_COMPANY = '당사 보증 연한'
+
+export const WARRANTY_TERM_OPTIONS = [WARRANTY_TERM_COMPANY, '기타'] as const
 
 export const WARRANTY_TERM_OTHER = '기타'
 

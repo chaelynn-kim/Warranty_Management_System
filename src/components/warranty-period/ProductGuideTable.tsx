@@ -21,6 +21,8 @@ import {
   periodTableClass,
   periodDataColCount,
   periodRowHoverClass,
+  periodRiskBorderClass,
+  periodRiskHeaderBorderClass,
 } from './periodTheme'
 
 type ProductField = keyof ProductWarranty
@@ -49,10 +51,12 @@ interface ProductGuideTableProps {
 }
 
 function ProductGroupMultiSelectFilter({
+  label = '제품군 선택',
   options,
   selectedGroups,
   onChange,
 }: {
+  label?: string
   options: string[]
   selectedGroups: string[]
   onChange: (groups: string[]) => void
@@ -73,10 +77,10 @@ function ProductGroupMultiSelectFilter({
   const isAll = selectedGroups.length === 0
 
   const buttonLabel = useMemo(() => {
-    if (isAll) return '제품군 선택'
+    if (isAll) return label
     if (selectedGroups.length === 1) return selectedGroups[0].replace(/\n/g, ' ')
     return `${selectedGroups[0].replace(/\n/g, ' ')} 외 ${selectedGroups.length - 1}건`
-  }, [isAll, selectedGroups])
+  }, [isAll, label, selectedGroups])
 
   const toggleGroup = (group: string) => {
     onChange(
@@ -95,7 +99,7 @@ function ProductGroupMultiSelectFilter({
         className={`${periodInputClass} flex h-9 w-full items-center pr-8 pl-8 text-left ${
           isAll ? 'text-text-muted' : 'font-medium text-text-primary'
         }`}
-        aria-label="제품군 선택"
+        aria-label={label}
         aria-expanded={open}
       >
         <span className="truncate">{buttonLabel}</span>
@@ -194,10 +198,22 @@ function SectionModeToggle({
   )
 }
 
-function ProductCategoryBox({ title, children }: { title: string; children: ReactNode }) {
+function ProductCategoryBox({
+  title,
+  children,
+  riskVariant,
+}: {
+  title: string
+  children: ReactNode
+  riskVariant?: 'high' | 'low'
+}) {
   return (
-    <div className="overflow-hidden rounded-lg border border-border">
-      <div className="border-b border-border bg-bg-tertiary px-4 py-2.5">
+    <div
+      className={`overflow-hidden rounded-lg border-2 bg-bg-secondary/50 ${periodRiskBorderClass(riskVariant)}`}
+    >
+      <div
+        className={`border-b bg-bg-tertiary px-4 py-2.5 ${periodRiskHeaderBorderClass(riskVariant)}`}
+      >
         <span className="text-xs font-bold tracking-[0.14em] text-text-primary">{title}</span>
       </div>
       {children}
@@ -216,7 +232,7 @@ interface ProductGuideTableGridProps {
   onReorder?: (fromIndex: number, toIndex: number) => void
   onUpdate: (index: number, field: ProductField, value: string) => void
   canReorder: boolean
-  selectedGroups: string[]
+  filterActive: boolean
   rowRefs: React.MutableRefObject<Map<number, HTMLTableRowElement>>
   draggingIndex: number | null
   setDraggingIndex: (index: number | null) => void
@@ -238,7 +254,7 @@ function ProductGuideTableGrid({
   onReorder,
   onUpdate,
   canReorder,
-  selectedGroups,
+  filterActive,
   rowRefs,
   draggingIndex,
   setDraggingIndex,
@@ -417,7 +433,7 @@ function ProductGuideTableGrid({
                               setDragOverIndex(null)
                             }}
                             title={
-                              selectedGroups.length > 0
+                              filterActive
                                 ? '제품군 필터 해제 후 순서 변경'
                                 : '드래그하여 행 이동'
                             }
@@ -555,6 +571,25 @@ function ProductGuideTableGrid({
   )
 }
 
+function collectProductGroupOptions(lineItems: ProductGuideTableItem[]) {
+  const seen = new Set<string>()
+  const options: string[] = []
+  for (const { product } of lineItems) {
+    const group = product.productGroup
+    if (!seen.has(group)) {
+      seen.add(group)
+      options.push(group)
+    }
+  }
+  return options
+}
+
+function filterItemsByGroups(items: ProductGuideTableItem[], selectedGroups: string[]) {
+  if (selectedGroups.length === 0) return items
+  const selected = new Set(selectedGroups)
+  return items.filter(({ product }) => selected.has(product.productGroup))
+}
+
 export function ProductGuideTable({
   items,
   editing,
@@ -570,46 +605,68 @@ export function ProductGuideTable({
   riskVariant,
 }: ProductGuideTableProps) {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+  const [selectedPaintGroups, setSelectedPaintGroups] = useState<string[]>([])
+  const [selectedPrintGroups, setSelectedPrintGroups] = useState<string[]>([])
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map())
 
   useEffect(() => {
-    if (addTick > 0) setSelectedGroups([])
+    if (addTick > 0) {
+      setSelectedGroups([])
+      setSelectedPaintGroups([])
+      setSelectedPrintGroups([])
+    }
   }, [addTick])
 
-  const productGroupOptions = useMemo(() => {
-    const seen = new Set<string>()
-    const options: string[] = []
-    for (const { product } of items) {
-      const group = product.productGroup
-      if (!seen.has(group)) {
-        seen.add(group)
-        options.push(group)
-      }
-    }
-    return options
-  }, [items])
+  const paintSourceItems = useMemo(
+    () => items.filter(({ product }) => resolveProductLine(product) === 'paint'),
+    [items]
+  )
 
-  const filteredItems = useMemo(() => {
-    if (selectedGroups.length === 0) return items
-    const selected = new Set(selectedGroups)
-    return items.filter(({ product }) => selected.has(product.productGroup))
-  }, [items, selectedGroups])
+  const printSourceItems = useMemo(
+    () => items.filter(({ product }) => resolveProductLine(product) === 'print'),
+    [items]
+  )
+
+  const productGroupOptions = useMemo(() => collectProductGroupOptions(items), [items])
+
+  const paintGroupOptions = useMemo(
+    () => collectProductGroupOptions(paintSourceItems),
+    [paintSourceItems]
+  )
+
+  const printGroupOptions = useMemo(
+    () => collectProductGroupOptions(printSourceItems),
+    [printSourceItems]
+  )
+
+  const filteredItems = useMemo(
+    () => filterItemsByGroups(items, selectedGroups),
+    [items, selectedGroups]
+  )
 
   const paintItems = useMemo(
-    () => filteredItems.filter(({ product }) => resolveProductLine(product) === 'paint'),
-    [filteredItems]
+    () => filterItemsByGroups(paintSourceItems, selectedPaintGroups),
+    [paintSourceItems, selectedPaintGroups]
   )
 
   const printItems = useMemo(
-    () => filteredItems.filter(({ product }) => resolveProductLine(product) === 'print'),
-    [filteredItems]
+    () => filterItemsByGroups(printSourceItems, selectedPrintGroups),
+    [printSourceItems, selectedPrintGroups]
   )
 
   useEffect(() => {
     setSelectedGroups((prev) => prev.filter((group) => productGroupOptions.includes(group)))
   }, [productGroupOptions])
+
+  useEffect(() => {
+    setSelectedPaintGroups((prev) => prev.filter((group) => paintGroupOptions.includes(group)))
+  }, [paintGroupOptions])
+
+  useEffect(() => {
+    setSelectedPrintGroups((prev) => prev.filter((group) => printGroupOptions.includes(group)))
+  }, [printGroupOptions])
 
   useEffect(() => {
     if (highlightedIndex === null) return
@@ -636,27 +693,50 @@ export function ProductGuideTable({
     return () => clearTimeout(timer)
   }, [highlightedIndex, highlightSequence, filteredItems.length, items.length])
 
-  const canReorder = editing && Boolean(onReorder) && selectedGroups.length === 0
+  const hasActiveFilter = splitByPrintPaint
+    ? selectedPaintGroups.length > 0 || selectedPrintGroups.length > 0
+    : selectedGroups.length > 0
+
+  const canReorder = editing && Boolean(onReorder) && !hasActiveFilter
 
   const groupHeader = <span className="font-semibold text-text-secondary">제품군</span>
 
-  const emptyMessage = selectedGroups.length > 0
-    ? '선택한 제품군에 해당하는 항목이 없습니다.'
-    : '등록된 항목이 없습니다.'
+  const defaultEmptyMessage = '등록된 항목이 없습니다.'
+  const filteredEmptyMessage = '선택한 제품군에 해당하는 항목이 없습니다.'
+  const paintEmptyMessage =
+    selectedPaintGroups.length > 0 ? filteredEmptyMessage : defaultEmptyMessage
+  const printEmptyMessage =
+    selectedPrintGroups.length > 0 ? filteredEmptyMessage : defaultEmptyMessage
+  const emptyMessage = selectedGroups.length > 0 ? filteredEmptyMessage : defaultEmptyMessage
 
   const handleUpdate = (index: number, field: ProductField, value: string) => {
     if (field === 'productGroup') {
       const current = items.find((item) => item.index === index)
-      if (current && selectedGroups.includes(current.product.productGroup)) {
-        setSelectedGroups((prev) =>
-          prev.map((group) => (group === current.product.productGroup ? value : group))
-        )
+      if (current) {
+        const oldGroup = current.product.productGroup
+        if (splitByPrintPaint) {
+          const line = resolveProductLine(current.product)
+          if (line === 'paint' && selectedPaintGroups.includes(oldGroup)) {
+            setSelectedPaintGroups((prev) =>
+              prev.map((group) => (group === oldGroup ? value : group))
+            )
+          }
+          if (line === 'print' && selectedPrintGroups.includes(oldGroup)) {
+            setSelectedPrintGroups((prev) =>
+              prev.map((group) => (group === oldGroup ? value : group))
+            )
+          }
+        } else if (selectedGroups.includes(oldGroup)) {
+          setSelectedGroups((prev) =>
+            prev.map((group) => (group === oldGroup ? value : group))
+          )
+        }
       }
     }
     onUpdate(index, field, value)
   }
 
-  const gridProps = {
+  const baseGridProps = {
     editing,
     highlightedIndex,
     insertAnchorIndex,
@@ -665,13 +745,11 @@ export function ProductGuideTable({
     onReorder,
     onUpdate: handleUpdate,
     canReorder,
-    selectedGroups,
     rowRefs,
     draggingIndex,
     setDraggingIndex,
     dragOverIndex,
     setDragOverIndex,
-    emptyMessage,
     riskVariant,
   }
 
@@ -686,13 +764,13 @@ export function ProductGuideTable({
           {onReorder && canReorder && (
             <p className="text-xs text-text-muted">⋮⋮ 드래그로 순서를 변경할 수 있습니다.</p>
           )}
-          {onReorder && selectedGroups.length > 0 && (
+          {onReorder && hasActiveFilter && (
             <p className="text-xs text-amber-400/90">제품군 필터 해제 후 순서 변경이 가능합니다.</p>
           )}
         </div>
       )}
 
-      {productGroupOptions.length > 0 && (
+      {!splitByPrintPaint && productGroupOptions.length > 0 && (
         <ProductGroupMultiSelectFilter
           options={productGroupOptions}
           selectedGroups={selectedGroups}
@@ -702,28 +780,54 @@ export function ProductGuideTable({
 
       {splitByPrintPaint ? (
         <div className="space-y-5">
-          <ProductCategoryBox title="PAINT">
-            <ProductGuideTableGrid
-              {...gridProps}
-              items={paintItems}
-              groupHeader={groupHeader}
-              bordered={false}
-            />
-          </ProductCategoryBox>
-          <ProductCategoryBox title="PRINT">
-            <ProductGuideTableGrid
-              {...gridProps}
-              items={printItems}
-              groupHeader={groupHeader}
-              bordered={false}
-            />
-          </ProductCategoryBox>
+          <div>
+            {paintGroupOptions.length > 0 && (
+              <ProductGroupMultiSelectFilter
+                label="PAINT 제품군 선택"
+                options={paintGroupOptions}
+                selectedGroups={selectedPaintGroups}
+                onChange={setSelectedPaintGroups}
+              />
+            )}
+            <ProductCategoryBox title="PAINT" riskVariant={riskVariant}>
+              <ProductGuideTableGrid
+                {...baseGridProps}
+                items={paintItems}
+                groupHeader={groupHeader}
+                bordered={false}
+                filterActive={selectedPaintGroups.length > 0}
+                emptyMessage={paintEmptyMessage}
+              />
+            </ProductCategoryBox>
+          </div>
+          <div>
+            {printGroupOptions.length > 0 && (
+              <ProductGroupMultiSelectFilter
+                label="PRINT 제품군 선택"
+                options={printGroupOptions}
+                selectedGroups={selectedPrintGroups}
+                onChange={setSelectedPrintGroups}
+              />
+            )}
+            <ProductCategoryBox title="PRINT" riskVariant={riskVariant}>
+              <ProductGuideTableGrid
+                {...baseGridProps}
+                items={printItems}
+                groupHeader={groupHeader}
+                bordered={false}
+                filterActive={selectedPrintGroups.length > 0}
+                emptyMessage={printEmptyMessage}
+              />
+            </ProductCategoryBox>
+          </div>
         </div>
       ) : (
         <ProductGuideTableGrid
-          {...gridProps}
+          {...baseGridProps}
           items={filteredItems}
           groupHeader={groupHeader}
+          filterActive={selectedGroups.length > 0}
+          emptyMessage={emptyMessage}
         />
       )}
     </div>

@@ -1,13 +1,15 @@
 import { useMemo, useState } from 'react'
 import { Search } from 'lucide-react'
 import type { CountryEntry } from '../../types'
-import { periodCardHoverClass, periodInputClass } from './periodTheme'
+import { periodCardHoverClass, periodInputClass, periodRiskBorderClass } from './periodTheme'
 
 interface CountryGuideGridProps {
   countries: CountryEntry[]
   editing: boolean
   onUpdate: (index: number, field: keyof CountryEntry, value: string) => void
   riskVariant?: 'high' | 'low'
+  note?: string
+  onNoteChange?: (value: string) => void
 }
 
 export function CountryGuideGrid({
@@ -15,6 +17,8 @@ export function CountryGuideGrid({
   editing,
   onUpdate,
   riskVariant,
+  note,
+  onNoteChange,
 }: CountryGuideGridProps) {
   const [search, setSearch] = useState('')
 
@@ -30,7 +34,9 @@ export function CountryGuideGrid({
   }, [countries, search])
 
   return (
-    <div className="mb-6">
+    <div
+      className={`mb-6 overflow-hidden rounded-lg border-2 bg-bg-secondary/50 p-4 ${periodRiskBorderClass(riskVariant)}`}
+    >
       <div className="relative mb-3 max-w-md">
         <Search className="pointer-events-none absolute top-1/2 left-2.5 h-4 w-4 -translate-y-1/2 text-text-muted" />
         <input
@@ -76,6 +82,21 @@ export function CountryGuideGrid({
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {note !== undefined && (
+        <div className="mt-3 border-t border-border/60 pt-3">
+          {editing && onNoteChange ? (
+            <textarea
+              rows={2}
+              value={note}
+              onChange={(e) => onNoteChange(e.target.value)}
+              className={`${periodInputClass} resize-y text-left`}
+            />
+          ) : (
+            <p className="text-sm leading-relaxed text-text-secondary italic underline">{note}</p>
+          )}
         </div>
       )}
     </div>
