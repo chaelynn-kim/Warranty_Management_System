@@ -1,21 +1,32 @@
-import { useEffect, useState } from 'react'
-import { Pencil, Plus, RotateCcw, Save } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card } from '../components/ui/Card'
 import { PageHeader, PageHeaderCautionIcon } from '../components/layout/PageHeader'
 import { CountryGuideGrid } from '../components/warranty-period/CountryGuideGrid'
 import { CoastalGuideTables } from '../components/warranty-period/CoastalGuideTables'
 import { NotCoveredGuide } from '../components/warranty-period/NotCoveredGuide'
+import {
+  PeriodSection,
+  PeriodSectionEditButton,
+  CardSectionToolbar,
+  type PeriodSectionId,
+} from '../components/warranty-period/PeriodSection'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
 import { RiskBadge } from '../components/warranty-period/RiskBadge'
 import { useAuth } from '../contexts/AuthContext'
 import type {
   CoastalDistanceRow,
   CountryEntry,
+  ProductLine,
   ProductWarranty,
   WarrantyPeriodData,
 } from '../types'
 import { canEditWarrantyPeriod } from '../utils/authValidation'
 import { resolveProductLine } from '../utils/productWarrantyHelpers'
+import {
+  applyPeriodSectionReset,
+  productLineFromSection,
+  riskTabFromProductSection,
+} from '../utils/warrantyPeriodSectionHelpers'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
 
 type PeriodTab = 'highRisk' | 'lowRisk' | 'coastalAl' | 'notCovered'
@@ -49,71 +60,19 @@ function adjustIndexAfterReorder(
   return currentIndex
 }
 
-function EditingToolbar({
-  editing,
-  saveMessage,
-  canAdd,
-  onSave,
-  onAdd,
-  onReset,
-}: {
-  editing: boolean
-  saveMessage: string
-  canAdd: boolean
-  onSave: () => void
-  onAdd: () => void
-  onReset: () => void
-}) {
-  if (!editing && !saveMessage) return null
-
-  return (
-    <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <div className="flex flex-wrap items-center gap-3">
-        {editing && (
-          <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
-            수정 중
-          </span>
-        )}
-        {saveMessage && (
-          <span className="text-sm font-medium text-emerald-400">{saveMessage}</span>
-        )}
-      </div>
-      {editing && (
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onAdd}
-            disabled={!canAdd}
-            aria-label="행 추가"
-            title={canAdd ? '행 추가' : '이 탭에서는 행 추가를 사용할 수 없습니다'}
-            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-          >
-            <Save className="h-4 w-4" />
-            저장
-          </button>
-          <button
-            type="button"
-            onClick={onReset}
-            className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-          >
-            <RotateCcw className="h-4 w-4" />
-            초기화
-          </button>
-        </div>
-      )}
-    </div>
-  )
+type ProductHighlight = {
+  section: 'highRisk:paint' | 'highRisk:print' | 'lowRisk:paint' | 'lowRisk:print'
+  index: number
 }
-
-type ProductHighlight = { section: 'highRisk' | 'lowRisk'; index: number }
+type ProductInsertAnchor = ProductHighlight
 type CoastalInsertAnchor = { side: 'highRisk' | 'lowRisk'; index: number }
+
+const PRODUCT_SECTIONS = new Set<PeriodSectionId>([
+  'highRisk:paint',
+  'highRisk:print',
+  'lowRisk:paint',
+  'lowRisk:print',
+])
 
 function createEmptyCoastalRow(): CoastalDistanceRow {
   return { distance: '', coat2: '', coat3: '' }
@@ -124,23 +83,37 @@ export function WarrantyPeriodPage() {
   const canEdit = canEditWarrantyPeriod(user?.email)
   const [data, setData] = useState<WarrantyPeriodData>(() => loadWarrantyPeriod())
   const [activeTab, setActiveTab] = useState<PeriodTab>('highRisk')
-  const [editing, setEditing] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('')
+  const [editingSections, setEditingSections] = useState<Set<PeriodSectionId>>(new Set())
+  const [sectionMessages, setSectionMessages] = useState<Partial<Record<PeriodSectionId, string>>>({})
   const [highlightedProduct, setHighlightedProduct] = useState<ProductHighlight | null>(null)
   const [highlightedNotCoveredIndex, setHighlightedNotCoveredIndex] = useState<number | null>(null)
   const [productHighlightSeq, setProductHighlightSeq] = useState(0)
   const [productAddTick, setProductAddTick] = useState(0)
-  const [productInsertAnchor, setProductInsertAnchor] = useState<ProductHighlight | null>(null)
+  const [productInsertAnchor, setProductInsertAnchor] = useState<ProductInsertAnchor | null>(null)
   const [notCoveredInsertAnchor, setNotCoveredInsertAnchor] = useState<number | null>(null)
   const [coastalInsertAnchor, setCoastalInsertAnchor] = useState<CoastalInsertAnchor | null>(null)
 
-  const effectiveEditing = canEdit && editing
+  const isSectionEditing = (sectionId: PeriodSectionId) => canEdit && editingSections.has(sectionId)
+  const sectionMessage = (sectionId: PeriodSectionId) => sectionMessages[sectionId] ?? ''
+
+  const clearSectionMessage = (sectionId: PeriodSectionId) => {
+    setSectionMessages((prev) => {
+      if (!prev[sectionId]) return prev
+      const next = { ...prev }
+      delete next[sectionId]
+      return next
+    })
+  }
+
+  const setSectionMessage = (sectionId: PeriodSectionId, message: string) => {
+    setSectionMessages((prev) => ({ ...prev, [sectionId]: message }))
+  }
 
   useEffect(() => {
-    if (!canEdit && editing) {
-      setEditing(false)
+    if (!canEdit && editingSections.size > 0) {
+      setEditingSections(new Set())
     }
-  }, [canEdit, editing])
+  }, [canEdit, editingSections.size])
 
   useEffect(() => {
     if (!highlightedProduct) return
@@ -154,60 +127,81 @@ export function WarrantyPeriodPage() {
     return () => clearTimeout(timer)
   }, [highlightedNotCoveredIndex])
 
-  const handleEdit = () => {
+  const startSectionEdit = (sectionId: PeriodSectionId) => {
     if (!canEdit) return
-    setEditing(true)
-    setProductInsertAnchor(null)
-    setNotCoveredInsertAnchor(null)
-    setCoastalInsertAnchor(null)
-    setSaveMessage('')
+    setEditingSections((prev) => new Set(prev).add(sectionId))
+    if (PRODUCT_SECTIONS.has(sectionId)) {
+      setProductInsertAnchor(null)
+    }
+    if (sectionId === 'notCovered') {
+      setNotCoveredInsertAnchor(null)
+    }
+    if (sectionId === 'coastalAl') {
+      setCoastalInsertAnchor(null)
+    }
+    clearSectionMessage(sectionId)
   }
 
-  const handleSave = () => {
+  const saveSection = (sectionId: PeriodSectionId) => {
     saveWarrantyPeriod(data)
-    setEditing(false)
-    setHighlightedProduct(null)
-    setHighlightedNotCoveredIndex(null)
-    setProductInsertAnchor(null)
-    setNotCoveredInsertAnchor(null)
-    setSaveMessage('저장되었습니다.')
-    setTimeout(() => setSaveMessage(''), 3000)
+    setEditingSections((prev) => {
+      const next = new Set(prev)
+      next.delete(sectionId)
+      return next
+    })
+    if (PRODUCT_SECTIONS.has(sectionId)) {
+      setHighlightedProduct(null)
+      setProductInsertAnchor(null)
+    }
+    if (sectionId === 'notCovered') {
+      setHighlightedNotCoveredIndex(null)
+      setNotCoveredInsertAnchor(null)
+    }
+    if (sectionId === 'coastalAl') {
+      setCoastalInsertAnchor(null)
+    }
+    setSectionMessage(sectionId, '저장되었습니다.')
+    window.setTimeout(() => clearSectionMessage(sectionId), 3000)
   }
 
-  const handleReset = () => {
-    setData(loadWarrantyPeriod())
-    setHighlightedProduct(null)
-    setHighlightedNotCoveredIndex(null)
-    setProductInsertAnchor(null)
-    setNotCoveredInsertAnchor(null)
-    setSaveMessage('초기화되었습니다.')
-    setTimeout(() => setSaveMessage(''), 3000)
+  const resetSection = (sectionId: PeriodSectionId) => {
+    const saved = loadWarrantyPeriod()
+    setData((prev) => applyPeriodSectionReset(prev, saved, sectionId))
+    if (PRODUCT_SECTIONS.has(sectionId)) {
+      setHighlightedProduct(null)
+      setProductInsertAnchor(null)
+    }
+    if (sectionId === 'notCovered') {
+      setHighlightedNotCoveredIndex(null)
+      setNotCoveredInsertAnchor(null)
+    }
+    if (sectionId === 'coastalAl') {
+      setCoastalInsertAnchor(null)
+    }
+    setSectionMessage(sectionId, '초기화되었습니다.')
+    window.setTimeout(() => clearSectionMessage(sectionId), 3000)
   }
 
-  const canToolbarAdd =
-    activeTab === 'highRisk' ||
-    activeTab === 'lowRisk' ||
-    activeTab === 'notCovered' ||
-    activeTab === 'coastalAl'
-
-  const canToolbarAddNow =
-    canToolbarAdd &&
-    (activeTab !== 'coastalAl' || coastalInsertAnchor !== null)
-
-  const handleToolbarAdd = () => {
-    if (activeTab === 'highRisk') {
+  const handleSectionAdd = (sectionId: PeriodSectionId) => {
+    if (sectionId === 'highRisk:paint' || sectionId === 'highRisk:print') {
       setProductAddTick((tick) => tick + 1)
       const atIndex =
-        productInsertAnchor?.section === 'highRisk' ? productInsertAnchor.index : undefined
-      addProduct('highRisk', atIndex)
-    } else if (activeTab === 'lowRisk') {
+        productInsertAnchor?.section === sectionId ? productInsertAnchor.index : undefined
+      addProduct('highRisk', productLineFromSection(sectionId), atIndex, sectionId)
+      return
+    }
+    if (sectionId === 'lowRisk:paint' || sectionId === 'lowRisk:print') {
       setProductAddTick((tick) => tick + 1)
       const atIndex =
-        productInsertAnchor?.section === 'lowRisk' ? productInsertAnchor.index : undefined
-      addProduct('lowRisk', atIndex)
-    } else if (activeTab === 'notCovered') {
+        productInsertAnchor?.section === sectionId ? productInsertAnchor.index : undefined
+      addProduct('lowRisk', productLineFromSection(sectionId), atIndex, sectionId)
+      return
+    }
+    if (sectionId === 'notCovered') {
       addNotCoveredItem(notCoveredInsertAnchor ?? undefined)
-    } else if (activeTab === 'coastalAl' && coastalInsertAnchor) {
+      return
+    }
+    if (sectionId === 'coastalAl' && coastalInsertAnchor) {
       addCoastalRow(coastalInsertAnchor.side, coastalInsertAnchor.index)
     }
   }
@@ -223,7 +217,7 @@ export function WarrantyPeriodPage() {
       products[index] = { ...products[index], [field]: value }
       return { ...prev, [section]: { ...prev[section], products } }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const updateCountry = (
@@ -237,7 +231,7 @@ export function WarrantyPeriodPage() {
       countries[index] = { ...countries[index], [field]: value }
       return { ...prev, [section]: { ...prev[section], countries } }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const updateCoastalRow = (
@@ -257,7 +251,7 @@ export function WarrantyPeriodPage() {
         },
       }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const updateCoastalWarrantyNote = (side: 'highRisk' | 'lowRisk', value: string) => {
@@ -268,7 +262,7 @@ export function WarrantyPeriodPage() {
         [side]: { ...prev.coastalAl[side], warrantyNote: value },
       },
     }))
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const addCoastalRow = (side: 'highRisk' | 'lowRisk', atIndex?: number) => {
@@ -292,7 +286,7 @@ export function WarrantyPeriodPage() {
       }
       return prev
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const deleteCoastalRow = (side: 'highRisk' | 'lowRisk', rowIndex: number) => {
@@ -312,7 +306,7 @@ export function WarrantyPeriodPage() {
       if (prev.index > rowIndex) return { ...prev, index: prev.index - 1 }
       return prev
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const reorderCoastalRow = (
@@ -337,7 +331,7 @@ export function WarrantyPeriodPage() {
       if (!prev || prev.side !== side) return prev
       return { side, index: adjustIndexAfterReorder(prev.index, fromIndex, toIndex) }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const updateLowRiskNote = (value: string) => {
@@ -345,7 +339,7 @@ export function WarrantyPeriodPage() {
       ...prev,
       lowRisk: { ...prev.lowRisk, note: value },
     }))
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const updateNotCoveredItem = (index: number, value: string) => {
@@ -357,7 +351,7 @@ export function WarrantyPeriodPage() {
         notCovered: { ...prev.notCovered, items },
       }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const addNotCoveredItem = (atIndex?: number) => {
@@ -377,24 +371,21 @@ export function WarrantyPeriodPage() {
       }
     })
     setHighlightedNotCoveredIndex(newIndex)
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
-  const addProduct = (section: 'highRisk' | 'lowRisk', atIndex?: number) => {
+  const addProduct = (
+    section: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    atIndex?: number,
+    highlightSection?: ProductHighlight['section']
+  ) => {
     let newIndex = 0
     setData((prev) => {
       const products = [...prev[section].products]
       const insertAt =
         atIndex !== undefined && atIndex >= 0 && atIndex <= products.length ? atIndex : products.length
       newIndex = insertAt
-      const referenceIndex =
-        atIndex !== undefined && atIndex >= 0 && atIndex < products.length
-          ? atIndex
-          : products.length > 0
-            ? products.length - 1
-            : -1
-      const productLine =
-        referenceIndex >= 0 ? resolveProductLine(products[referenceIndex]) : 'paint'
       products.splice(insertAt, 0, createEmptyProductWarranty(productLine))
       return {
         ...prev,
@@ -404,12 +395,18 @@ export function WarrantyPeriodPage() {
         },
       }
     })
-    setHighlightedProduct({ section, index: newIndex })
-    setProductHighlightSeq((prev) => prev + 1)
-    setSaveMessage('')
+    if (highlightSection) {
+      setHighlightedProduct({ section: highlightSection, index: newIndex })
+      setProductHighlightSeq((prev) => prev + 1)
+    }
+    setSectionMessages({})
   }
 
-  const deleteProduct = (section: 'highRisk' | 'lowRisk', index: number) => {
+  const deleteProduct = (
+    productSection: ProductHighlight['section'],
+    index: number
+  ) => {
+    const section = riskTabFromProductSection(productSection)
     setData((prev) => ({
       ...prev,
       [section]: {
@@ -418,26 +415,27 @@ export function WarrantyPeriodPage() {
       },
     }))
     setHighlightedProduct((prev) => {
-      if (!prev || prev.section !== section) return prev
+      if (!prev || prev.section !== productSection) return prev
       if (prev.index === index) return null
       if (prev.index > index) return { ...prev, index: prev.index - 1 }
       return prev
     })
     setProductInsertAnchor((prev) => {
-      if (!prev || prev.section !== section) return prev
+      if (!prev || prev.section !== productSection) return prev
       if (prev.index === index) return null
       if (prev.index > index) return { ...prev, index: prev.index - 1 }
       return prev
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const reorderProduct = (
-    section: 'highRisk' | 'lowRisk',
+    productSection: ProductHighlight['section'],
     fromIndex: number,
     toIndex: number
   ) => {
     if (fromIndex === toIndex) return
+    const section = riskTabFromProductSection(productSection)
     setData((prev) => {
       const products = [...prev[section].products]
       const [moved] = products.splice(fromIndex, 1)
@@ -448,20 +446,20 @@ export function WarrantyPeriodPage() {
       }
     })
     setHighlightedProduct((prev) => {
-      if (!prev || prev.section !== section) return prev
+      if (!prev || prev.section !== productSection) return prev
       return {
-        section,
+        section: productSection,
         index: adjustIndexAfterReorder(prev.index, fromIndex, toIndex),
       }
     })
     setProductInsertAnchor((prev) => {
-      if (!prev || prev.section !== section) return prev
+      if (!prev || prev.section !== productSection) return prev
       return {
-        section,
+        section: productSection,
         index: adjustIndexAfterReorder(prev.index, fromIndex, toIndex),
       }
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const deleteNotCoveredItem = (index: number) => {
@@ -479,7 +477,7 @@ export function WarrantyPeriodPage() {
       if (prev > index) return prev - 1
       return prev
     })
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const reorderNotCoveredItem = (fromIndex: number, toIndex: number) => {
@@ -499,11 +497,30 @@ export function WarrantyPeriodPage() {
     setNotCoveredInsertAnchor((prev) =>
       prev === null ? null : adjustIndexAfterReorder(prev, fromIndex, toIndex)
     )
-    setSaveMessage('')
+    setSectionMessages({})
   }
 
   const highRiskProducts = filterProducts(data.highRisk.products)
   const lowRiskProducts = filterProducts(data.lowRisk.products)
+  const highRiskPaintProducts = useMemo(
+    () => highRiskProducts.filter(({ product }) => resolveProductLine(product) === 'paint'),
+    [highRiskProducts]
+  )
+  const highRiskPrintProducts = useMemo(
+    () => highRiskProducts.filter(({ product }) => resolveProductLine(product) === 'print'),
+    [highRiskProducts]
+  )
+  const lowRiskPaintProducts = useMemo(
+    () => lowRiskProducts.filter(({ product }) => resolveProductLine(product) === 'paint'),
+    [lowRiskProducts]
+  )
+  const lowRiskPrintProducts = useMemo(
+    () => lowRiskProducts.filter(({ product }) => resolveProductLine(product) === 'print'),
+    [lowRiskProducts]
+  )
+
+  const cardSectionId: PeriodSectionId | null =
+    activeTab === 'coastalAl' ? 'coastalAl' : activeTab === 'notCovered' ? 'notCovered' : null
 
   const sectionTitle =
     activeTab === 'highRisk' ? (
@@ -543,7 +560,8 @@ export function WarrantyPeriodPage() {
             type="button"
             onClick={() => {
               setActiveTab(tab.id)
-              setSaveMessage('')
+              setEditingSections(new Set())
+              setSectionMessages({})
               setHighlightedProduct(null)
               setHighlightedNotCoveredIndex(null)
               setProductInsertAnchor(null)
@@ -565,21 +583,12 @@ export function WarrantyPeriodPage() {
         label="WARRANTY GUIDE"
         title={sectionTitle}
         titleActions={
-          canEdit ? (
-            <button
-              type="button"
-              onClick={handleEdit}
-              disabled={effectiveEditing}
-              aria-label="수정"
-              title="수정"
-              className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
-                effectiveEditing
-                  ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
-                  : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
-              }`}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
+          canEdit && cardSectionId ? (
+            <PeriodSectionEditButton
+              canEdit={canEdit}
+              editing={isSectionEditing(cardSectionId)}
+              onEdit={() => startSectionEdit(cardSectionId)}
+            />
           ) : undefined
         }
       >
@@ -589,118 +598,258 @@ export function WarrantyPeriodPage() {
               <span>다음 항목은 보증 대상에서 제외됩니다.</span>
             </p>
         )}
-        {canEdit && (
-          <EditingToolbar
-            editing={effectiveEditing}
-            saveMessage={saveMessage}
-            canAdd={canToolbarAddNow}
-            onSave={handleSave}
-            onAdd={handleToolbarAdd}
-            onReset={handleReset}
+        {canEdit && cardSectionId && (
+          <CardSectionToolbar
+            editing={isSectionEditing(cardSectionId)}
+            saveMessage={sectionMessage(cardSectionId)}
+            canAdd={cardSectionId === 'notCovered' || coastalInsertAnchor !== null}
+            onSave={() => saveSection(cardSectionId)}
+            onAdd={() => handleSectionAdd(cardSectionId)}
+            onReset={() => resetSection(cardSectionId)}
           />
         )}
 
         {activeTab === 'highRisk' && (
           <>
-            <h3 className="mb-3 text-sm font-semibold text-text-primary">고위험 국가 LIST</h3>
-            <CountryGuideGrid
-              countries={data.highRisk.countries}
-              editing={effectiveEditing}
-              riskVariant="high"
-              onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
-            />
+            <PeriodSection
+              title="고위험 국가 LIST"
+              canEdit={canEdit}
+              editing={isSectionEditing('highRisk:countries')}
+              saveMessage={sectionMessage('highRisk:countries')}
+              onEdit={() => startSectionEdit('highRisk:countries')}
+              onSave={() => saveSection('highRisk:countries')}
+              onReset={() => resetSection('highRisk:countries')}
+            >
+              <CountryGuideGrid
+                countries={data.highRisk.countries}
+                editing={isSectionEditing('highRisk:countries')}
+                riskVariant="high"
+                onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
+              />
+            </PeriodSection>
+
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
-            <ProductGuideTable
-              items={highRiskProducts}
-              splitByPrintPaint
-              riskVariant="high"
-              editing={effectiveEditing}
-              addTick={productAddTick}
-              insertAnchorIndex={
-                productInsertAnchor?.section === 'highRisk' ? productInsertAnchor.index : null
-              }
-              onSelectInsertAnchor={
-                effectiveEditing
-                  ? (index) => setProductInsertAnchor({ section: 'highRisk', index })
-                  : undefined
-              }
-              highlightedIndex={
-                highlightedProduct?.section === 'highRisk' ? highlightedProduct.index : null
-              }
-              highlightSequence={productHighlightSeq}
-              onUpdate={(index, field, value) => updateProduct('highRisk', index, field, value)}
-              onDelete={effectiveEditing ? (index) => deleteProduct('highRisk', index) : undefined}
-              onReorder={
-                effectiveEditing ? (from, to) => reorderProduct('highRisk', from, to) : undefined
-              }
-            />
+
+            <PeriodSection
+              title="PAINT"
+              canEdit={canEdit}
+              editing={isSectionEditing('highRisk:paint')}
+              saveMessage={sectionMessage('highRisk:paint')}
+              canAdd
+              onEdit={() => startSectionEdit('highRisk:paint')}
+              onSave={() => saveSection('highRisk:paint')}
+              onReset={() => resetSection('highRisk:paint')}
+              onAdd={() => handleSectionAdd('highRisk:paint')}
+            >
+              <ProductGuideTable
+                items={highRiskPaintProducts}
+                riskVariant="high"
+                editing={isSectionEditing('highRisk:paint')}
+                addTick={productAddTick}
+                insertAnchorIndex={
+                  productInsertAnchor?.section === 'highRisk:paint' ? productInsertAnchor.index : null
+                }
+                onSelectInsertAnchor={
+                  isSectionEditing('highRisk:paint')
+                    ? (index) => setProductInsertAnchor({ section: 'highRisk:paint', index })
+                    : undefined
+                }
+                highlightedIndex={
+                  highlightedProduct?.section === 'highRisk:paint' ? highlightedProduct.index : null
+                }
+                highlightSequence={productHighlightSeq}
+                onUpdate={(index, field, value) => updateProduct('highRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('highRisk:paint')
+                    ? (index) => deleteProduct('highRisk:paint', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('highRisk:paint')
+                    ? (from, to) => reorderProduct('highRisk:paint', from, to)
+                    : undefined
+                }
+              />
+            </PeriodSection>
+
+            <PeriodSection
+              title="PRINT"
+              canEdit={canEdit}
+              editing={isSectionEditing('highRisk:print')}
+              saveMessage={sectionMessage('highRisk:print')}
+              canAdd
+              onEdit={() => startSectionEdit('highRisk:print')}
+              onSave={() => saveSection('highRisk:print')}
+              onReset={() => resetSection('highRisk:print')}
+              onAdd={() => handleSectionAdd('highRisk:print')}
+            >
+              <ProductGuideTable
+                items={highRiskPrintProducts}
+                riskVariant="high"
+                editing={isSectionEditing('highRisk:print')}
+                addTick={productAddTick}
+                insertAnchorIndex={
+                  productInsertAnchor?.section === 'highRisk:print' ? productInsertAnchor.index : null
+                }
+                onSelectInsertAnchor={
+                  isSectionEditing('highRisk:print')
+                    ? (index) => setProductInsertAnchor({ section: 'highRisk:print', index })
+                    : undefined
+                }
+                highlightedIndex={
+                  highlightedProduct?.section === 'highRisk:print' ? highlightedProduct.index : null
+                }
+                highlightSequence={productHighlightSeq}
+                onUpdate={(index, field, value) => updateProduct('highRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('highRisk:print')
+                    ? (index) => deleteProduct('highRisk:print', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('highRisk:print')
+                    ? (from, to) => reorderProduct('highRisk:print', from, to)
+                    : undefined
+                }
+              />
+            </PeriodSection>
           </>
         )}
 
         {activeTab === 'lowRisk' && (
           <>
-            <h3 className="mb-3 text-sm font-semibold text-text-primary">저위험 국가 LIST</h3>
-            <CountryGuideGrid
-              countries={data.lowRisk.countries}
-              editing={effectiveEditing}
-              riskVariant="low"
-              note={data.lowRisk.note}
-              onNoteChange={effectiveEditing ? updateLowRiskNote : undefined}
-              onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
-            />
+            <PeriodSection
+              title="저위험 국가 LIST"
+              canEdit={canEdit}
+              editing={isSectionEditing('lowRisk:countries')}
+              saveMessage={sectionMessage('lowRisk:countries')}
+              onEdit={() => startSectionEdit('lowRisk:countries')}
+              onSave={() => saveSection('lowRisk:countries')}
+              onReset={() => resetSection('lowRisk:countries')}
+            >
+              <CountryGuideGrid
+                countries={data.lowRisk.countries}
+                editing={isSectionEditing('lowRisk:countries')}
+                riskVariant="low"
+                note={data.lowRisk.note}
+                onNoteChange={isSectionEditing('lowRisk:countries') ? updateLowRiskNote : undefined}
+                onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
+              />
+            </PeriodSection>
+
             <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
-            <ProductGuideTable
-              items={lowRiskProducts}
-              splitByPrintPaint
-              riskVariant="low"
-              editing={effectiveEditing}
-              addTick={productAddTick}
-              insertAnchorIndex={
-                productInsertAnchor?.section === 'lowRisk' ? productInsertAnchor.index : null
-              }
-              onSelectInsertAnchor={
-                effectiveEditing
-                  ? (index) => setProductInsertAnchor({ section: 'lowRisk', index })
-                  : undefined
-              }
-              highlightedIndex={
-                highlightedProduct?.section === 'lowRisk' ? highlightedProduct.index : null
-              }
-              highlightSequence={productHighlightSeq}
-              onUpdate={(index, field, value) => updateProduct('lowRisk', index, field, value)}
-              onDelete={effectiveEditing ? (index) => deleteProduct('lowRisk', index) : undefined}
-              onReorder={
-                effectiveEditing ? (from, to) => reorderProduct('lowRisk', from, to) : undefined
-              }
-            />
+
+            <PeriodSection
+              title="PAINT"
+              canEdit={canEdit}
+              editing={isSectionEditing('lowRisk:paint')}
+              saveMessage={sectionMessage('lowRisk:paint')}
+              canAdd
+              onEdit={() => startSectionEdit('lowRisk:paint')}
+              onSave={() => saveSection('lowRisk:paint')}
+              onReset={() => resetSection('lowRisk:paint')}
+              onAdd={() => handleSectionAdd('lowRisk:paint')}
+            >
+              <ProductGuideTable
+                items={lowRiskPaintProducts}
+                riskVariant="low"
+                editing={isSectionEditing('lowRisk:paint')}
+                addTick={productAddTick}
+                insertAnchorIndex={
+                  productInsertAnchor?.section === 'lowRisk:paint' ? productInsertAnchor.index : null
+                }
+                onSelectInsertAnchor={
+                  isSectionEditing('lowRisk:paint')
+                    ? (index) => setProductInsertAnchor({ section: 'lowRisk:paint', index })
+                    : undefined
+                }
+                highlightedIndex={
+                  highlightedProduct?.section === 'lowRisk:paint' ? highlightedProduct.index : null
+                }
+                highlightSequence={productHighlightSeq}
+                onUpdate={(index, field, value) => updateProduct('lowRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('lowRisk:paint')
+                    ? (index) => deleteProduct('lowRisk:paint', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('lowRisk:paint')
+                    ? (from, to) => reorderProduct('lowRisk:paint', from, to)
+                    : undefined
+                }
+              />
+            </PeriodSection>
+
+            <PeriodSection
+              title="PRINT"
+              canEdit={canEdit}
+              editing={isSectionEditing('lowRisk:print')}
+              saveMessage={sectionMessage('lowRisk:print')}
+              canAdd
+              onEdit={() => startSectionEdit('lowRisk:print')}
+              onSave={() => saveSection('lowRisk:print')}
+              onReset={() => resetSection('lowRisk:print')}
+              onAdd={() => handleSectionAdd('lowRisk:print')}
+            >
+              <ProductGuideTable
+                items={lowRiskPrintProducts}
+                riskVariant="low"
+                editing={isSectionEditing('lowRisk:print')}
+                addTick={productAddTick}
+                insertAnchorIndex={
+                  productInsertAnchor?.section === 'lowRisk:print' ? productInsertAnchor.index : null
+                }
+                onSelectInsertAnchor={
+                  isSectionEditing('lowRisk:print')
+                    ? (index) => setProductInsertAnchor({ section: 'lowRisk:print', index })
+                    : undefined
+                }
+                highlightedIndex={
+                  highlightedProduct?.section === 'lowRisk:print' ? highlightedProduct.index : null
+                }
+                highlightSequence={productHighlightSeq}
+                onUpdate={(index, field, value) => updateProduct('lowRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('lowRisk:print')
+                    ? (index) => deleteProduct('lowRisk:print', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('lowRisk:print')
+                    ? (from, to) => reorderProduct('lowRisk:print', from, to)
+                    : undefined
+                }
+              />
+            </PeriodSection>
           </>
         )}
 
         {activeTab === 'coastalAl' && (
           <CoastalGuideTables
             coastal={data.coastalAl}
-            editing={effectiveEditing}
+            editing={isSectionEditing('coastalAl')}
             insertAnchor={coastalInsertAnchor}
             onSelectInsertAnchor={
-              effectiveEditing ? (side, index) => setCoastalInsertAnchor({ side, index }) : undefined
+              isSectionEditing('coastalAl') ? (side, index) => setCoastalInsertAnchor({ side, index }) : undefined
             }
             onUpdateRow={updateCoastalRow}
             onUpdateWarrantyNote={updateCoastalWarrantyNote}
-            onDeleteRow={effectiveEditing ? deleteCoastalRow : undefined}
-            onReorderRow={effectiveEditing ? reorderCoastalRow : undefined}
+            onDeleteRow={isSectionEditing('coastalAl') ? deleteCoastalRow : undefined}
+            onReorderRow={isSectionEditing('coastalAl') ? reorderCoastalRow : undefined}
           />
         )}
 
         {activeTab === 'notCovered' && (
           <NotCoveredGuide
             section={data.notCovered}
-            editing={effectiveEditing}
+            editing={isSectionEditing('notCovered')}
             highlightedIndex={highlightedNotCoveredIndex}
             insertAnchorIndex={notCoveredInsertAnchor}
-            onSelectInsertAnchor={effectiveEditing ? setNotCoveredInsertAnchor : undefined}
+            onSelectInsertAnchor={isSectionEditing('notCovered') ? setNotCoveredInsertAnchor : undefined}
             onUpdateItem={updateNotCoveredItem}
-            onDeleteItem={effectiveEditing ? deleteNotCoveredItem : undefined}
-            onReorderItem={effectiveEditing ? reorderNotCoveredItem : undefined}
+            onDeleteItem={isSectionEditing('notCovered') ? deleteNotCoveredItem : undefined}
+            onReorderItem={isSectionEditing('notCovered') ? reorderNotCoveredItem : undefined}
           />
         )}
       </Card>
