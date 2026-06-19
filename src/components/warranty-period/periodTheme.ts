@@ -3,8 +3,16 @@
 export const periodThClass =
   'border border-border/60 bg-bg-tertiary px-2 py-2.5 text-center text-xs font-semibold whitespace-nowrap text-text-secondary sm:px-3 sm:py-3 sm:text-sm'
 
+/** Two-line EN/KO headers (PEEL/FLAKE, PERFORATION) — shrinks on narrow widths */
+export const periodThStackedClass =
+  'border border-border/60 bg-bg-tertiary px-1 py-2 text-center font-semibold text-text-secondary align-middle whitespace-normal leading-[1.15] text-[clamp(0.5625rem,2.5vw,0.875rem)] min-w-[3.25rem] sm:px-2 sm:py-2.5'
+
+/** Group headers spanning multiple columns (COLOR FADING, CHALK) */
+export const periodThGroupClass =
+  'border border-border/60 bg-bg-tertiary px-1 py-2 text-center font-semibold text-text-secondary whitespace-normal leading-[1.15] text-[clamp(0.5625rem,2.2vw,0.875rem)] sm:px-2 sm:py-2.5'
+
 export const periodThSubClass =
-  'border border-border/60 bg-bg-tertiary/80 px-2 py-2 text-center text-[11px] font-medium whitespace-nowrap text-text-secondary'
+  'border border-border/60 bg-bg-tertiary/80 px-1 py-1.5 text-center font-medium whitespace-normal text-text-secondary leading-tight text-[clamp(0.5rem,2vw,0.6875rem)] sm:px-2 sm:py-2'
 
 export const periodThStickyRow1 =
   'sticky top-0 z-20 bg-bg-tertiary shadow-[inset_0_-1px_0_0_var(--color-border)]'
@@ -19,7 +27,7 @@ export const periodThStickyRow2 =
 export const periodTdClass = 'border border-border/50 px-2 py-1 align-middle min-w-0 h-[72px] overflow-hidden'
 
 export const periodTableClass =
-  'w-full table-fixed border-separate border-spacing-0 text-sm'
+  'w-full min-w-[36rem] table-fixed border-separate border-spacing-0 text-sm'
 
 export const periodDataColCount = 9
 

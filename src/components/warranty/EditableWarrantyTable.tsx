@@ -13,11 +13,6 @@ import {
 import {
   toDateInputValue,
   formatDisplayDate,
-  formatPeelDisplay,
-  formatPeelValue,
-  peelEditValue,
-  formatFadeDisplay,
-  formatFadeForStorage,
 } from '../../utils/helpers'
 import {
   WarrantyTableFilterRow,
@@ -25,6 +20,7 @@ import {
   type WarrantyTableFilters,
 } from './WarrantyTableFilterRow'
 import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
+import { FileAttachmentCell } from './FileAttachmentCell'
 
 interface EditableWarrantyTableProps {
   editing: boolean
@@ -44,13 +40,9 @@ const readOnlyCell =
 
 const thBase =
   'px-2 py-2.5 text-xs font-semibold whitespace-nowrap text-text-secondary sm:px-3 sm:py-3 sm:text-sm'
-const thStickyRow1 =
+const thSticky =
   'sticky top-0 z-20 bg-bg-tertiary shadow-[inset_0_-1px_0_0_var(--color-border)]'
-const thStickyRowSpan = 'z-30'
-const thStickyRow2Base =
-  'sticky z-20 bg-bg-tertiary/95 shadow-[inset_0_-1px_0_0_var(--color-border)] backdrop-blur-sm'
 const thCenter = `${thBase} text-center`
-const thLeft = `${thBase} text-left`
 
 const cellInput =
   'w-full min-w-0 rounded border border-transparent bg-bg-primary/50 px-1.5 py-1 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none sm:text-sm'
@@ -223,50 +215,6 @@ function EditableCell({
   )
 }
 
-const fadeCellClass = `${cellInputCenter} block min-h-[52px] w-full resize-none leading-snug`
-
-function FadeCell({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  return (
-    <textarea
-      rows={2}
-      value={formatFadeDisplay(value)}
-      onChange={(e) => onChange(formatFadeForStorage(e.target.value))}
-      className={fadeCellClass}
-    />
-  )
-}
-
-function PeelCell({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (value: string) => void
-}) {
-  const [draft, setDraft] = useState<string | null>(null)
-  const isEditing = draft !== null
-
-  return (
-    <input
-      type="text"
-      value={isEditing ? draft : formatPeelDisplay(value)}
-      onFocus={() => setDraft(peelEditValue(value))}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={() => {
-        onChange(formatPeelValue(draft ?? ''))
-        setDraft(null)
-      }}
-      className={cellInputCenter}
-    />
-  )
-}
-
 function ReadOnlyCell({
   value,
   align = 'left',
@@ -299,23 +247,9 @@ export function EditableWarrantyTable({
   onFiltersChange,
 }: EditableWarrantyTableProps) {
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
-  const headerRowRef = useRef<HTMLTableRowElement>(null)
-  const [headerRowHeight, setHeaderRowHeight] = useState(0)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const canReorder = editing && Boolean(onReorder) && !hasActiveWarrantyFilters(filters)
-
-  useEffect(() => {
-    const row = headerRowRef.current
-    if (!row) return
-
-    const syncHeight = () => setHeaderRowHeight(row.getBoundingClientRect().height)
-    syncHeight()
-
-    const observer = new ResizeObserver(syncHeight)
-    observer.observe(row)
-    return () => observer.disconnect()
-  }, [])
 
   useEffect(() => {
     if (!highlightedRowId) return
@@ -326,15 +260,14 @@ export function EditableWarrantyTable({
     return () => clearTimeout(timer)
   }, [highlightedRowId, records.length])
 
-  const headerRow2Top = headerRowHeight > 0 ? headerRowHeight : 43
-
   return (
     <div>
       {editing && (
         <p className="mb-2 text-xs text-text-muted">
           행을 클릭해 선택한 뒤{' '}
           <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 행{' '}
-          <span className="text-amber-400/90">위</span>에 새 행이 추가됩니다.
+          <span className="text-amber-400/90">아래</span>에 새 행이 추가됩니다. 선택하지 않으면{' '}
+          <span className="text-amber-400/90">맨 아래</span>에 추가됩니다.
           {onReorder && (
             <>
               {' '}
@@ -348,90 +281,28 @@ export function EditableWarrantyTable({
         </p>
       )}
     <div className="max-h-[calc(100dvh-380px)] min-h-[240px] overflow-auto rounded-lg border border-border">
-      <table className="w-full min-w-[1180px] border-separate border-spacing-0">
+      <table className="w-full min-w-[1200px] border-separate border-spacing-0">
         <thead>
-          <tr ref={headerRowRef} className="border-b border-border bg-bg-tertiary">
-            <th
-              rowSpan={2}
-              className={`${thCenter} ${thStickyRow1} ${thStickyRowSpan} min-w-[168px] border-r border-border/60 align-middle`}
-            >
-              발행일자
-            </th>
-            <th
-              rowSpan={2}
-              className={`${thLeft} ${thStickyRow1} ${thStickyRowSpan} min-w-[100px] border-r border-border/60 align-middle`}
-            >
-              지역
-            </th>
-            <th
-              rowSpan={2}
-              className={`${thLeft} ${thStickyRow1} ${thStickyRowSpan} min-w-[90px] border-r border-border/60 align-middle`}
-            >
-              수요가
-            </th>
-            <th colSpan={7} className={`${thCenter} ${thStickyRow1} border-r border-border/60`}>
-              색상 정보
-            </th>
-            <th colSpan={5} className={`${thCenter} ${thStickyRow1} border-r border-border/60`}>
-              보증 연한
-            </th>
-            <th
-              rowSpan={2}
-              className={`${thCenter} ${thStickyRow1} ${thStickyRowSpan} min-w-[320px] align-middle`}
-            >
-              비고
-            </th>
-          </tr>
-          <tr className="border-b border-border bg-bg-tertiary/80">
-            <th className={`${thLeft} ${thStickyRow2Base} min-w-[100px]`} style={{ top: headerRow2Top }}>
-              색상명
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} ${optionCellWidth}`} style={{ top: headerRow2Top }}>
-              도료사
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} ${optionCellWidth}`} style={{ top: headerRow2Top }}>
-              수지
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[80px]`} style={{ top: headerRow2Top }}>
-              총 도막두께
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[64px]`} style={{ top: headerRow2Top }}>
-              프라이머
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} w-[48px]`} style={{ top: headerRow2Top }}>
-              COAT
-            </th>
-            <th
-              className={`${thCenter} ${thStickyRow2Base} w-[48px] border-r border-border/60`}
-              style={{ top: headerRow2Top }}
-            >
-              BAKE
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[48px]`} style={{ top: headerRow2Top }}>
-              박리
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              변색(지붕)
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              변색(벽체)
-            </th>
-            <th className={`${thCenter} ${thStickyRow2Base} min-w-[88px]`} style={{ top: headerRow2Top }}>
-              백화(지붕)
-            </th>
-            <th
-              className={`${thCenter} ${thStickyRow2Base} min-w-[88px] border-r border-border/60`}
-              style={{ top: headerRow2Top }}
-            >
-              백화(벽체)
-            </th>
+          <tr className="border-b border-border bg-bg-tertiary">
+            <th className={`${thCenter} ${thSticky} min-w-[220px] border-r border-border/60`}>요청일자</th>
+            <th className={`${thCenter} ${thSticky} min-w-[80px] border-r border-border/60`}>요청자</th>
+            <th className={`${thCenter} ${thSticky} min-w-[100px] border-r border-border/60`}>국가</th>
+            <th className={`${thCenter} ${thSticky} min-w-[100px] border-r border-border/60`}>세부국가명</th>
+            <th className={`${thCenter} ${thSticky} min-w-[90px] border-r border-border/60`}>수요가명</th>
+            <th className={`${thCenter} ${thSticky} min-w-[100px]`}>색상명</th>
+            <th className={`${thCenter} ${thSticky} ${optionCellWidth}`}>도료사</th>
+            <th className={`${thCenter} ${thSticky} ${optionCellWidth} border-r border-border/60`}>수지</th>
+            <th className={`${thCenter} ${thSticky} min-w-[200px] border-r border-border/60`}>추가 요청 사항</th>
+            <th className={`${thCenter} ${thSticky} min-w-[140px] border-r border-border/60`}>파일첨부</th>
+            <th className={`${thCenter} ${thSticky} min-w-[220px] border-r border-border/60`}>발행일자</th>
+            <th className={`${thCenter} ${thSticky} min-w-[100px]`}>검토결과</th>
           </tr>
         </thead>
         <tbody>
           <WarrantyTableFilterRow filters={filters} onChange={onFiltersChange} />
           {records.length === 0 ? (
             <tr>
-              <td colSpan={16} className="px-4 py-12 text-center text-sm text-text-muted">
+              <td colSpan={12} className="px-4 py-12 text-center text-sm text-text-muted">
                 조회 결과가 없습니다.
               </td>
             </tr>
@@ -525,13 +396,23 @@ export function EditableWarrantyTable({
                         </button>
                         <input
                           type="date"
-                          value={toDateInputValue(record.issueDate)}
-                          onChange={(e) => onUpdate(record.id, 'issueDate', e.target.value)}
+                          value={toDateInputValue(record.requestDate)}
+                          onChange={(e) => onUpdate(record.id, 'requestDate', e.target.value)}
                           className={`${dateInputClass} min-w-0 flex-1`}
                         />
                       </div>
                     ) : (
-                      <ReadOnlyCell value={formatDisplayDate(record.issueDate)} align="center" />
+                      <ReadOnlyCell value={formatDisplayDate(record.requestDate)} align="center" />
+                    )}
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    {editing ? (
+                      <EditableCell
+                        value={record.requester}
+                        onChange={(v) => onUpdate(record.id, 'requester', v)}
+                      />
+                    ) : (
+                      <ReadOnlyCell value={record.requester} />
                     )}
                   </td>
                   <td className="px-1 py-1 align-top">
@@ -543,6 +424,16 @@ export function EditableWarrantyTable({
                   </td>
                   <td className="px-1 py-1 align-top">
                     {editing ? (
+                      <EditableCell
+                        value={record.detailRegion}
+                        onChange={(v) => onUpdate(record.id, 'detailRegion', v)}
+                      />
+                    ) : (
+                      <ReadOnlyCell value={record.detailRegion} />
+                    )}
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    {editing ? (
                       <EditableCell value={record.customer} onChange={(v) => onUpdate(record.id, 'customer', v)} />
                     ) : (
                       <ReadOnlyCell value={record.customer} />
@@ -550,9 +441,13 @@ export function EditableWarrantyTable({
                   </td>
                   <td className="px-1 py-1 align-top">
                     {editing ? (
-                      <EditableCell value={record.colorName} onChange={(v) => onUpdate(record.id, 'colorName', v)} />
+                      <EditableCell
+                        value={record.colorName}
+                        onChange={(v) => onUpdate(record.id, 'colorName', v)}
+                        align="center"
+                      />
                     ) : (
-                      <ReadOnlyCell value={record.colorName} />
+                      <ReadOnlyCell value={record.colorName} align="center" />
                     )}
                   </td>
                   <td className={`px-1 py-1 align-top ${optionCellWidth}`}>
@@ -566,7 +461,7 @@ export function EditableWarrantyTable({
                       <ReadOnlyPaintCompanies value={record.paintCompany} />
                     )}
                   </td>
-                  <td className={`px-1 py-1 align-top ${optionCellWidth}`}>
+                  <td className={`border-r border-border/40 px-1 py-1 align-top ${optionCellWidth}`}>
                     {editing ? (
                       <SelectCell
                         value={record.resin}
@@ -577,101 +472,44 @@ export function EditableWarrantyTable({
                       <ReadOnlyCell value={record.resin} align="center" />
                     )}
                   </td>
-                  <td className="px-1 py-1 align-top">
+                  <td className="min-w-[200px] px-1 py-1 align-top">
                     {editing ? (
                       <EditableCell
-                        value={record.totalThickness}
-                        onChange={(v) => onUpdate(record.id, 'totalThickness', v)}
-                        align="center"
-                      />
-                    ) : (
-                      <ReadOnlyCell value={record.totalThickness} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 align-top">
-                    {editing ? (
-                      <EditableCell
-                        value={record.primerThickness}
-                        onChange={(v) => onUpdate(record.id, 'primerThickness', v)}
-                        align="center"
-                      />
-                    ) : (
-                      <ReadOnlyCell value={record.primerThickness} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 align-top">
-                    {editing ? (
-                      <EditableCell value={record.coat} onChange={(v) => onUpdate(record.id, 'coat', v)} align="center" />
-                    ) : (
-                      <ReadOnlyCell value={record.coat} align="center" />
-                    )}
-                  </td>
-                  <td className="border-r border-border/40 px-1 py-1 align-top">
-                    {editing ? (
-                      <EditableCell value={record.bake} onChange={(v) => onUpdate(record.id, 'bake', v)} align="center" />
-                    ) : (
-                      <ReadOnlyCell value={record.bake} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <PeelCell
-                        value={record.supplierPeel}
-                        onChange={(v) => onUpdate(record.id, 'supplierPeel', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatPeelDisplay(record.supplierPeel)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.supplierFadeRoof}
-                        onChange={(v) => onUpdate(record.id, 'supplierFadeRoof', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.supplierFadeRoof)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.supplierFadeWall}
-                        onChange={(v) => onUpdate(record.id, 'supplierFadeWall', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.supplierFadeWall)} align="center" />
-                    )}
-                  </td>
-                  <td className="px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.supplierChalkRoof}
-                        onChange={(v) => onUpdate(record.id, 'supplierChalkRoof', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.supplierChalkRoof)} align="center" />
-                    )}
-                  </td>
-                  <td className="border-r border-border/40 px-1 py-1 text-center align-top">
-                    {editing ? (
-                      <FadeCell
-                        value={record.supplierChalkWall}
-                        onChange={(v) => onUpdate(record.id, 'supplierChalkWall', v)}
-                      />
-                    ) : (
-                      <ReadOnlyCell value={formatFadeDisplay(record.supplierChalkWall)} align="center" />
-                    )}
-                  </td>
-                  <td className="min-w-[320px] px-1 py-1 align-top">
-                    {editing ? (
-                      <EditableCell
-                        value={record.notes}
-                        onChange={(v) => onUpdate(record.id, 'notes', v)}
+                        value={record.additionalRequest}
+                        onChange={(v) => onUpdate(record.id, 'additionalRequest', v)}
                         multiline
                       />
                     ) : (
-                      <ReadOnlyCell value={record.notes} />
+                      <ReadOnlyCell value={record.additionalRequest} />
+                    )}
+                  </td>
+                  <td className="min-w-[140px] px-1 py-1 align-top">
+                    <FileAttachmentCell
+                      editing={editing}
+                      value={record.fileAttachment}
+                      onChange={(v) => onUpdate(record.id, 'fileAttachment', v)}
+                    />
+                  </td>
+                  <td className="border-r border-border/40 px-1 py-1 align-top">
+                    {editing ? (
+                      <input
+                        type="date"
+                        value={toDateInputValue(record.issueDate)}
+                        onChange={(e) => onUpdate(record.id, 'issueDate', e.target.value)}
+                        className={dateInputClass}
+                      />
+                    ) : (
+                      <ReadOnlyCell value={formatDisplayDate(record.issueDate)} align="center" />
+                    )}
+                  </td>
+                  <td className="px-1 py-1 align-top">
+                    {editing ? (
+                      <EditableCell
+                        value={record.reviewResult}
+                        onChange={(v) => onUpdate(record.id, 'reviewResult', v)}
+                      />
+                    ) : (
+                      <ReadOnlyCell value={record.reviewResult} />
                     )}
                   </td>
                 </tr>

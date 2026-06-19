@@ -18,3 +18,19 @@ export function matchesTextFilter(query: string, value: string): boolean {
   if (!q) return true
   return value.toLowerCase().includes(q)
 }
+
+export function matchesDateRangeFilter(
+  range: { from: string; to: string },
+  value: string,
+  normalize: (dateStr: string) => string
+): boolean {
+  const from = range.from.trim() ? normalize(range.from.trim()) : ''
+  const to = range.to.trim() ? normalize(range.to.trim()) : ''
+  if (!from && !to) return true
+
+  const normalized = value ? normalize(value) : ''
+  if (!normalized) return false
+  if (from && normalized < from) return false
+  if (to && normalized > to) return false
+  return true
+}

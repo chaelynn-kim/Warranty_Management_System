@@ -1,58 +1,61 @@
 import defaultData from '../data/warrantyIssuance.json'
 import type { WarrantyRecord } from '../types'
-import { normalizeDate, formatFadeForStorage } from './helpers'
+import { normalizeDate, subtractDaysFromDate } from './helpers'
+import { parseFileAttachments, serializeFileAttachments } from './warrantyAttachments'
+import { normalizeLegacyRegion, type LegacyWarrantySource } from './warrantyLegacyFields'
 
 const STORAGE_KEY = 'warranty-issuance-records'
 const STORAGE_VERSION_KEY = 'warranty-issuance-version'
-const CURRENT_VERSION = '2'
+const CURRENT_VERSION = '6'
 
 export function createEmptyWarrantyRecord(): WarrantyRecord {
   return {
     id: crypto.randomUUID(),
-    issueDate: '',
+    requestDate: '',
+    requester: '',
     region: '',
+    detailRegion: '',
     customer: '',
     colorName: '',
     paintCompany: '',
     resin: '',
-    totalThickness: '',
-    primerThickness: '',
-    coat: '',
-    bake: '',
-    companyPeel: '',
-    companyFadeRoof: '',
-    companyFadeWall: '',
-    companyChalkRoof: '',
-    companyChalkWall: '',
-    supplierPeel: '',
-    supplierFadeRoof: '',
-    supplierFadeWall: '',
-    supplierChalkRoof: '',
-    supplierChalkWall: '',
-    notes: '',
+    additionalRequest: '',
+    fileAttachment: '',
+    issueDate: '',
+    reviewResult: '',
   }
 }
 
-function normalizeRecord(record: WarrantyRecord): WarrantyRecord {
+function normalizeRecord(record: LegacyWarrantySource): WarrantyRecord {
+  const issueDate = record.issueDate ? normalizeDate(record.issueDate) : ''
+  const requestDate = record.requestDate
+    ? normalizeDate(record.requestDate)
+    : issueDate
+      ? subtractDaysFromDate(issueDate, 7)
+      : ''
+
   return {
-    ...record,
-    issueDate: record.issueDate ? normalizeDate(record.issueDate) : '',
-    companyFadeRoof: formatFadeForStorage(record.companyFadeRoof),
-    companyFadeWall: formatFadeForStorage(record.companyFadeWall),
-    companyChalkRoof: formatFadeForStorage(record.companyChalkRoof),
-    companyChalkWall: formatFadeForStorage(record.companyChalkWall),
-    supplierFadeRoof: formatFadeForStorage(record.supplierFadeRoof),
-    supplierFadeWall: formatFadeForStorage(record.supplierFadeWall),
-    supplierChalkRoof: formatFadeForStorage(record.supplierChalkRoof),
-    supplierChalkWall: formatFadeForStorage(record.supplierChalkWall),
+    id: record.id,
+    issueDate,
+    requestDate,
+    requester: record.requester ?? '',
+    region: normalizeLegacyRegion(record.region ?? ''),
+    detailRegion: record.detailRegion ?? '',
+    customer: record.customer ?? '',
+    colorName: record.colorName ?? '',
+    paintCompany: record.paintCompany ?? '',
+    resin: record.resin ?? '',
+    additionalRequest: record.additionalRequest ?? '',
+    fileAttachment: serializeFileAttachments(parseFileAttachments(record.fileAttachment ?? '')),
+    reviewResult: record.reviewResult ?? '',
   }
 }
 
-function ensureIds(raw: Omit<WarrantyRecord, 'id'>[] | WarrantyRecord[]): WarrantyRecord[] {
+function ensureIds(raw: LegacyWarrantySource[]): WarrantyRecord[] {
   return raw.map((record, index) =>
     normalizeRecord({
       ...record,
-      id: 'id' in record && record.id ? record.id : `row-${index}-${crypto.randomUUID()}`,
+      id: record.id ? record.id : `row-${index}-${crypto.randomUUID()}`,
     })
   )
 }
@@ -62,7 +65,7 @@ export function loadWarrantyRecords(): WarrantyRecord[] {
     const version = localStorage.getItem(STORAGE_VERSION_KEY)
     const saved = localStorage.getItem(STORAGE_KEY)
     if (version === CURRENT_VERSION && saved) {
-      return ensureIds(JSON.parse(saved) as WarrantyRecord[])
+      return ensureIds(JSON.parse(saved) as LegacyWarrantySource[])
     }
     if (saved && version !== CURRENT_VERSION) {
       localStorage.removeItem(STORAGE_KEY)
@@ -70,9 +73,22 @@ export function loadWarrantyRecords(): WarrantyRecord[] {
   } catch {
     // fall through to default data
   }
-  const records = ensureIds(defaultData as WarrantyRecord[])
+  const records = ensureIds(defaultData as LegacyWarrantySource[])
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
   return records
+}
+
+/** Reads issuance log records for one-time migration (ignores storage version). */
+export function loadWarrantyRecordsForMigration(): WarrantyRecord[] {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      return ensureIds(JSON.parse(saved) as LegacyWarrantySource[])
+    }
+  } catch {
+    // fall through
+  }
+  return ensureIds(defaultData as LegacyWarrantySource[])
 }
 
 export function saveWarrantyRecords(records: WarrantyRecord[]): void {

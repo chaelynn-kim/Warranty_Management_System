@@ -1,43 +1,47 @@
+import { DateRangePicker, type DateRangeValue } from '../ui/DateRangePicker'
+
 export interface WarrantyTableFilters {
-  issueDate: string
+  requestDateRange: DateRangeValue
+  requester: string
   region: string
+  detailRegion: string
   customer: string
   colorName: string
   paintCompany: string
   resin: string
-  totalThickness: string
-  primerThickness: string
-  coat: string
-  bake: string
-  supplierPeel: string
-  supplierFadeRoof: string
-  supplierFadeWall: string
-  supplierChalkRoof: string
-  supplierChalkWall: string
-  notes: string
+  additionalRequest: string
+  fileAttachment: string
+  issueDateRange: DateRangeValue
+  reviewResult: string
 }
 
 export const emptyWarrantyTableFilters: WarrantyTableFilters = {
-  issueDate: '',
+  requestDateRange: { from: '', to: '' },
+  requester: '',
   region: '',
+  detailRegion: '',
   customer: '',
   colorName: '',
   paintCompany: '',
   resin: '',
-  totalThickness: '',
-  primerThickness: '',
-  coat: '',
-  bake: '',
-  supplierPeel: '',
-  supplierFadeRoof: '',
-  supplierFadeWall: '',
-  supplierChalkRoof: '',
-  supplierChalkWall: '',
-  notes: '',
+  additionalRequest: '',
+  fileAttachment: '',
+  issueDateRange: { from: '', to: '' },
+  reviewResult: '',
+}
+
+function isDateRangeActive(range: DateRangeValue): boolean {
+  return range.from.trim() !== '' || range.to.trim() !== ''
 }
 
 export function hasActiveWarrantyFilters(filters: WarrantyTableFilters): boolean {
-  return Object.values(filters).some((value) => value.trim() !== '')
+  if (isDateRangeActive(filters.requestDateRange)) return true
+  if (isDateRangeActive(filters.issueDateRange)) return true
+
+  const { requestDateRange, issueDateRange, ...rest } = filters
+  void requestDateRange
+  void issueDateRange
+  return Object.values(rest).some((value) => value.trim() !== '')
 }
 
 interface WarrantyTableFilterRowProps {
@@ -69,42 +73,51 @@ function FilterInput({
   )
 }
 
-type FilterField = keyof WarrantyTableFilters
-
-const filterCells: { field: FilterField; placeholder: string; className?: string }[] = [
-  { field: 'issueDate', placeholder: '발행일자', className: 'min-w-[168px] border-r border-border/40' },
-  { field: 'region', placeholder: '지역', className: 'min-w-[100px]' },
-  { field: 'customer', placeholder: '수요가', className: 'min-w-[90px]' },
-  { field: 'colorName', placeholder: '색상명', className: 'min-w-[100px]' },
-  { field: 'paintCompany', placeholder: '도료사', className: 'w-[112px] min-w-[112px]' },
-  { field: 'resin', placeholder: '수지', className: 'w-[112px] min-w-[112px]' },
-  { field: 'totalThickness', placeholder: '총 도막두께', className: 'min-w-[80px]' },
-  { field: 'primerThickness', placeholder: '프라이머', className: 'min-w-[64px]' },
-  { field: 'coat', placeholder: 'COAT', className: 'w-[48px] min-w-[48px]' },
-  { field: 'bake', placeholder: 'BAKE', className: 'w-[48px] min-w-[48px] border-r border-border/40' },
-  { field: 'supplierPeel', placeholder: '박리', className: 'min-w-[48px]' },
-  { field: 'supplierFadeRoof', placeholder: '변색(지붕)', className: 'min-w-[88px]' },
-  { field: 'supplierFadeWall', placeholder: '변색(벽체)', className: 'min-w-[88px]' },
-  { field: 'supplierChalkRoof', placeholder: '백화(지붕)', className: 'min-w-[88px]' },
-  { field: 'supplierChalkWall', placeholder: '백화(벽체)', className: 'min-w-[88px] border-r border-border/40' },
-  { field: 'notes', placeholder: '비고', className: 'min-w-[320px]' },
-]
+type TextFilterField = Exclude<
+  keyof WarrantyTableFilters,
+  'requestDateRange' | 'issueDateRange'
+>
 
 export function WarrantyTableFilterRow({ filters, onChange }: WarrantyTableFilterRowProps) {
-  const patch = (field: FilterField, value: string) =>
+  const patch = (field: TextFilterField, value: string) =>
     onChange({ ...filters, [field]: value })
+
+  const textCell = (field: TextFilterField, placeholder: string, className = '') => (
+    <td key={field} className={`${filterTd} ${className}`}>
+      <FilterInput
+        value={filters[field]}
+        placeholder={placeholder}
+        onChange={(value) => patch(field, value)}
+      />
+    </td>
+  )
 
   return (
     <tr className="border-b-2 border-accent/30">
-      {filterCells.map(({ field, placeholder, className = '' }) => (
-        <td key={field} className={`${filterTd} ${className}`}>
-          <FilterInput
-            value={filters[field]}
-            placeholder={placeholder}
-            onChange={(value) => patch(field, value)}
-          />
-        </td>
-      ))}
+      <td className={`${filterTd} min-w-[220px] border-r border-border/40`}>
+        <DateRangePicker
+          compact
+          value={filters.requestDateRange}
+          onChange={(requestDateRange) => onChange({ ...filters, requestDateRange })}
+        />
+      </td>
+      {textCell('requester', '요청자', 'min-w-[80px]')}
+      {textCell('region', '국가', 'min-w-[100px]')}
+      {textCell('detailRegion', '세부국가명', 'min-w-[100px]')}
+      {textCell('customer', '수요가명', 'min-w-[90px]')}
+      {textCell('colorName', '색상명', 'min-w-[100px]')}
+      {textCell('paintCompany', '도료사', 'w-[112px] min-w-[112px]')}
+      {textCell('resin', '수지', 'w-[112px] min-w-[112px] border-r border-border/40')}
+      {textCell('additionalRequest', '추가 요청 사항', 'min-w-[200px]')}
+      {textCell('fileAttachment', '파일첨부', 'min-w-[140px]')}
+      <td className={`${filterTd} min-w-[220px]`}>
+        <DateRangePicker
+          compact
+          value={filters.issueDateRange}
+          onChange={(issueDateRange) => onChange({ ...filters, issueDateRange })}
+        />
+      </td>
+      {textCell('reviewResult', '검토결과', 'min-w-[100px]')}
     </tr>
   )
 }

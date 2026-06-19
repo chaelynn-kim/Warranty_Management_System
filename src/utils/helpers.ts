@@ -51,6 +51,22 @@ export function toDateInputValue(dateStr: string): string {
   return /^\d{4}-\d{2}-\d{2}$/.test(normalized) ? normalized : ''
 }
 
+/** YYYY-MM-DD 기준으로 days일만큼 이전 날짜 반환 */
+export function subtractDaysFromDate(dateStr: string, days: number): string {
+  const normalized = normalizeDate(dateStr)
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(normalized)) return ''
+  const [year, month, day] = normalized.split('-').map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCDate(date.getUTCDate() - days)
+  return date.toISOString().slice(0, 10)
+}
+
+export function defaultRequestDate(daysBefore = 7): string {
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  return subtractDaysFromDate(todayStr, daysBefore)
+}
+
 export function isDomestic(region: string): boolean {
   return region.includes('국내') || region === '국내'
 }

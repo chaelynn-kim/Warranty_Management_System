@@ -1,26 +1,26 @@
 export interface WarrantyRecord {
   id: string
-  issueDate: string
+  requestDate: string
+  requester: string
   region: string
+  detailRegion: string
   customer: string
   colorName: string
   paintCompany: string
   resin: string
-  totalThickness: string
-  primerThickness: string
-  coat: string
-  bake: string
-  companyPeel: string
-  companyFadeRoof: string
-  companyFadeWall: string
-  companyChalkRoof: string
-  companyChalkWall: string
-  supplierPeel: string
-  supplierFadeRoof: string
-  supplierFadeWall: string
-  supplierChalkRoof: string
-  supplierChalkWall: string
-  notes: string
+  additionalRequest: string
+  /** JSON-serialized WarrantyFileAttachment[] */
+  fileAttachment: string
+  issueDate: string
+  reviewResult: string
+}
+
+export interface WarrantyFileAttachment {
+  id: string
+  name: string
+  size: number
+  type: string
+  dataUrl: string
 }
 
 export interface CountryEntry {
@@ -137,6 +137,23 @@ export interface WarrantyIssuanceRequest {
   warrantyTermMode: string
   warrantyTermCustom: string
   additionalRequest: string
+  /** JSON-serialized WarrantyFileAttachment[] — 당사 Warranty (국문) */
+  companyWarrantyAttachmentKo: string
+  /** JSON-serialized WarrantyFileAttachment[] — 당사 Warranty (영문) */
+  companyWarrantyAttachmentEn: string
+  /** JSON-serialized WarrantyFileAttachment[] — 도료사 Warranty (국문) */
+  supplierWarrantyAttachmentKo: string
+  /** JSON-serialized WarrantyFileAttachment[] — 도료사 Warranty (영문) */
+  supplierWarrantyAttachmentEn: string
+  issueDate: string
+  qualityAuthor: string
+  reviewResult: string
+}
+
+export interface WarrantyIssuanceRequestRecord extends WarrantyIssuanceRequest {
+  id: string
+  status: string
+  sequenceNo: number
 }
 
 export type TabId = 'issuanceRequest' | 'issuance' | 'period' | 'externalTest'

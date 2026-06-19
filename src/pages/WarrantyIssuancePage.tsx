@@ -1,132 +1,165 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Save, FileDown, RotateCcw, Pencil } from 'lucide-react'
+import { Save, RotateCcw, Pencil, FileDown } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/layout/PageHeader'
-import { EditableWarrantyTable } from '../components/warranty/EditableWarrantyTable'
-import { emptyWarrantyTableFilters } from '../components/warranty/WarrantyTableFilterRow'
-import type { WarrantyRecord } from '../types'
-import { matchesTextFilter } from '../utils/filterHelpers'
-import { normalizeDate } from '../utils/helpers'
-import { downloadWarrantyExcel } from '../utils/warrantyExcel'
+import { WarrantyIssuanceRequestModal } from '../components/warranty-request/WarrantyIssuanceRequestModal'
+import { WarrantyRequestTable } from '../components/warranty-request/WarrantyRequestTable'
+import { WarrantyRequestPeriodSearch } from '../components/warranty-request/WarrantyRequestPeriodSearch'
+import { WarrantyRequestStatusSummary } from '../components/warranty-request/WarrantyRequestStatusSummary'
+import { useAuth } from '../contexts/AuthContext'
+import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
+import { canManageWarrantyIssuanceQuality } from '../utils/authValidation'
+import { resolveStatusAfterSave } from '../utils/warrantyRequestStatus'
 import {
-  createEmptyWarrantyRecord,
-  loadWarrantyRecords,
-  saveWarrantyRecords,
-} from '../utils/warrantyStorage'
+  getWarrantyRequestRecords,
+  persistWarrantyRequestRecords,
+  reloadWarrantyRequestRecords,
+} from '../utils/warrantyRequestRecordsCache'
+import { downloadWarrantyRequestExcel } from '../utils/warrantyExcel'
+import {
+  filterRecordsByIssueDateRange,
+  filterRecordsByKeyword,
+  validateRequestDateRange,
+} from '../utils/warrantyRequestFilter'
+import { normalizeDate } from '../utils/helpers'
 
-function recordMatchesFilters(record: WarrantyRecord, filters: typeof emptyWarrantyTableFilters) {
-  const issueDate = record.issueDate ? normalizeDate(record.issueDate) : ''
-
-  return (
-    matchesTextFilter(filters.issueDate, issueDate) &&
-    matchesTextFilter(filters.region, record.region) &&
-    matchesTextFilter(filters.customer, record.customer) &&
-    matchesTextFilter(filters.colorName, record.colorName) &&
-    matchesTextFilter(filters.paintCompany, record.paintCompany) &&
-    matchesTextFilter(filters.resin, record.resin) &&
-    matchesTextFilter(filters.totalThickness, record.totalThickness) &&
-    matchesTextFilter(filters.primerThickness, record.primerThickness) &&
-    matchesTextFilter(filters.coat, record.coat) &&
-    matchesTextFilter(filters.bake, record.bake) &&
-    matchesTextFilter(filters.supplierPeel, record.supplierPeel) &&
-    matchesTextFilter(filters.supplierFadeRoof, record.supplierFadeRoof) &&
-    matchesTextFilter(filters.supplierFadeWall, record.supplierFadeWall) &&
-    matchesTextFilter(filters.supplierChalkRoof, record.supplierChalkRoof) &&
-    matchesTextFilter(filters.supplierChalkWall, record.supplierChalkWall) &&
-    matchesTextFilter(filters.notes, record.notes)
-  )
+interface WarrantyIssuancePageProps {
+  isActive?: boolean
+  highlightRequestId?: string | null
+  onHighlightRequestHandled?: () => void
 }
 
-export function WarrantyIssuancePage() {
-  const [records, setRecords] = useState<WarrantyRecord[]>(() => loadWarrantyRecords())
-  const [filters, setFilters] = useState(emptyWarrantyTableFilters)
-  const [editing, setEditing] = useState(false)
-  const [saveMessage, setSaveMessage] = useState('')
-  const [newRowIds, setNewRowIds] = useState<Set<string>>(new Set())
-  const [highlightedRowId, setHighlightedRowId] = useState<string | null>(null)
-  const [insertAnchorId, setInsertAnchorId] = useState<string | null>(null)
+export function WarrantyIssuancePage({
+  isActive = true,
+  highlightRequestId = null,
+  onHighlightRequestHandled,
+}: WarrantyIssuancePageProps) {
+  const { user } = useAuth()
+  const canManageQuality = canManageWarrantyIssuanceQuality(user?.email)
+  const [requestRecords, setRequestRecords] = useState(() => getWarrantyRequestRecords())
+  const [requestEditing, setRequestEditing] = useState(false)
+  const [requestSaveMessage, setRequestSaveMessage] = useState('')
+  const [highlightedRequestId, setHighlightedRequestId] = useState<string | null>(null)
+  const [requestModalOpen, setRequestModalOpen] = useState(false)
+  const [viewingRequest, setViewingRequest] = useState<WarrantyIssuanceRequestRecord | null>(null)
+  const [draftFromDate, setDraftFromDate] = useState('')
+  const [draftToDate, setDraftToDate] = useState('')
+  const [draftKeyword, setDraftKeyword] = useState('')
+  const [appliedFromDate, setAppliedFromDate] = useState('')
+  const [appliedToDate, setAppliedToDate] = useState('')
+  const [appliedKeyword, setAppliedKeyword] = useState('')
+  const [isDateFilterActive, setIsDateFilterActive] = useState(false)
+  const [isKeywordFilterActive, setIsKeywordFilterActive] = useState(false)
+  const [searchError, setSearchError] = useState('')
+
+  const filteredRequestRecords = useMemo(() => {
+    let result = requestRecords
+    if (isDateFilterActive) {
+      result = filterRecordsByIssueDateRange(result, appliedFromDate, appliedToDate)
+    }
+    if (isKeywordFilterActive) {
+      result = filterRecordsByKeyword(result, appliedKeyword)
+    }
+    return result
+  }, [
+    requestRecords,
+    isDateFilterActive,
+    isKeywordFilterActive,
+    appliedFromDate,
+    appliedToDate,
+    appliedKeyword,
+  ])
 
   useEffect(() => {
-    if (!highlightedRowId) return
-    const timer = window.setTimeout(() => setHighlightedRowId(null), 4000)
+    if (!isActive) return
+    setRequestRecords(getWarrantyRequestRecords())
+  }, [isActive])
+
+  useEffect(() => {
+    if (!isActive || !highlightRequestId) return
+
+    setRequestRecords(getWarrantyRequestRecords())
+    setDraftFromDate('')
+    setDraftToDate('')
+    setDraftKeyword('')
+    setAppliedFromDate('')
+    setAppliedToDate('')
+    setAppliedKeyword('')
+    setIsDateFilterActive(false)
+    setIsKeywordFilterActive(false)
+    setSearchError('')
+    setRequestEditing(false)
+    setRequestSaveMessage('')
+    setHighlightedRequestId(highlightRequestId)
+    onHighlightRequestHandled?.()
+  }, [isActive, highlightRequestId, onHighlightRequestHandled])
+
+  useEffect(() => {
+    if (!highlightedRequestId) return
+    const timer = window.setTimeout(() => setHighlightedRequestId(null), 4000)
     return () => clearTimeout(timer)
-  }, [highlightedRowId])
+  }, [highlightedRequestId])
 
-  const filteredRecords = useMemo(
-    () => records.filter((record) => recordMatchesFilters(record, filters)),
-    [records, filters]
-  )
-
-  const displayRecords = useMemo(() => {
-    const filteredIds = new Set(filteredRecords.map((r) => r.id))
-    const extraNewRows = records.filter((r) => newRowIds.has(r.id) && !filteredIds.has(r.id))
-    return [...filteredRecords, ...extraNewRows]
-  }, [filteredRecords, records, newRowIds])
-
-  const handleEdit = () => {
-    setEditing(true)
-    setInsertAnchorId(null)
-    setSaveMessage('')
+  const handleRequestEdit = () => {
+    setRequestEditing(true)
+    setRequestSaveMessage('')
   }
 
-  const handleAddRow = () => {
-    const newRow = createEmptyWarrantyRecord()
-    setRecords((prev) => {
-      const anchorIndex = insertAnchorId ? prev.findIndex((record) => record.id === insertAnchorId) : -1
-      const insertAt = anchorIndex >= 0 ? anchorIndex : prev.length
-      const next = [...prev]
-      next.splice(insertAt, 0, newRow)
-      return next
-    })
-    setNewRowIds((prev) => new Set(prev).add(newRow.id))
-    setHighlightedRowId(newRow.id)
-    setSaveMessage('')
+  const handleRequestSave = () => {
+    persistWarrantyRequestRecords(requestRecords)
+    setRequestEditing(false)
+    setHighlightedRequestId(null)
+    setRequestSaveMessage('저장되었습니다.')
+    setTimeout(() => setRequestSaveMessage(''), 3000)
   }
 
-  const handleSave = () => {
-    saveWarrantyRecords(records)
-    setNewRowIds(new Set())
-    setEditing(false)
-    setHighlightedRowId(null)
-    setInsertAnchorId(null)
-    setSaveMessage('저장되었습니다.')
-    setTimeout(() => setSaveMessage(''), 3000)
+  const handleRequestDataReset = () => {
+    const records = reloadWarrantyRequestRecords()
+    setRequestRecords(records)
+    setHighlightedRequestId(null)
+    setRequestSaveMessage('변경 내용을 되돌렸습니다.')
+    setTimeout(() => setRequestSaveMessage(''), 3000)
   }
 
-  const handleDataReset = () => {
-    setRecords(loadWarrantyRecords())
-    setNewRowIds(new Set())
-    setHighlightedRowId(null)
-    setInsertAnchorId(null)
-    setSaveMessage('초기화되었습니다.')
-    setTimeout(() => setSaveMessage(''), 3000)
+  const handleDeleteRequest = (id: string) => {
+    setRequestRecords((prev) => prev.filter((record) => record.id !== id))
+    if (highlightedRequestId === id) setHighlightedRequestId(null)
+    setRequestSaveMessage('')
   }
 
-  const handleExcelDownload = () => {
-    downloadWarrantyExcel(records)
-  }
+  const handleRequestUpdate = (
+    id: string,
+    request: WarrantyIssuanceRequest,
+    options: { editScope: 'request' | 'quality' }
+  ) => {
+    if (options.editScope === 'quality' && !canManageQuality) return
 
-  const handleUpdate = (id: string, field: keyof WarrantyRecord, value: string) => {
-    setRecords((prev) =>
-      prev.map((record) => (record.id === id ? { ...record, [field]: value } : record))
+    const current = requestRecords.find((record) => record.id === id)
+    if (!current) return
+
+    const nextStatus = resolveStatusAfterSave(current.status, options.editScope)
+    const nextRecords = requestRecords.map((record) =>
+      record.id === id ? { ...record, ...request, status: nextStatus } : record
     )
-    setSaveMessage('')
+
+    try {
+      persistWarrantyRequestRecords(nextRecords)
+    } catch {
+      setRequestSaveMessage('저장 용량을 초과했습니다. 첨부 파일 크기를 줄여 주세요.')
+      setTimeout(() => setRequestSaveMessage(''), 5000)
+      return
+    }
+
+    setRequestRecords(nextRecords)
+    setHighlightedRequestId(id)
+    setRequestSaveMessage(
+      nextStatus === '발행 완료' ? '발행 완료 처리되었습니다.' : '의뢰 내용이 수정되었습니다.'
+    )
+    setTimeout(() => setRequestSaveMessage(''), 3000)
   }
 
-  const handleDeleteRow = (id: string) => {
-    setRecords((prev) => prev.filter((record) => record.id !== id))
-    setNewRowIds((prev) => {
-      const next = new Set(prev)
-      next.delete(id)
-      return next
-    })
-    if (highlightedRowId === id) setHighlightedRowId(null)
-    if (insertAnchorId === id) setInsertAnchorId(null)
-    setSaveMessage('')
-  }
-
-  const handleReorder = (fromId: string, toId: string) => {
-    setRecords((prev) => {
+  const handleRequestReorder = (fromId: string, toId: string) => {
+    setRequestRecords((prev) => {
       const fromIndex = prev.findIndex((record) => record.id === fromId)
       const toIndex = prev.findIndex((record) => record.id === toId)
       if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return prev
@@ -135,7 +168,72 @@ export function WarrantyIssuancePage() {
       next.splice(toIndex, 0, moved)
       return next
     })
-    setSaveMessage('')
+    setRequestSaveMessage('')
+  }
+
+  const handleRequestStatusChange = (id: string, nextStatus: string) => {
+    if (!canManageQuality) return
+
+    const nextRecords = requestRecords.map((record) =>
+      record.id === id ? { ...record, status: nextStatus } : record
+    )
+
+    try {
+      persistWarrantyRequestRecords(nextRecords)
+    } catch {
+      setRequestSaveMessage('저장 용량을 초과했습니다. 첨부 파일 크기를 줄여 주세요.')
+      setTimeout(() => setRequestSaveMessage(''), 5000)
+      return
+    }
+
+    setRequestRecords(nextRecords)
+    setViewingRequest((prev) => (prev?.id === id ? { ...prev, status: nextStatus } : prev))
+    setHighlightedRequestId(id)
+    setRequestSaveMessage('상태가 작성 중으로 변경되었습니다.')
+    setTimeout(() => setRequestSaveMessage(''), 3000)
+  }
+
+  const handleRequestExcelDownload = () => {
+    downloadWarrantyRequestExcel(filteredRequestRecords)
+  }
+
+  const handlePeriodSearch = () => {
+    const from = draftFromDate.trim() ? normalizeDate(draftFromDate.trim()) : ''
+    const to = draftToDate.trim() ? normalizeDate(draftToDate.trim()) : ''
+    const keyword = draftKeyword.trim()
+
+    if (!from && !to && !keyword) {
+      setSearchError('발행일자 또는 검색어를 입력해 주세요.')
+      return
+    }
+
+    if (from || to) {
+      const validationError = validateRequestDateRange(draftFromDate, draftToDate)
+      if (validationError) {
+        setSearchError(validationError)
+        return
+      }
+    }
+
+    setSearchError('')
+    setAppliedFromDate(from)
+    setAppliedToDate(to)
+    setAppliedKeyword(keyword)
+    setIsDateFilterActive(Boolean(from || to))
+    setIsKeywordFilterActive(Boolean(keyword))
+    setRequestSaveMessage('')
+  }
+
+  const handlePeriodReset = () => {
+    setDraftFromDate('')
+    setDraftToDate('')
+    setDraftKeyword('')
+    setAppliedFromDate('')
+    setAppliedToDate('')
+    setAppliedKeyword('')
+    setIsDateFilterActive(false)
+    setIsKeywordFilterActive(false)
+    setSearchError('')
   }
 
   return (
@@ -143,48 +241,71 @@ export function WarrantyIssuancePage() {
       <PageHeader
         subtitle="Warranty Management System"
         title="보증서 발행 관리"
-        description="보증서 발행 내역을 조회하고 관리합니다. 발행일자, 지역, 수요가, 색상 정보 및 보증 연한을 확인할 수 있습니다."
+        description="등록된 보증서 발행 의뢰를 조회·관리합니다."
       />
 
-      <Card label="WARRANTY LOG" title="보증서 발행 내역">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-text-secondary">
-              조회 결과 <span className="font-semibold text-accent">{displayRecords.length}</span>건
-            </p>
-            {editing && (
-              <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
-                수정 중
-              </span>
-            )}
-            {saveMessage && (
-              <span className="text-sm font-medium text-emerald-400">{saveMessage}</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
+      <WarrantyRequestStatusSummary records={requestRecords} />
+
+      <WarrantyRequestPeriodSearch
+        from={draftFromDate}
+        to={draftToDate}
+        keyword={draftKeyword}
+        error={searchError}
+        onFromChange={setDraftFromDate}
+        onToChange={setDraftToDate}
+        onKeywordChange={setDraftKeyword}
+        onSearch={handlePeriodSearch}
+        onReset={handlePeriodReset}
+      />
+
+      <Card
+        label="WARRANTY LOG"
+        title="보증서 발행 내역"
+        titleActions={
+          <>
             <button
               type="button"
-              onClick={handleEdit}
-              disabled={editing}
-              className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={handleRequestEdit}
+              disabled={requestEditing}
+              aria-label="수정"
+              title="수정"
+              className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
+                requestEditing
+                  ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
+                  : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
+              }`}
             >
               <Pencil className="h-4 w-4" />
-              수정
             </button>
-            {editing && (
-              <>
+            <button
+              type="button"
+              onClick={handleRequestExcelDownload}
+              aria-label="Excel 다운로드"
+              title="Excel 다운로드"
+              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-emerald-800/50 bg-emerald-950/40 text-emerald-300 transition-all hover:border-emerald-400 hover:text-emerald-200 hover:shadow-[0_0_12px_rgba(52,211,153,0.45)] hover:ring-2 hover:ring-emerald-400/35 active:border-emerald-400 active:text-emerald-100 active:shadow-[0_0_14px_rgba(52,211,153,0.55)] active:ring-2 active:ring-emerald-400/45 focus-visible:border-emerald-400 focus-visible:text-emerald-200 focus-visible:shadow-[0_0_12px_rgba(52,211,153,0.45)] focus-visible:ring-2 focus-visible:ring-emerald-400/35"
+            >
+              <FileDown className="h-4 w-4" />
+            </button>
+          </>
+        }
+      >
+        {(requestEditing || requestSaveMessage) && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              {requestEditing && (
+                <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
+                  수정 중
+                </span>
+              )}
+              {requestSaveMessage && (
+                <span className="text-sm font-medium text-emerald-400">{requestSaveMessage}</span>
+              )}
+            </div>
+            {requestEditing && (
+              <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={handleAddRow}
-                  aria-label="행 추가"
-                  title="행 추가"
-                  className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSave}
+                  onClick={handleRequestSave}
                   className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
                 >
                   <Save className="h-4 w-4" />
@@ -192,38 +313,41 @@ export function WarrantyIssuancePage() {
                 </button>
                 <button
                   type="button"
-                  onClick={handleDataReset}
+                  onClick={handleRequestDataReset}
                   className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
                 >
                   <RotateCcw className="h-4 w-4" />
-                  초기화
+                  되돌리기
                 </button>
-              </>
+              </div>
             )}
-            <button
-              type="button"
-              onClick={handleExcelDownload}
-              className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-emerald-800/50 bg-emerald-950/40 px-4 py-2 text-sm font-medium text-emerald-300 transition-colors hover:bg-emerald-950/60"
-            >
-              <FileDown className="h-4 w-4" />
-              EXCEL DOWNLOAD
-            </button>
           </div>
-        </div>
+        )}
 
-        <EditableWarrantyTable
-          editing={editing}
-          records={displayRecords}
-          highlightedRowId={editing ? highlightedRowId : null}
-          insertAnchorId={editing ? insertAnchorId : null}
-          onSelectInsertAnchor={editing ? setInsertAnchorId : undefined}
-          onUpdate={handleUpdate}
-          onDelete={handleDeleteRow}
-          onReorder={editing ? handleReorder : undefined}
-          filters={filters}
-          onFiltersChange={setFilters}
+        <WarrantyRequestTable
+          records={filteredRequestRecords}
+          editing={requestEditing}
+          highlightedRowId={highlightedRequestId}
+          onDelete={requestEditing ? handleDeleteRequest : undefined}
+          onReorder={requestEditing ? handleRequestReorder : undefined}
+          onRowClick={(record) => {
+            setViewingRequest(record)
+            setRequestModalOpen(true)
+          }}
         />
       </Card>
+
+      <WarrantyIssuanceRequestModal
+        open={requestModalOpen}
+        canManageQuality={canManageQuality}
+        onClose={() => {
+          setRequestModalOpen(false)
+          setViewingRequest(null)
+        }}
+        onUpdate={handleRequestUpdate}
+        onStatusChange={handleRequestStatusChange}
+        viewRequest={viewingRequest}
+      />
     </div>
   )
 }

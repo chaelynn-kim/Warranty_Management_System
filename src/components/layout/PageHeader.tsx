@@ -2,7 +2,7 @@ import type { CSSProperties, ReactNode } from 'react'
 
 interface PageHeaderProps {
   subtitle?: string
-  title: string
+  title: ReactNode
   description: ReactNode
 }
 
@@ -28,17 +28,23 @@ export function PageHeaderCautionIcon({ className = 'h-4 w-4' }: { className?: s
 }
 
 export function PageHeader({ subtitle, title, description }: PageHeaderProps) {
+  const subtitleEl = subtitle ? (
+    <p className="mb-1.5 text-[10px] font-semibold tracking-widest text-text-muted uppercase sm:text-xs">
+      {subtitle}
+    </p>
+  ) : null
+
+  const descriptionEl = (
+    <div className="mt-3 max-w-3xl space-y-1.5 text-sm leading-relaxed text-text-secondary">
+      {typeof description === 'string' ? <p>{description}</p> : description}
+    </div>
+  )
+
   return (
     <div className="mb-6 sm:mb-8">
-      {subtitle && (
-        <p className="mb-1.5 text-[10px] font-semibold tracking-widest text-text-muted uppercase sm:text-xs">
-          {subtitle}
-        </p>
-      )}
+      {subtitleEl}
       <h1 className="text-xl font-bold text-text-primary sm:text-2xl lg:text-3xl">{title}</h1>
-      <div className="mt-3 max-w-3xl space-y-1.5 text-sm leading-relaxed text-text-secondary">
-        {typeof description === 'string' ? <p>{description}</p> : description}
-      </div>
+      {descriptionEl}
     </div>
   )
 }

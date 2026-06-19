@@ -1,0 +1,146 @@
+import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
+import { parseMultiValue } from '../constants/warrantyOptions'
+import {
+  WARRANTY_REQUEST_DETAIL_REGION_CUSTOM,
+  WARRANTY_REQUEST_TEAM_OTHER,
+  WARRANTY_TERM_OTHER,
+} from '../constants/warrantyRequestOptions'
+import { WARRANTY_REQUEST_STATUS_PENDING } from '../constants/warrantyRequestStatus'
+import { normalizeDate } from './helpers'
+import { normalizeRequestStatus } from './warrantyRequestStatus'
+
+const STORAGE_KEY = 'warranty-issuance-requests'
+const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
+const CURRENT_VERSION = '6'
+
+function assignSequenceNumbers(
+  records: WarrantyIssuanceRequestRecord[]
+): WarrantyIssuanceRequestRecord[] {
+  const needsBackfill = records.some(
+    (record) => typeof record.sequenceNo !== 'number' || record.sequenceNo <= 0
+  )
+  if (!needsBackfill) return records
+
+  const sorted = [...records].sort((a, b) => {
+    const dateA = a.requestDate || ''
+    const dateB = b.requestDate || ''
+    if (dateA !== dateB) return dateA.localeCompare(dateB)
+    return a.id.localeCompare(b.id)
+  })
+
+  const idToSequenceNo = new Map(sorted.map((record, index) => [record.id, index + 1]))
+
+  return records.map((record) => ({
+    ...record,
+    sequenceNo:
+      typeof record.sequenceNo === 'number' && record.sequenceNo > 0
+        ? record.sequenceNo
+        : idToSequenceNo.get(record.id)!,
+  }))
+}
+
+export function createRequestRecord(
+  request: WarrantyIssuanceRequest,
+  existingRecords: WarrantyIssuanceRequestRecord[] = []
+): WarrantyIssuanceRequestRecord {
+  const maxSequenceNo = existingRecords.reduce(
+    (max, record) => Math.max(max, record.sequenceNo ?? 0),
+    0
+  )
+
+  return {
+    id: crypto.randomUUID(),
+    status: WARRANTY_REQUEST_STATUS_PENDING,
+    sequenceNo: maxSequenceNo + 1,
+    ...request,
+  }
+}
+
+function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): WarrantyIssuanceRequestRecord {
+  const legacy = record as WarrantyIssuanceRequestRecord & {
+    reviewMemo?: string
+    fileAttachment?: string
+    companyWarrantyAttachment?: string
+    supplierWarrantyAttachment?: string
+  }
+  const legacyFileAttachment = legacy.fileAttachment ?? ''
+  const legacyCompany =
+    legacy.companyWarrantyAttachment ?? record.companyWarrantyAttachmentKo ?? legacyFileAttachment
+  const legacySupplier =
+    legacy.supplierWarrantyAttachment ?? record.supplierWarrantyAttachmentKo ?? ''
+
+  return {
+    ...record,
+    requestDate: record.requestDate ? normalizeDate(record.requestDate) : record.requestDate,
+    issueDate: record.issueDate ? normalizeDate(record.issueDate) : '',
+    companyWarrantyAttachmentKo: record.companyWarrantyAttachmentKo ?? legacyCompany,
+    companyWarrantyAttachmentEn: record.companyWarrantyAttachmentEn ?? '',
+    supplierWarrantyAttachmentKo: record.supplierWarrantyAttachmentKo ?? legacySupplier,
+    supplierWarrantyAttachmentEn: record.supplierWarrantyAttachmentEn ?? '',
+    qualityAuthor: record.qualityAuthor ?? '',
+    reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
+    status: normalizeRequestStatus(record.status),
+  }
+}
+
+export function loadWarrantyRequestRecords(): WarrantyIssuanceRequestRecord[] {
+  try {
+    const version = localStorage.getItem(STORAGE_VERSION_KEY)
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as WarrantyIssuanceRequestRecord[]
+      const normalized = assignSequenceNumbers(parsed.map(normalizeRequestRecord))
+      if (version !== CURRENT_VERSION) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+        localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+      }
+      return normalized
+    }
+  } catch {
+    // fall through
+  }
+  localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+  return []
+}
+
+export function saveWarrantyRequestRecords(records: WarrantyIssuanceRequestRecord[]): void {
+  const normalized = assignSequenceNumbers(records.map(normalizeRequestRecord))
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
+  localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+}
+
+export function formatRequestTeam(record: WarrantyIssuanceRequest): string {
+  if (record.requestTeam === WARRANTY_REQUEST_TEAM_OTHER) {
+    return record.requestTeamCustom.trim() || '-'
+  }
+  return record.requestTeam.trim() || '-'
+}
+
+export function formatRequestDetailRegion(record: WarrantyIssuanceRequest): string {
+  const selected = parseMultiValue(record.detailRegion)
+  const labels = selected.filter((item) => item !== WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)
+
+  if (selected.includes(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM) && record.detailRegionCustom.trim()) {
+    labels.push(record.detailRegionCustom.trim())
+  }
+
+  return labels.length > 0 ? labels.join(', ') : '-'
+}
+
+export function formatRequestWarrantyTerm(record: WarrantyIssuanceRequest): string {
+  if (record.warrantyTermMode === WARRANTY_TERM_OTHER) {
+    return record.warrantyTermCustom.trim() || '-'
+  }
+  return record.warrantyTermMode.trim() || '-'
+}
+
+export function displayRequestValue(value: string): string {
+  return value.trim() || '-'
+}
+
+export function toWarrantyIssuanceRequest(
+  record: WarrantyIssuanceRequestRecord
+): WarrantyIssuanceRequest {
+  const { id: _id, status: _status, sequenceNo: _sequenceNo, ...request } = record
+  return request
+}

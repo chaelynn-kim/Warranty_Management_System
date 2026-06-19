@@ -16,6 +16,8 @@ import {
   periodTableClass,
   periodTdClass,
   periodThClass,
+  periodThGroupClass,
+  periodThStackedClass,
   periodThStickyRow1,
   periodThStickyRow2,
   periodThStickyRowSpan,
@@ -47,20 +49,18 @@ function PreviewTable({ products }: { products: ProductWarranty[] }) {
           >
             {groupHeader}
           </th>
-          <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-            PEEL/FLAKE
-            <br />
-            (도막박리)
+          <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
+            <span className="block break-all">PEEL/FLAKE</span>
+            <span className="block">(도막박리)</span>
           </th>
-          <th rowSpan={2} className={`${periodThClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-            PERFORATION
-            <br />
-            (천공)
+          <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
+            <span className="block break-all">PERFORATION</span>
+            <span className="block">(천공)</span>
           </th>
-          <th colSpan={3} className={`${periodThClass} ${periodThStickyRow1}`}>
+          <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
             COLOR FADING (변색/탈색)
           </th>
-          <th colSpan={3} className={`${periodThClass} ${periodThStickyRow1}`}>
+          <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
             CHALK (백화/묻어남)
           </th>
         </tr>

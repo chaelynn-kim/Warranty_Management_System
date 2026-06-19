@@ -5,6 +5,20 @@ export const COMPANY_EMAIL_SUFFIX = '@seah.co.kr'
 export const WARRANTY_ADMIN_EMAIL = 'chaelynn.kim@seah.co.kr'
 export const EXTERNAL_TEST_TAB_ALLOWED_EMAIL = WARRANTY_ADMIN_EMAIL
 
+const WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS = new Set([
+  'sachunsa@seah.co.kr',
+  'kss2000@seah.co.kr',
+  'jeongyeon.hwang@seah.co.kr',
+  'jonghyuk.lee@seah.co.kr',
+  'jeongkyu.choi@seah.co.kr',
+  'chaelynn.kim@seah.co.kr',
+])
+
+export function canManageWarrantyIssuanceQuality(email: string | undefined | null): boolean {
+  if (typeof email !== 'string') return false
+  return WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS.has(email.trim().toLowerCase())
+}
+
 export function isCompanyEmail(email: string | undefined | null): boolean {
   return typeof email === 'string' && email.endsWith(COMPANY_EMAIL_SUFFIX)
 }

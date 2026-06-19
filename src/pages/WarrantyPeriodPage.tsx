@@ -49,11 +49,10 @@ function adjustIndexAfterReorder(
   return currentIndex
 }
 
-function EditToolbar({
+function EditingToolbar({
   editing,
   saveMessage,
   canAdd,
-  onEdit,
   onSave,
   onAdd,
   onReset,
@@ -61,11 +60,12 @@ function EditToolbar({
   editing: boolean
   saveMessage: string
   canAdd: boolean
-  onEdit: () => void
   onSave: () => void
   onAdd: () => void
   onReset: () => void
 }) {
+  if (!editing && !saveMessage) return null
+
   return (
     <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
       <div className="flex flex-wrap items-center gap-3">
@@ -78,47 +78,36 @@ function EditToolbar({
           <span className="text-sm font-medium text-emerald-400">{saveMessage}</span>
         )}
       </div>
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onEdit}
-          disabled={editing}
-          className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Pencil className="h-4 w-4" />
-          수정
-        </button>
-        {editing && (
-          <>
-            <button
-              type="button"
-              onClick={onAdd}
-              disabled={!canAdd}
-              aria-label="행 추가"
-              title={canAdd ? '행 추가' : '이 탭에서는 행 추가를 사용할 수 없습니다'}
-              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onSave}
-              className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-            >
-              <Save className="h-4 w-4" />
-              저장
-            </button>
-            <button
-              type="button"
-              onClick={onReset}
-              className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-            >
-              <RotateCcw className="h-4 w-4" />
-              초기화
-            </button>
-          </>
-        )}
-      </div>
+      {editing && (
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onAdd}
+            disabled={!canAdd}
+            aria-label="행 추가"
+            title={canAdd ? '행 추가' : '이 탭에서는 행 추가를 사용할 수 없습니다'}
+            className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <Plus className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
+          >
+            <Save className="h-4 w-4" />
+            저장
+          </button>
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+          >
+            <RotateCcw className="h-4 w-4" />
+            초기화
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -572,7 +561,28 @@ export function WarrantyPeriodPage() {
         ))}
       </nav>
 
-      <Card label="WARRANTY GUIDE" title={sectionTitle}>
+      <Card
+        label="WARRANTY GUIDE"
+        title={sectionTitle}
+        titleActions={
+          canEdit ? (
+            <button
+              type="button"
+              onClick={handleEdit}
+              disabled={effectiveEditing}
+              aria-label="수정"
+              title="수정"
+              className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
+                effectiveEditing
+                  ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
+                  : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
+              }`}
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          ) : undefined
+        }
+      >
         {activeTab === 'notCovered' && (
             <p className="mb-4 flex items-center gap-1.5 text-sm leading-relaxed text-text-secondary">
               <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
@@ -580,11 +590,10 @@ export function WarrantyPeriodPage() {
             </p>
         )}
         {canEdit && (
-          <EditToolbar
+          <EditingToolbar
             editing={effectiveEditing}
             saveMessage={saveMessage}
             canAdd={canToolbarAddNow}
-            onEdit={handleEdit}
             onSave={handleSave}
             onAdd={handleToolbarAdd}
             onReset={handleReset}
