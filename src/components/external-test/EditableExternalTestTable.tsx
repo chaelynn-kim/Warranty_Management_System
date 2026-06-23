@@ -136,6 +136,7 @@ const highlightRowClass =
   'bg-accent/25 ring-2 ring-inset ring-accent shadow-[inset_0_0_0_1px_rgba(59,130,246,0.4)] hover:bg-accent/30'
 
 const colPurpose = 'min-w-[220px] w-[28%]'
+const colSampleName = 'min-w-[136px] w-[136px] whitespace-nowrap'
 const colItemName = 'min-w-[300px] w-[32%]'
 const colNotes = 'min-w-[240px] w-[22%]'
 const colDate = 'min-w-[108px] w-[108px] whitespace-nowrap'
@@ -276,13 +277,13 @@ export function EditableExternalTestTable({
         ref={scrollContainerRef}
         className="max-h-[calc(100dvh-260px)] min-h-[560px] overflow-auto rounded-lg border border-border"
       >
-        <table className="w-full min-w-[1560px] border-separate border-spacing-0 text-left text-xs sm:text-sm">
+        <table className="w-full min-w-[1620px] border-separate border-spacing-0 text-left text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-border bg-bg-tertiary">
               {editing && <th className={`w-11 min-w-11 px-1 py-3 ${thSticky}`} />}
               <th className={`${thBase} whitespace-nowrap ${thSticky}`}>NO</th>
               <th className={`${thBase} ${colPurpose} ${thSticky}`}>용도</th>
-              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>규격명</th>
+              <th className={`${thBase} ${colSampleName} ${thSticky}`}>규격명</th>
               <th className={`${thBase} whitespace-nowrap ${thSticky}`}>색상명</th>
               <th className={`${thBase} whitespace-nowrap ${thSticky}`}>작업장</th>
               <th className={`${thBase} ${colDate} ${thSticky}`}>생산일자</th>
@@ -407,14 +408,14 @@ export function EditableExternalTestTable({
                         <ReadOnlyCell value={record.purpose} />
                       )}
                     </td>
-                    <td className="px-1 py-1 align-top">
+                    <td className={`px-1 py-1 align-top ${colSampleName}`}>
                       {editing ? (
                         <CellInput
                           value={record.sampleName}
                           onChange={(v) => onUpdate(record.id, 'sampleName', v)}
                         />
                       ) : (
-                        <ReadOnlyCell value={record.sampleName} />
+                        <ReadOnlyCell value={record.sampleName} nowrap />
                       )}
                     </td>
                     <td className="px-1 py-1 align-top">
