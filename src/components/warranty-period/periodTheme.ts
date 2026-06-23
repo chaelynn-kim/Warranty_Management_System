@@ -8,6 +8,12 @@ export const periodCardTitleClass =
 
 export const periodCardHeaderClass = 'mb-4 space-y-1'
 
+export const periodCardLabelClass =
+  'text-[calc(10px+1pt)] font-semibold tracking-wide text-text-muted'
+
+export const periodCardTitleHeadingClass =
+  'min-w-0 text-base font-semibold leading-snug text-text-primary sm:text-lg'
+
 export const periodCautionNoticeClass =
   'flex min-w-0 items-center gap-1.5 text-sm font-bold leading-snug text-text-primary'
 

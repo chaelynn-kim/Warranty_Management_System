@@ -27,12 +27,28 @@ import {
 import type { WarrantyIssuanceRequest } from '../../types'
 import { defaultRequestDate } from '../../utils/helpers'
 import { validateQualityCompletion } from '../../utils/warrantyRequestStatus'
+import { periodCardHeaderClass } from '../warranty-period/periodTheme'
+import {
+  filterActionButtonClass,
+  filterResetButtonClass,
+  filterSearchButtonClass,
+} from '../ui/FilterActions'
 
 const fieldLabel = 'mb-1.5 block text-sm font-medium text-text-secondary'
 const fieldInput =
   'w-full rounded-lg border border-border bg-bg-primary/50 px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent'
 const fieldSelect = `${fieldInput} cursor-pointer appearance-none`
-const toolbarButtonBase = 'inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm'
+
+export const warrantyRequestToolbarButtonClass = filterActionButtonClass
+
+export const warrantyRequestToolbarResetButtonClass = filterResetButtonClass
+
+export function warrantyRequestToolbarSubmitButtonClass(isComplete: boolean): string {
+  return `${filterSearchButtonClass} ${
+    isComplete ? 'shadow-[0_0_16px_rgba(59,130,246,0.55)]' : 'shadow-md shadow-accent/25'
+  }`
+}
+
 const toolbarStickyClass =
   'sticky top-14 z-40 -mx-4 mb-8 space-y-2 border-b border-border/60 bg-bg-secondary/95 px-4 pb-4 backdrop-blur-sm sm:-mx-6 sm:px-6'
 const dropdownOptionClass = (active: boolean) =>
@@ -789,19 +805,21 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     <>
       {showReset && !isRequestReadOnly && (
         <div className={toolbarStickyClass}>
-          {toolbarLabel}
-          <div className="flex items-center justify-between gap-3">
-            {toolbarTitle}
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={handleReset}
-                className={`${toolbarButtonBase} border-border bg-bg-primary/50 text-text-secondary transition-colors hover:border-accent hover:text-text-primary`}
-              >
-                <RotateCcw className="h-4 w-4" />
-                초기화
-              </button>
-              {typeof actionSlot === 'function' ? actionSlot({ isComplete: isRequestComplete }) : actionSlot}
+          <div className={`${periodCardHeaderClass} mb-0`}>
+            {toolbarLabel}
+            <div className="flex items-start justify-between gap-3">
+              {toolbarTitle}
+              <div className="flex shrink-0 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className={warrantyRequestToolbarResetButtonClass}
+                >
+                  <RotateCcw className="h-4 w-4 shrink-0" />
+                  초기화
+                </button>
+                {typeof actionSlot === 'function' ? actionSlot({ isComplete: isRequestComplete }) : actionSlot}
+              </div>
             </div>
           </div>
           {toolbarNotice}

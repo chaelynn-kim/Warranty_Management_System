@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pencil, Plus, RotateCcw, Save } from 'lucide-react'
+import { filterResetButtonClass, filterSearchButtonClass } from '../ui/FilterActions'
 import { periodSectionTitleClass } from './periodTheme'
 
 export type PeriodSectionId =
@@ -36,20 +37,12 @@ function EditingToolbar({
       >
         <Plus className="h-4 w-4" />
       </button>
-      <button
-        type="button"
-        onClick={onSave}
-        className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-      >
-        <Save className="h-4 w-4" />
+      <button type="button" onClick={onSave} className={filterSearchButtonClass}>
+        <Save className="h-4 w-4 shrink-0" />
         저장
       </button>
-      <button
-        type="button"
-        onClick={onReset}
-        className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-      >
-        <RotateCcw className="h-4 w-4" />
+      <button type="button" onClick={onReset} className={filterResetButtonClass}>
+        <RotateCcw className="h-4 w-4 shrink-0" />
         초기화
       </button>
     </div>
@@ -121,20 +114,12 @@ export function PeriodSection({
           {onAdd && <EditingToolbar canAdd={canAdd} onSave={onSave} onAdd={onAdd} onReset={onReset} />}
           {!onAdd && (
             <div className="ml-auto flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onSave}
-                className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-              >
-                <Save className="h-4 w-4" />
+              <button type="button" onClick={onSave} className={filterSearchButtonClass}>
+                <Save className="h-4 w-4 shrink-0" />
                 저장
               </button>
-              <button
-                type="button"
-                onClick={onReset}
-                className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-              >
-                <RotateCcw className="h-4 w-4" />
+              <button type="button" onClick={onReset} className={filterResetButtonClass}>
+                <RotateCcw className="h-4 w-4 shrink-0" />
                 초기화
               </button>
             </div>

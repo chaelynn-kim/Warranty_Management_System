@@ -156,7 +156,7 @@ export function WarrantyRequestTable({
         </p>
       ) : (
         onRowClick && (
-          <p className="mb-2 flex items-center gap-1.5 text-[calc(0.75rem+1pt)] text-text-muted">
+          <p className="mb-2 flex items-center gap-1.5 text-[calc(0.75rem+1pt)] font-bold text-text-primary">
             <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
             <span>행을 클릭하면 의뢰서 상세 내용을 확인할 수 있습니다.</span>
           </p>

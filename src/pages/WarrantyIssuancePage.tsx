@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Save, RotateCcw, Pencil, FileDown } from 'lucide-react'
 import { Card } from '../components/ui/Card'
+import { filterResetButtonClass, filterSearchButtonClass } from '../components/ui/FilterActions'
 import { PageHeader } from '../components/layout/PageHeader'
 import { WarrantyIssuanceRequestModal } from '../components/warranty-request/WarrantyIssuanceRequestModal'
 import { WarrantyRequestTable } from '../components/warranty-request/WarrantyRequestTable'
@@ -8,7 +9,7 @@ import { WarrantyRequestPeriodSearch } from '../components/warranty-request/Warr
 import { WarrantyRequestStatusSummary } from '../components/warranty-request/WarrantyRequestStatusSummary'
 import { useAuth } from '../contexts/AuthContext'
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
-import { canManageWarrantyIssuanceQuality, canReceiveWarrantyRequest, canTeamLeaderApproveWarrantyRequest, TEAM_LEADER_APPROVE_ONLY_MESSAGE } from '../utils/authValidation'
+import { canManageWarrantyIssuanceQuality, canReceiveWarrantyRequest, canTeamLeaderApproveWarrantyRequest, canEditWarrantyIssuanceLog, TEAM_LEADER_APPROVE_ONLY_MESSAGE } from '../utils/authValidation'
 import { resolveStatusAfterSave, normalizeRequestStatus } from '../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_RECEIVED,
@@ -41,6 +42,7 @@ export function WarrantyIssuancePage({
   const canManageQuality = canManageWarrantyIssuanceQuality(user?.email)
   const canTeamLeaderApprove = canTeamLeaderApproveWarrantyRequest(user?.email)
   const canReceiveRequest = canReceiveWarrantyRequest(user?.email)
+  const canEditLog = canEditWarrantyIssuanceLog(user?.email)
   const [requestRecords, setRequestRecords] = useState(() => getWarrantyRequestRecords())
   const [requestEditing, setRequestEditing] = useState(false)
   const [requestSaveMessage, setRequestSaveMessage] = useState('')
@@ -74,6 +76,12 @@ export function WarrantyIssuancePage({
     appliedToDate,
     appliedKeyword,
   ])
+
+  useEffect(() => {
+    if (!canEditLog && requestEditing) {
+      setRequestEditing(false)
+    }
+  }, [canEditLog, requestEditing])
 
   useEffect(() => {
     if (!isActive) return
@@ -282,20 +290,22 @@ export function WarrantyIssuancePage({
         title="보증서 발행 내역"
         titleActions={
           <>
-            <button
-              type="button"
-              onClick={handleRequestEdit}
-              disabled={requestEditing}
-              aria-label="수정"
-              title="수정"
-              className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
-                requestEditing
-                  ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
-                  : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
-              }`}
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
+            {canEditLog && (
+              <button
+                type="button"
+                onClick={handleRequestEdit}
+                disabled={requestEditing}
+                aria-label="수정"
+                title="수정"
+                className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
+                  requestEditing
+                    ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
+                    : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
+                }`}
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={handleRequestExcelDownload}
@@ -322,20 +332,12 @@ export function WarrantyIssuancePage({
             </div>
             {requestEditing && (
               <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleRequestSave}
-                  className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-                >
-                  <Save className="h-4 w-4" />
+                <button type="button" onClick={handleRequestSave} className={filterSearchButtonClass}>
+                  <Save className="h-4 w-4 shrink-0" />
                   저장
                 </button>
-                <button
-                  type="button"
-                  onClick={handleRequestDataReset}
-                  className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-                >
-                  <RotateCcw className="h-4 w-4" />
+                <button type="button" onClick={handleRequestDataReset} className={filterResetButtonClass}>
+                  <RotateCcw className="h-4 w-4 shrink-0" />
                   되돌리기
                 </button>
               </div>

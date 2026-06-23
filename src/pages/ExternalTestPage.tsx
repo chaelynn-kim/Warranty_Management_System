@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Save, FileDown, RotateCcw, Pencil } from 'lucide-react'
 import { Card } from '../components/ui/Card'
+import { filterResetButtonClass, filterSearchButtonClass } from '../components/ui/FilterActions'
 import { PageHeader } from '../components/layout/PageHeader'
 import { EditableExternalTestTable } from '../components/external-test/EditableExternalTestTable'
 import { ExternalTestSearchPanel } from '../components/external-test/ExternalTestSearchPanel'
@@ -196,20 +197,12 @@ export function ExternalTestPage() {
             </button>
             {editing && (
               <>
-                <button
-                  type="button"
-                  onClick={handleSave}
-                  className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-hover"
-                >
-                  <Save className="h-4 w-4" />
+                <button type="button" onClick={handleSave} className={filterSearchButtonClass}>
+                  <Save className="h-4 w-4 shrink-0" />
                   저장
                 </button>
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
-                >
-                  <RotateCcw className="h-4 w-4" />
+                <button type="button" onClick={handleReset} className={filterResetButtonClass}>
+                  <RotateCcw className="h-4 w-4 shrink-0" />
                   초기화
                 </button>
               </>

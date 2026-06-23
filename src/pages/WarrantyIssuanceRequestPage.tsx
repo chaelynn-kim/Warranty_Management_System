@@ -5,7 +5,11 @@ import { NeonTitleIcon } from '../components/ui/NeonTitleIcon'
 import {
   WarrantyIssuanceRequestForm,
   type WarrantyIssuanceRequestFormHandle,
+  warrantyRequestToolbarSubmitButtonClass,
 } from '../components/warranty-request/WarrantyIssuanceRequestForm'
+import { periodCardLabelClass, periodCardTitleHeadingClass } from '../components/warranty-period/periodTheme'
+import { useAuth } from '../contexts/AuthContext'
+import { sendWarrantyRequestPendingEmail } from '../utils/emailNotification'
 import { createRequestRecord } from '../utils/warrantyRequestStorage'
 import {
   getWarrantyRequestRecords,
@@ -17,6 +21,7 @@ interface WarrantyIssuanceRequestPageProps {
 }
 
 export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssuanceRequestPageProps) {
+  const { user } = useAuth()
   const formRef = useRef<WarrantyIssuanceRequestFormHandle>(null)
   const [error, setError] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -57,6 +62,12 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       return
     }
 
+    void sendWarrantyRequestPendingEmail(request, { replyToEmail: user?.email ?? undefined }).catch(
+      (mailError) => {
+        console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
+      }
+    )
+
     formRef.current.reset()
     setConfirmOpen(false)
     onRequestSubmitted?.(newRecord.id)
@@ -67,7 +78,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       <PageHeader
         subtitle="WARRANTY REQUEST"
         title="보증서 발행 의뢰"
-        description="보증서 발행을 위해 아래 양식을 작성하신 후 [의뢰하기] 버튼을 클릭해 주세요."
+        description="보증서 발행을 위해 아래 양식 작성 후 [의뢰하기] 버튼을 클릭해 주세요."
       />
 
       <section className="rounded-xl border border-border bg-bg-secondary p-4 sm:p-6">
@@ -76,16 +87,8 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
           showReset
           showQualitySection={false}
           qualityReadOnly
-          toolbarLabel={
-            <p className="mb-1 text-[calc(10px+1pt)] font-semibold tracking-wide text-text-muted">
-              WARRANTY REQUEST FORM
-            </p>
-          }
-          toolbarTitle={
-            <h2 className="min-w-0 text-base font-semibold text-text-primary sm:text-lg">
-              보증서 발행 의뢰서
-            </h2>
-          }
+          toolbarLabel={<p className={periodCardLabelClass}>WARRANTY REQUEST FORM</p>}
+          toolbarTitle={<h2 className={periodCardTitleHeadingClass}>보증서 발행 의뢰서</h2>}
           toolbarNotice={
             error ? (
               <p className="text-sm font-medium text-red-400" role="alert" aria-live="polite">
@@ -97,15 +100,11 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
             <button
               type="button"
               onClick={handleSubmitClick}
-              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-white transition-all duration-300 ${
-                isComplete
-                  ? 'bg-accent shadow-[0_0_20px_rgba(59,130,246,0.65)] ring-2 ring-accent/50 hover:bg-accent-hover hover:shadow-[0_0_24px_rgba(59,130,246,0.75)]'
-                  : 'bg-accent shadow-lg shadow-accent/30 hover:bg-accent-hover'
-              }`}
+              className={warrantyRequestToolbarSubmitButtonClass(isComplete)}
             >
               <NeonTitleIcon
                 src="/icons/warranty-request-document.png"
-                className="h-4 w-4"
+                className="h-4 w-4 shrink-0"
               />
               의뢰하기
             </button>

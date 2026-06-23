@@ -47,12 +47,20 @@ export function isCompanyEmail(email: string | undefined | null): boolean {
   return typeof email === 'string' && email.endsWith(COMPANY_EMAIL_SUFFIX)
 }
 
+export function isWarrantyAdmin(email: string | undefined | null): boolean {
+  return normalizeEmail(email) === normalizeEmail(WARRANTY_ADMIN_EMAIL)
+}
+
 export function canAccessExternalTestTab(email: string | undefined | null): boolean {
-  return email === EXTERNAL_TEST_TAB_ALLOWED_EMAIL
+  return isWarrantyAdmin(email)
 }
 
 export function canEditWarrantyPeriod(email: string | undefined | null): boolean {
-  return email === WARRANTY_ADMIN_EMAIL
+  return isWarrantyAdmin(email)
+}
+
+export function canEditWarrantyIssuanceLog(email: string | undefined | null): boolean {
+  return isWarrantyAdmin(email)
 }
 
 export async function enforceCompanyEmail(
