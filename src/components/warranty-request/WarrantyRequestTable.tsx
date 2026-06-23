@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { File, GripVertical, X } from 'lucide-react'
+import { GripVertical, X } from 'lucide-react'
 import type { WarrantyIssuanceRequestRecord } from '../../types'
 import { formatDisplayDate } from '../../utils/helpers'
 import { isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
@@ -10,7 +10,9 @@ import {
 import {
   displayRequestValue,
   formatRequestDetailRegion,
+  formatRequestResin,
 } from '../../utils/warrantyRequestStorage'
+import { LanguageFlagIcon } from './LanguageFlagIcon'
 import { RequestStatusBadge } from './RequestStatusBadge'
 import { PageHeaderCautionIcon } from '../layout/PageHeader'
 
@@ -43,6 +45,9 @@ function ReadOnlyCell({
   )
 }
 
+const attachmentButtonClass =
+  'group/flag inline-flex items-center justify-center rounded-lg p-0.5 transition-all hover:shadow-[0_0_14px_rgba(59,130,246,0.55)] hover:ring-2 hover:ring-accent/45 active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45'
+
 function CompanyWarrantyAttachmentCell({
   koValue,
   enValue,
@@ -50,27 +55,36 @@ function CompanyWarrantyAttachmentCell({
   koValue: string
   enValue: string
 }) {
-  const files = [
-    ...parseFileAttachments(koValue).map((file) => ({ ...file, label: '국문' })),
-    ...parseFileAttachments(enValue).map((file) => ({ ...file, label: '영문' })),
-  ]
+  const attachments: {
+    label: '국문' | '영문'
+    language: 'ko' | 'en'
+    file: ReturnType<typeof parseFileAttachments>[number]
+  }[] = []
 
-  if (files.length === 0) {
+  const koFile = parseFileAttachments(koValue)[0]
+  const enFile = parseFileAttachments(enValue)[0]
+  if (koFile) attachments.push({ label: '국문', language: 'ko', file: koFile })
+  if (enFile) attachments.push({ label: '영문', language: 'en', file: enFile })
+
+  if (attachments.length === 0) {
     return <div className={`${cellClass} text-center text-text-muted`}>-</div>
   }
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5 px-1 py-1.5">
-      {files.map((file) => (
+      {attachments.map(({ label, language, file }) => (
         <button
-          key={`${file.label}-${file.id}`}
+          key={label}
           type="button"
-          onClick={() => downloadFileAttachment(file)}
-          aria-label={`당사 Warranty ${file.label} 다운로드: ${file.name}`}
-          title={`${file.label} · ${file.name}`}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-bg-primary/40 text-text-secondary transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_10px_rgba(59,130,246,0.35)]"
+          onClick={(event) => {
+            event.stopPropagation()
+            downloadFileAttachment(file)
+          }}
+          aria-label={`당사 Warranty ${label} 다운로드: ${file.name}`}
+          title={`${label} · ${file.name}`}
+          className={attachmentButtonClass}
         >
-          <File className="h-4 w-4" />
+          <LanguageFlagIcon language={language} />
         </button>
       ))}
     </div>
@@ -274,7 +288,7 @@ export function WarrantyRequestTable({
                     <ReadOnlyCell value={displayRequestValue(record.paintCompany)} align="center" />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={displayRequestValue(record.resin)} align="center" />
+                    <ReadOnlyCell value={formatRequestResin(record)} align="center" />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
                     <ReadOnlyCell value={formatRequestDetailRegion(record)} align="center" />

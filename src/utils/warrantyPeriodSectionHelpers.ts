@@ -81,8 +81,16 @@ export function applyPeriodSectionReset(
           products: replaceSectionProducts(current.lowRisk.products, saved.lowRisk.products, 'print'),
         },
       }
-    case 'coastalAl':
-      return { ...current, coastalAl: saved.coastalAl }
+    case 'coastalAl:highRisk':
+      return {
+        ...current,
+        coastalAl: { ...current.coastalAl, highRisk: saved.coastalAl.highRisk },
+      }
+    case 'coastalAl:lowRisk':
+      return {
+        ...current,
+        coastalAl: { ...current.coastalAl, lowRisk: saved.coastalAl.lowRisk },
+      }
     case 'notCovered':
       return { ...current, notCovered: saved.notCovered }
     default:

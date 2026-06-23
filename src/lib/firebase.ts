@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app'
 import { getAuth } from 'firebase/auth'
+import { getFirestore } from 'firebase/firestore'
 import { EMBEDDED_FIREBASE_CONFIG } from './firebase.embedded'
 
 function envOr(raw: string | undefined, fallback: string): string {
@@ -28,3 +29,5 @@ export const isFirebaseEnabled = Boolean(
 
 export const firebaseApp = isFirebaseEnabled ? initializeApp(firebaseConfig) : null
 export const auth = firebaseApp ? getAuth(firebaseApp) : null
+export const db = firebaseApp ? getFirestore(firebaseApp) : null
+export const isFirestoreEnabled = Boolean(db)

@@ -11,10 +11,12 @@ import {
   type PeriodSectionId,
 } from '../components/warranty-period/PeriodSection'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
+import { periodCardTitleClass, periodCautionNoticeClass, periodCautionRowClass } from '../components/warranty-period/periodTheme'
 import { RiskBadge } from '../components/warranty-period/RiskBadge'
 import { useAuth } from '../contexts/AuthContext'
 import type {
   CoastalDistanceRow,
+  CoastalSideSpecField,
   CountryEntry,
   ProductLine,
   ProductWarranty,
@@ -136,7 +138,7 @@ export function WarrantyPeriodPage() {
     if (sectionId === 'notCovered') {
       setNotCoveredInsertAnchor(null)
     }
-    if (sectionId === 'coastalAl') {
+    if (sectionId === 'coastalAl:highRisk' || sectionId === 'coastalAl:lowRisk') {
       setCoastalInsertAnchor(null)
     }
     clearSectionMessage(sectionId)
@@ -157,7 +159,7 @@ export function WarrantyPeriodPage() {
       setHighlightedNotCoveredIndex(null)
       setNotCoveredInsertAnchor(null)
     }
-    if (sectionId === 'coastalAl') {
+    if (sectionId === 'coastalAl:highRisk' || sectionId === 'coastalAl:lowRisk') {
       setCoastalInsertAnchor(null)
     }
     setSectionMessage(sectionId, '저장되었습니다.')
@@ -175,7 +177,7 @@ export function WarrantyPeriodPage() {
       setHighlightedNotCoveredIndex(null)
       setNotCoveredInsertAnchor(null)
     }
-    if (sectionId === 'coastalAl') {
+    if (sectionId === 'coastalAl:highRisk' || sectionId === 'coastalAl:lowRisk') {
       setCoastalInsertAnchor(null)
     }
     setSectionMessage(sectionId, '초기화되었습니다.')
@@ -201,8 +203,12 @@ export function WarrantyPeriodPage() {
       addNotCoveredItem(notCoveredInsertAnchor ?? undefined)
       return
     }
-    if (sectionId === 'coastalAl' && coastalInsertAnchor) {
-      addCoastalRow(coastalInsertAnchor.side, coastalInsertAnchor.index)
+    if (sectionId === 'coastalAl:highRisk' && coastalInsertAnchor?.side === 'highRisk') {
+      addCoastalRow('highRisk', coastalInsertAnchor.index)
+      return
+    }
+    if (sectionId === 'coastalAl:lowRisk' && coastalInsertAnchor?.side === 'lowRisk') {
+      addCoastalRow('lowRisk', coastalInsertAnchor.index)
     }
   }
 
@@ -254,12 +260,16 @@ export function WarrantyPeriodPage() {
     setSectionMessages({})
   }
 
-  const updateCoastalWarrantyNote = (side: 'highRisk' | 'lowRisk', value: string) => {
+  const updateCoastalSideSpec = (
+    side: 'highRisk' | 'lowRisk',
+    field: CoastalSideSpecField,
+    value: string
+  ) => {
     setData((prev) => ({
       ...prev,
       coastalAl: {
         ...prev.coastalAl,
-        [side]: { ...prev.coastalAl[side], warrantyNote: value },
+        [side]: { ...prev.coastalAl[side], [field]: value },
       },
     }))
     setSectionMessages({})
@@ -519,23 +529,48 @@ export function WarrantyPeriodPage() {
     [lowRiskProducts]
   )
 
-  const cardSectionId: PeriodSectionId | null =
-    activeTab === 'coastalAl' ? 'coastalAl' : activeTab === 'notCovered' ? 'notCovered' : null
+  const cardSectionId: PeriodSectionId | null = activeTab === 'notCovered' ? 'notCovered' : null
 
   const sectionTitle =
     activeTab === 'highRisk' ? (
-      <span className="inline-flex flex-wrap items-center gap-2">
+      <span className={periodCardTitleClass}>
         위도 5~30° <RiskBadge variant="high" />
       </span>
     ) : activeTab === 'lowRisk' ? (
-      <span className="inline-flex flex-wrap items-center gap-2">
+      <span className={periodCardTitleClass}>
         위도 30° 이상 <RiskBadge variant="low" />
       </span>
     ) : activeTab === 'coastalAl' ? (
-      data.coastalAl.title
+      <span className={periodCardTitleClass}>
+        AL 소재 적용 불소 제품
+        <span className="text-sm font-normal text-text-secondary sm:text-base">(해안 거리별 보증)</span>
+      </span>
     ) : (
-      data.notCovered.title
+      <span className={periodCardTitleClass}>{data.notCovered.title}</span>
     )
+
+  const cardHeaderNotice =
+    activeTab === 'notCovered' ? (
+      <div className={periodCautionRowClass}>
+        <p className={periodCautionNoticeClass}>
+          <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0" />
+          <span>다음 항목은 보증 대상에서 제외됩니다.</span>
+        </p>
+        {canEdit && (
+          <PeriodSectionEditButton
+            canEdit={canEdit}
+            editing={isSectionEditing('notCovered')}
+            onEdit={() => startSectionEdit('notCovered')}
+            size="compact"
+          />
+        )}
+      </div>
+    ) : activeTab === 'coastalAl' ? (
+      <p className={periodCautionNoticeClass}>
+        <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0" />
+        <span>소재 부식은 보증 제외 대상이며, 주기적인 정수 세척 관리가 필요합니다.</span>
+      </p>
+    ) : undefined
 
   return (
     <div>
@@ -545,9 +580,11 @@ export function WarrantyPeriodPage() {
         description={
           <>
             <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
-            <p className="flex items-center gap-1.5">
-              <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
-              <span>단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.</span>
+            <p className="flex items-center gap-1.5 font-bold text-text-primary">
+              <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0 text-white" />
+              <span>
+                단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.
+              </span>
             </p>
           </>
         }
@@ -579,30 +616,12 @@ export function WarrantyPeriodPage() {
         ))}
       </nav>
 
-      <Card
-        label="WARRANTY GUIDE"
-        title={sectionTitle}
-        titleActions={
-          canEdit && cardSectionId ? (
-            <PeriodSectionEditButton
-              canEdit={canEdit}
-              editing={isSectionEditing(cardSectionId)}
-              onEdit={() => startSectionEdit(cardSectionId)}
-            />
-          ) : undefined
-        }
-      >
-        {activeTab === 'notCovered' && (
-            <p className="mb-4 flex items-center gap-1.5 text-sm leading-relaxed text-text-secondary">
-              <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
-              <span>다음 항목은 보증 대상에서 제외됩니다.</span>
-            </p>
-        )}
+      <Card label="WARRANTY GUIDE" title={sectionTitle} headerNotice={cardHeaderNotice}>
         {canEdit && cardSectionId && (
           <CardSectionToolbar
             editing={isSectionEditing(cardSectionId)}
             saveMessage={sectionMessage(cardSectionId)}
-            canAdd={cardSectionId === 'notCovered' || coastalInsertAnchor !== null}
+            canAdd={cardSectionId === 'notCovered' && notCoveredInsertAnchor !== null}
             onSave={() => saveSection(cardSectionId)}
             onAdd={() => handleSectionAdd(cardSectionId)}
             onReset={() => resetSection(cardSectionId)}
@@ -613,6 +632,7 @@ export function WarrantyPeriodPage() {
           <>
             <PeriodSection
               title="고위험 국가 LIST"
+              hideEditButton
               canEdit={canEdit}
               editing={isSectionEditing('highRisk:countries')}
               saveMessage={sectionMessage('highRisk:countries')}
@@ -624,14 +644,18 @@ export function WarrantyPeriodPage() {
                 countries={data.highRisk.countries}
                 editing={isSectionEditing('highRisk:countries')}
                 riskVariant="high"
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('highRisk:countries'),
+                  onEdit: () => startSectionEdit('highRisk:countries'),
+                }}
                 onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
               />
             </PeriodSection>
 
-            <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
-
             <PeriodSection
-              title="PAINT"
+              title="제품군별 보증연한"
+              hideEditButton
               canEdit={canEdit}
               editing={isSectionEditing('highRisk:paint')}
               saveMessage={sectionMessage('highRisk:paint')}
@@ -642,6 +666,12 @@ export function WarrantyPeriodPage() {
               onAdd={() => handleSectionAdd('highRisk:paint')}
             >
               <ProductGuideTable
+                filterLabel="PAINT 제품군 선택"
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('highRisk:paint'),
+                  onEdit: () => startSectionEdit('highRisk:paint'),
+                }}
                 items={highRiskPaintProducts}
                 riskVariant="high"
                 editing={isSectionEditing('highRisk:paint')}
@@ -673,7 +703,7 @@ export function WarrantyPeriodPage() {
             </PeriodSection>
 
             <PeriodSection
-              title="PRINT"
+              headerless
               canEdit={canEdit}
               editing={isSectionEditing('highRisk:print')}
               saveMessage={sectionMessage('highRisk:print')}
@@ -684,6 +714,12 @@ export function WarrantyPeriodPage() {
               onAdd={() => handleSectionAdd('highRisk:print')}
             >
               <ProductGuideTable
+                filterLabel="PRINT 제품군 선택"
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('highRisk:print'),
+                  onEdit: () => startSectionEdit('highRisk:print'),
+                }}
                 items={highRiskPrintProducts}
                 riskVariant="high"
                 editing={isSectionEditing('highRisk:print')}
@@ -720,6 +756,7 @@ export function WarrantyPeriodPage() {
           <>
             <PeriodSection
               title="저위험 국가 LIST"
+              hideEditButton
               canEdit={canEdit}
               editing={isSectionEditing('lowRisk:countries')}
               saveMessage={sectionMessage('lowRisk:countries')}
@@ -733,14 +770,18 @@ export function WarrantyPeriodPage() {
                 riskVariant="low"
                 note={data.lowRisk.note}
                 onNoteChange={isSectionEditing('lowRisk:countries') ? updateLowRiskNote : undefined}
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('lowRisk:countries'),
+                  onEdit: () => startSectionEdit('lowRisk:countries'),
+                }}
                 onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
               />
             </PeriodSection>
 
-            <h3 className="mb-3 text-sm font-semibold text-text-primary">제품군별 보증연한</h3>
-
             <PeriodSection
-              title="PAINT"
+              title="제품군별 보증연한"
+              hideEditButton
               canEdit={canEdit}
               editing={isSectionEditing('lowRisk:paint')}
               saveMessage={sectionMessage('lowRisk:paint')}
@@ -751,6 +792,12 @@ export function WarrantyPeriodPage() {
               onAdd={() => handleSectionAdd('lowRisk:paint')}
             >
               <ProductGuideTable
+                filterLabel="PAINT 제품군 선택"
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('lowRisk:paint'),
+                  onEdit: () => startSectionEdit('lowRisk:paint'),
+                }}
                 items={lowRiskPaintProducts}
                 riskVariant="low"
                 editing={isSectionEditing('lowRisk:paint')}
@@ -782,7 +829,7 @@ export function WarrantyPeriodPage() {
             </PeriodSection>
 
             <PeriodSection
-              title="PRINT"
+              headerless
               canEdit={canEdit}
               editing={isSectionEditing('lowRisk:print')}
               saveMessage={sectionMessage('lowRisk:print')}
@@ -793,6 +840,12 @@ export function WarrantyPeriodPage() {
               onAdd={() => handleSectionAdd('lowRisk:print')}
             >
               <ProductGuideTable
+                filterLabel="PRINT 제품군 선택"
+                sectionEdit={{
+                  canEdit,
+                  editing: isSectionEditing('lowRisk:print'),
+                  onEdit: () => startSectionEdit('lowRisk:print'),
+                }}
                 items={lowRiskPrintProducts}
                 riskVariant="low"
                 editing={isSectionEditing('lowRisk:print')}
@@ -828,15 +881,32 @@ export function WarrantyPeriodPage() {
         {activeTab === 'coastalAl' && (
           <CoastalGuideTables
             coastal={data.coastalAl}
-            editing={isSectionEditing('coastalAl')}
+            highRiskEdit={{
+              canEdit,
+              editing: isSectionEditing('coastalAl:highRisk'),
+              onEdit: () => startSectionEdit('coastalAl:highRisk'),
+              onSave: () => saveSection('coastalAl:highRisk'),
+              onReset: () => resetSection('coastalAl:highRisk'),
+              onAdd: () => handleSectionAdd('coastalAl:highRisk'),
+              canAdd: coastalInsertAnchor?.side === 'highRisk',
+              saveMessage: sectionMessage('coastalAl:highRisk'),
+            }}
+            lowRiskEdit={{
+              canEdit,
+              editing: isSectionEditing('coastalAl:lowRisk'),
+              onEdit: () => startSectionEdit('coastalAl:lowRisk'),
+              onSave: () => saveSection('coastalAl:lowRisk'),
+              onReset: () => resetSection('coastalAl:lowRisk'),
+              onAdd: () => handleSectionAdd('coastalAl:lowRisk'),
+              canAdd: coastalInsertAnchor?.side === 'lowRisk',
+              saveMessage: sectionMessage('coastalAl:lowRisk'),
+            }}
             insertAnchor={coastalInsertAnchor}
-            onSelectInsertAnchor={
-              isSectionEditing('coastalAl') ? (side, index) => setCoastalInsertAnchor({ side, index }) : undefined
-            }
+            onSelectInsertAnchor={(side, index) => setCoastalInsertAnchor({ side, index })}
             onUpdateRow={updateCoastalRow}
-            onUpdateWarrantyNote={updateCoastalWarrantyNote}
-            onDeleteRow={isSectionEditing('coastalAl') ? deleteCoastalRow : undefined}
-            onReorderRow={isSectionEditing('coastalAl') ? reorderCoastalRow : undefined}
+            onUpdateSideSpec={updateCoastalSideSpec}
+            onDeleteRow={deleteCoastalRow}
+            onReorderRow={reorderCoastalRow}
           />
         )}
 

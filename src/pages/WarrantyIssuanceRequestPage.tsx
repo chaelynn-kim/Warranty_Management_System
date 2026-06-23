@@ -93,11 +93,15 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
               </p>
             ) : null
           }
-          actionSlot={
+          actionSlot={({ isComplete }) => (
             <button
               type="button"
               onClick={handleSubmitClick}
-              className="inline-flex h-[38px] items-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition-colors hover:bg-accent-hover"
+              className={`inline-flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold text-white transition-all duration-300 ${
+                isComplete
+                  ? 'bg-accent shadow-[0_0_20px_rgba(59,130,246,0.65)] ring-2 ring-accent/50 hover:bg-accent-hover hover:shadow-[0_0_24px_rgba(59,130,246,0.75)]'
+                  : 'bg-accent shadow-lg shadow-accent/30 hover:bg-accent-hover'
+              }`}
             >
               <NeonTitleIcon
                 src="/icons/warranty-request-document.png"
@@ -105,7 +109,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
               />
               의뢰하기
             </button>
-          }
+          )}
         />
       </section>
 

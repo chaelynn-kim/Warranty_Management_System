@@ -1,6 +1,7 @@
 import defaultData from '../data/warrantyIssuance.json'
 import type { WarrantyRecord } from '../types'
 import { normalizeDate, subtractDaysFromDate } from './helpers'
+import { queueFirestorePush } from './firestoreSync'
 import { parseFileAttachments, serializeFileAttachments } from './warrantyAttachments'
 import { normalizeLegacyRegion, type LegacyWarrantySource } from './warrantyLegacyFields'
 
@@ -95,6 +96,7 @@ export function saveWarrantyRecords(records: WarrantyRecord[]): void {
   const normalized = records.map(normalizeRecord)
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+  queueFirestorePush('warranty-issuance-records')
 }
 
 export function getEditableDateParts(issueDate: string): {

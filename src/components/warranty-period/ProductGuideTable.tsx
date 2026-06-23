@@ -10,6 +10,10 @@ import {
 import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
 import { GuideCell } from './GuideCell'
 import {
+  PeriodSectionInlineHeader,
+  type SectionEditControl,
+} from './PeriodSection'
+import {
   periodInputClass,
   periodRowClass,
   periodTdClass,
@@ -50,6 +54,8 @@ interface ProductGuideTableProps {
   onReorder?: (fromIndex: number, toIndex: number) => void
   splitByPrintPaint?: boolean
   riskVariant?: 'high' | 'low'
+  filterLabel?: string
+  sectionEdit?: SectionEditControl
 }
 
 function ProductGroupMultiSelectFilter({
@@ -57,11 +63,13 @@ function ProductGroupMultiSelectFilter({
   options,
   selectedGroups,
   onChange,
+  embedded = false,
 }: {
   label?: string
   options: string[]
   selectedGroups: string[]
   onChange: (groups: string[]) => void
+  embedded?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -93,7 +101,7 @@ function ProductGroupMultiSelectFilter({
   }
 
   return (
-    <div ref={ref} className="relative mb-3 max-w-md">
+    <div ref={ref} className={`relative ${embedded ? 'w-full' : 'mb-3 max-w-md'}`}>
       <Filter className="pointer-events-none absolute top-1/2 left-2.5 z-10 h-4 w-4 -translate-y-1/2 text-text-muted" />
       <button
         type="button"
@@ -201,11 +209,11 @@ function SectionModeToggle({
 }
 
 function ProductCategoryBox({
-  title,
+  header,
   children,
   riskVariant,
 }: {
-  title: string
+  header?: ReactNode
   children: ReactNode
   riskVariant?: 'high' | 'low'
 }) {
@@ -213,11 +221,13 @@ function ProductCategoryBox({
     <div
       className={`overflow-hidden rounded-lg border-2 bg-bg-secondary/50 ${periodRiskBorderClass(riskVariant)}`}
     >
-      <div
-        className={`border-b bg-bg-tertiary px-4 py-2.5 ${periodRiskHeaderBorderClass(riskVariant)}`}
-      >
-        <span className="text-xs font-bold tracking-[0.14em] text-text-primary">{title}</span>
-      </div>
+      {header ? (
+        <div
+          className={`border-b bg-bg-tertiary px-4 py-2.5 ${periodRiskHeaderBorderClass(riskVariant)}`}
+        >
+          {header}
+        </div>
+      ) : null}
       {children}
     </div>
   )
@@ -590,6 +600,19 @@ function filterItemsByGroups(items: ProductGuideTableItem[], selectedGroups: str
   return items.filter(({ product }) => selected.has(product.productGroup))
 }
 
+function buildProductCategoryHeader(
+  filter: ReactNode | undefined,
+  sectionEdit: SectionEditControl | undefined
+) {
+  if (!filter && !sectionEdit?.canEdit) return undefined
+
+  return (
+    <PeriodSectionInlineHeader sectionEdit={sectionEdit}>
+      {filter ?? <span aria-hidden className="block" />}
+    </PeriodSectionInlineHeader>
+  )
+}
+
 export function ProductGuideTable({
   items,
   editing,
@@ -603,6 +626,8 @@ export function ProductGuideTable({
   onReorder,
   splitByPrintPaint = false,
   riskVariant,
+  filterLabel = '제품군 선택',
+  sectionEdit,
 }: ProductGuideTableProps) {
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
   const [selectedPaintGroups, setSelectedPaintGroups] = useState<string[]>([])
@@ -770,8 +795,9 @@ export function ProductGuideTable({
         </div>
       )}
 
-      {!splitByPrintPaint && productGroupOptions.length > 0 && (
+      {!splitByPrintPaint && productGroupOptions.length > 0 && !riskVariant && (
         <ProductGroupMultiSelectFilter
+          label={filterLabel}
           options={productGroupOptions}
           selectedGroups={selectedGroups}
           onChange={setSelectedGroups}
@@ -780,47 +806,78 @@ export function ProductGuideTable({
 
       {splitByPrintPaint ? (
         <div className="space-y-5">
-          <div>
-            {paintGroupOptions.length > 0 && (
-              <ProductGroupMultiSelectFilter
-                label="PAINT 제품군 선택"
-                options={paintGroupOptions}
-                selectedGroups={selectedPaintGroups}
-                onChange={setSelectedPaintGroups}
-              />
-            )}
-            <ProductCategoryBox title="PAINT" riskVariant={riskVariant}>
-              <ProductGuideTableGrid
-                {...baseGridProps}
-                items={paintItems}
-                groupHeader={groupHeader}
-                bordered={false}
-                filterActive={selectedPaintGroups.length > 0}
-                emptyMessage={paintEmptyMessage}
-              />
-            </ProductCategoryBox>
-          </div>
-          <div>
-            {printGroupOptions.length > 0 && (
-              <ProductGroupMultiSelectFilter
-                label="PRINT 제품군 선택"
-                options={printGroupOptions}
-                selectedGroups={selectedPrintGroups}
-                onChange={setSelectedPrintGroups}
-              />
-            )}
-            <ProductCategoryBox title="PRINT" riskVariant={riskVariant}>
-              <ProductGuideTableGrid
-                {...baseGridProps}
-                items={printItems}
-                groupHeader={groupHeader}
-                bordered={false}
-                filterActive={selectedPrintGroups.length > 0}
-                emptyMessage={printEmptyMessage}
-              />
-            </ProductCategoryBox>
-          </div>
+          <ProductCategoryBox
+            riskVariant={riskVariant}
+            header={
+              paintGroupOptions.length > 0 ? (
+                <ProductGroupMultiSelectFilter
+                  label="PAINT 제품군 선택"
+                  embedded
+                  options={paintGroupOptions}
+                  selectedGroups={selectedPaintGroups}
+                  onChange={setSelectedPaintGroups}
+                />
+              ) : undefined
+            }
+          >
+            <ProductGuideTableGrid
+              {...baseGridProps}
+              items={paintItems}
+              groupHeader={groupHeader}
+              bordered={false}
+              filterActive={selectedPaintGroups.length > 0}
+              emptyMessage={paintEmptyMessage}
+            />
+          </ProductCategoryBox>
+          <ProductCategoryBox
+            riskVariant={riskVariant}
+            header={
+              printGroupOptions.length > 0 ? (
+                <ProductGroupMultiSelectFilter
+                  label="PRINT 제품군 선택"
+                  embedded
+                  options={printGroupOptions}
+                  selectedGroups={selectedPrintGroups}
+                  onChange={setSelectedPrintGroups}
+                />
+              ) : undefined
+            }
+          >
+            <ProductGuideTableGrid
+              {...baseGridProps}
+              items={printItems}
+              groupHeader={groupHeader}
+              bordered={false}
+              filterActive={selectedPrintGroups.length > 0}
+              emptyMessage={printEmptyMessage}
+            />
+          </ProductCategoryBox>
         </div>
+      ) : riskVariant ? (
+        <ProductCategoryBox
+          riskVariant={riskVariant}
+          header={buildProductCategoryHeader(
+            productGroupOptions.length > 0 ? (
+              <ProductGroupMultiSelectFilter
+                label={filterLabel}
+                embedded
+                options={productGroupOptions}
+                selectedGroups={selectedGroups}
+                onChange={setSelectedGroups}
+              />
+            ) : undefined,
+            sectionEdit
+          )}
+        >
+          <ProductGuideTableGrid
+            {...baseGridProps}
+            items={filteredItems}
+            groupHeader={groupHeader}
+            bordered={false}
+            filterActive={selectedGroups.length > 0}
+            emptyMessage={emptyMessage}
+          />
+        </ProductCategoryBox>
       ) : (
         <ProductGuideTableGrid
           {...baseGridProps}

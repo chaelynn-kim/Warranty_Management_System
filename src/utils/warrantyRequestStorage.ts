@@ -1,17 +1,27 @@
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
-import { parseMultiValue } from '../constants/warrantyOptions'
+import { joinMultiValue, parseMultiValue } from '../constants/warrantyOptions'
 import {
   WARRANTY_REQUEST_DETAIL_REGION_CUSTOM,
+  WARRANTY_REQUEST_MATERIAL_OTHER,
+  WARRANTY_REQUEST_RESIN_ALL,
+  WARRANTY_REQUEST_RESIN_OTHER,
   WARRANTY_REQUEST_TEAM_OTHER,
   WARRANTY_TERM_OTHER,
 } from '../constants/warrantyRequestOptions'
 import { WARRANTY_REQUEST_STATUS_PENDING } from '../constants/warrantyRequestStatus'
 import { normalizeDate } from './helpers'
+import { queueFirestorePush } from './firestoreSync'
 import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '6'
+const CURRENT_VERSION = '8'
+
+function normalizeDetailRegionValue(detailRegion: string): string {
+  return joinMultiValue(
+    parseMultiValue(detailRegion).map((part) => (part === '직접 입력' ? WARRANTY_REQUEST_DETAIL_REGION_CUSTOM : part))
+  )
+}
 
 function assignSequenceNumbers(
   records: WarrantyIssuanceRequestRecord[]
@@ -77,9 +87,12 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
     companyWarrantyAttachmentEn: record.companyWarrantyAttachmentEn ?? '',
     supplierWarrantyAttachmentKo: record.supplierWarrantyAttachmentKo ?? legacySupplier,
     supplierWarrantyAttachmentEn: record.supplierWarrantyAttachmentEn ?? '',
+    resinCustom: record.resinCustom ?? '',
+    materialCustom: record.materialCustom ?? '',
     qualityAuthor: record.qualityAuthor ?? '',
     reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
     status: normalizeRequestStatus(record.status),
+    detailRegion: normalizeDetailRegionValue(record.detailRegion ?? ''),
   }
 }
 
@@ -107,6 +120,7 @@ export function saveWarrantyRequestRecords(records: WarrantyIssuanceRequestRecor
   const normalized = assignSequenceNumbers(records.map(normalizeRequestRecord))
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+  queueFirestorePush('warranty-issuance-requests')
 }
 
 export function formatRequestTeam(record: WarrantyIssuanceRequest): string {
@@ -122,6 +136,31 @@ export function formatRequestDetailRegion(record: WarrantyIssuanceRequest): stri
 
   if (selected.includes(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM) && record.detailRegionCustom.trim()) {
     labels.push(record.detailRegionCustom.trim())
+  }
+
+  return labels.length > 0 ? labels.join(', ') : '-'
+}
+
+export function formatRequestResin(record: WarrantyIssuanceRequest): string {
+  const selected = parseMultiValue(record.resin)
+  if (selected.includes(WARRANTY_REQUEST_RESIN_ALL)) return WARRANTY_REQUEST_RESIN_ALL
+
+  const labels = selected.filter(
+    (item) => item !== WARRANTY_REQUEST_RESIN_ALL && item !== WARRANTY_REQUEST_RESIN_OTHER
+  )
+  if (selected.includes(WARRANTY_REQUEST_RESIN_OTHER) && record.resinCustom.trim()) {
+    labels.push(record.resinCustom.trim())
+  }
+
+  return labels.length > 0 ? labels.join(', ') : '-'
+}
+
+export function formatRequestMaterial(record: WarrantyIssuanceRequest): string {
+  const selected = parseMultiValue(record.material)
+  const labels = selected.filter((item) => item !== WARRANTY_REQUEST_MATERIAL_OTHER)
+
+  if (selected.includes(WARRANTY_REQUEST_MATERIAL_OTHER) && record.materialCustom.trim()) {
+    labels.push(record.materialCustom.trim())
   }
 
   return labels.length > 0 ? labels.join(', ') : '-'

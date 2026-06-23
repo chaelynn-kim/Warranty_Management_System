@@ -1,13 +1,13 @@
 import { normalizeRequestStatus } from '../../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
-  WARRANTY_REQUEST_STATUS_IN_PROGRESS,
   WARRANTY_REQUEST_STATUS_PENDING,
+  WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
 
 const STATUS_STYLES: Record<string, string> = {
   [WARRANTY_REQUEST_STATUS_PENDING]: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
-  [WARRANTY_REQUEST_STATUS_IN_PROGRESS]: 'border-accent/40 bg-accent/15 text-accent',
+  [WARRANTY_REQUEST_STATUS_RECEIVED]: 'border-sky-500/40 bg-sky-500/15 text-sky-300',
   [WARRANTY_REQUEST_STATUS_COMPLETED]: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
 }
 

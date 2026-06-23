@@ -7,15 +7,13 @@ import {
   EXTERNAL_TEST_STATUSES,
   institutionCustomValue,
   isPresetInstitution,
+  normalizeExternalTestStatus,
 } from '../../constants/externalTestOptions'
-import { buildSelectOptions, normalizeOptionValue } from '../../constants/warrantyOptions'
+import { normalizeOptionValue } from '../../constants/warrantyOptions'
 import { normalizeDate, toDateInputValue } from '../../utils/helpers'
-import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
-import {
-  ExternalTestTableFilterRow,
-  hasActiveExternalTestFilters,
-  type ExternalTestTableFilters,
-} from './ExternalTestTableFilterRow'
+
+const thSticky =
+  'sticky top-0 z-20 bg-bg-tertiary shadow-[inset_0_-1px_0_0_var(--color-border)]'
 
 const cellInput =
   'w-full min-w-0 rounded border border-transparent bg-bg-primary/50 px-1.5 py-1 text-xs text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none sm:text-sm'
@@ -41,8 +39,7 @@ function StatusSelectCell({
   value: string
   onChange: (value: string) => void
 }) {
-  const normalized = normalizeOptionValue(value)
-  const options = buildSelectOptions(EXTERNAL_TEST_STATUSES, normalized)
+  const normalized = normalizeExternalTestStatus(normalizeOptionValue(value))
 
   return (
     <div className="relative min-w-[88px]">
@@ -52,8 +49,7 @@ function StatusSelectCell({
         className={optionSelectClass}
         aria-label="진행여부"
       >
-        <option value="">선택</option>
-        {options.map((option) => (
+        {EXTERNAL_TEST_STATUSES.map((option) => (
           <option key={option} value={option}>
             {option}
           </option>
@@ -149,34 +145,33 @@ const dateInputClass = `${cellInputCenter} min-w-[104px] whitespace-nowrap`
 const readOnlyCell =
   'px-2 py-2 text-text-primary whitespace-pre-wrap break-words leading-snug'
 
+const thBase = 'px-3 py-3 font-medium text-center text-text-secondary'
+
 interface EditableExternalTestTableProps {
   editing: boolean
   records: ExternalTestRecord[]
   highlightedRowId?: string | null
-  filters: ExternalTestTableFilters
-  onFiltersChange: (filters: ExternalTestTableFilters) => void
   onUpdate: (id: string, field: keyof ExternalTestRecord, value: string) => void
   onDelete: (id: string) => void
   onReorder?: (fromId: string, toId: string) => void
-  insertAnchorId?: string | null
-  onSelectInsertAnchor?: (id: string) => void
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (!status) return null
+  const normalized = normalizeExternalTestStatus(status)
+  if (!normalized) return null
 
   const styles: Record<string, string> = {
+    진행대기: 'bg-amber-950/60 text-amber-300 border-amber-900/50',
     종결: 'bg-emerald-950/60 text-emerald-300 border-emerald-900/50',
     진행중: 'bg-blue-950/60 text-blue-300 border-blue-900/50',
-    진행대기: 'bg-amber-950/60 text-amber-300 border-amber-900/50',
     취소: 'bg-red-950/60 text-red-300 border-red-900/50',
   }
 
   return (
     <span
-      className={`mt-1 inline-block rounded-md border px-2 py-0.5 text-xs font-medium ${styles[status] ?? 'bg-bg-tertiary text-text-secondary border-border'}`}
+      className={`mt-1 inline-block rounded-md border px-2 py-0.5 text-xs font-medium ${styles[normalized] ?? 'bg-bg-tertiary text-text-secondary border-border'}`}
     >
-      {status}
+      {normalized}
     </span>
   )
 }
@@ -230,20 +225,16 @@ export function EditableExternalTestTable({
   editing,
   records,
   highlightedRowId = null,
-  filters,
-  onFiltersChange,
   onUpdate,
   onDelete,
   onReorder,
-  insertAnchorId = null,
-  onSelectInsertAnchor,
 }: EditableExternalTestTableProps) {
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [draggingId, setDraggingId] = useState<string | null>(null)
   const [dragOverId, setDragOverId] = useState<string | null>(null)
 
-  const canReorder = editing && Boolean(onReorder) && !hasActiveExternalTestFilters(filters)
+  const canReorder = editing && Boolean(onReorder)
   const colSpan = editing ? 16 : 15
 
   useEffect(() => {
@@ -275,53 +266,38 @@ export function EditableExternalTestTable({
     <div>
       {editing && (
         <p className="mb-2 text-xs text-text-muted">
-          행을 클릭해 선택한 뒤{' '}
-          <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 행{' '}
-          <span className="text-amber-400/90">위</span>에 새 행이 추가됩니다.
-          {onReorder && (
-            <>
-              {' '}
-              {canReorder ? (
-                '⋮⋮ 드래그로 순서를 변경할 수 있습니다.'
-              ) : (
-                <span className="text-amber-400/90">필터를 모두 비운 후 순서 변경이 가능합니다.</span>
-              )}
-            </>
-          )}
+          <span className="font-medium text-amber-400/90">+</span>를 누르면 목록{' '}
+          <span className="text-amber-400/90">맨 위</span>에 새 행이 추가됩니다.
+          {onReorder && ' ⋮⋮ 드래그로 순서를 변경할 수 있습니다.'}
         </p>
       )}
 
       <div
         ref={scrollContainerRef}
-        className="max-h-[calc(100dvh-420px)] min-h-[240px] overflow-auto rounded-lg border border-border"
+        className="max-h-[calc(100dvh-260px)] min-h-[560px] overflow-auto rounded-lg border border-border"
       >
         <table className="w-full min-w-[1560px] border-separate border-spacing-0 text-left text-xs sm:text-sm">
           <thead>
             <tr className="border-b border-border bg-bg-tertiary">
-              {editing && <th className="w-11 min-w-11 px-1 py-3" />}
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">NO</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colPurpose}`}>용도</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">규격명</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">색상명</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">작업장</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colDate}`}>생산일자</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">품목코드</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colItemName}`}>품목명</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">수지</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colDate}`}>의뢰날짜</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colDate}`}>접수일자</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colDate}`}>완료일자</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">진행여부</th>
-              <th className="px-3 py-3 font-medium whitespace-nowrap text-text-secondary">의뢰기관</th>
-              <th className={`px-3 py-3 font-medium text-text-secondary ${colNotes}`}>비고</th>
+              {editing && <th className={`w-11 min-w-11 px-1 py-3 ${thSticky}`} />}
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>NO</th>
+              <th className={`${thBase} ${colPurpose} ${thSticky}`}>용도</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>규격명</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>색상명</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>작업장</th>
+              <th className={`${thBase} ${colDate} ${thSticky}`}>생산일자</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>품목코드</th>
+              <th className={`${thBase} ${colItemName} ${thSticky}`}>품목명</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>수지</th>
+              <th className={`${thBase} ${colDate} ${thSticky}`}>의뢰날짜</th>
+              <th className={`${thBase} ${colDate} ${thSticky}`}>접수일자</th>
+              <th className={`${thBase} ${colDate} ${thSticky}`}>완료일자</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>진행여부</th>
+              <th className={`${thBase} whitespace-nowrap ${thSticky}`}>의뢰기관</th>
+              <th className={`${thBase} ${colNotes} ${thSticky}`}>비고</th>
             </tr>
           </thead>
           <tbody>
-            <ExternalTestTableFilterRow
-              filters={filters}
-              onChange={onFiltersChange}
-              showActionColumn={editing}
-            />
             {records.length === 0 ? (
               <tr>
                 <td colSpan={colSpan} className="px-4 py-12 text-center text-text-muted">
@@ -331,7 +307,6 @@ export function EditableExternalTestTable({
             ) : (
               records.map((record) => {
                 const isHighlighted = highlightedRowId === record.id
-                const isInsertAnchor = editing && insertAnchorId === record.id
                 const isDragging = draggingId === record.id
                 const isDragOver = dragOverId === record.id && draggingId !== record.id
 
@@ -341,12 +316,6 @@ export function EditableExternalTestTable({
                     ref={(el) => {
                       if (el) rowRefs.current.set(record.id, el)
                       else rowRefs.current.delete(record.id)
-                    }}
-                    onClick={(e) => {
-                      if (!editing || !onSelectInsertAnchor || isTableRowInteractiveTarget(e.target)) {
-                        return
-                      }
-                      onSelectInsertAnchor(record.id)
                     }}
                     onDragOver={(e) => {
                       if (!canReorder || draggingId === null) return
@@ -367,9 +336,7 @@ export function EditableExternalTestTable({
                       setDragOverId(null)
                     }}
                     className={`group border-b border-border/60 transition-all duration-300 hover:bg-bg-tertiary/40 ${
-                      editing && onSelectInsertAnchor ? 'cursor-pointer' : ''
-                    } ${isHighlighted ? highlightRowClass : ''} ${
-                      isInsertAnchor ? insertAnchorRowClass : ''
+                      isHighlighted ? highlightRowClass : ''
                     } ${isDragging ? 'opacity-40' : ''} ${
                       isDragOver ? 'bg-accent/15 ring-1 ring-inset ring-accent/50' : ''
                     }`}

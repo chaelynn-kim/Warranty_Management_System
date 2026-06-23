@@ -8,8 +8,11 @@ import { WarrantyRequestPeriodSearch } from '../components/warranty-request/Warr
 import { WarrantyRequestStatusSummary } from '../components/warranty-request/WarrantyRequestStatusSummary'
 import { useAuth } from '../contexts/AuthContext'
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
-import { canManageWarrantyIssuanceQuality } from '../utils/authValidation'
-import { resolveStatusAfterSave } from '../utils/warrantyRequestStatus'
+import { canManageWarrantyIssuanceQuality, canReceiveWarrantyRequest, canTeamLeaderApproveWarrantyRequest, TEAM_LEADER_APPROVE_ONLY_MESSAGE } from '../utils/authValidation'
+import { resolveStatusAfterSave, normalizeRequestStatus } from '../utils/warrantyRequestStatus'
+import {
+  WARRANTY_REQUEST_STATUS_RECEIVED,
+} from '../constants/warrantyRequestStatus'
 import {
   getWarrantyRequestRecords,
   persistWarrantyRequestRecords,
@@ -36,6 +39,8 @@ export function WarrantyIssuancePage({
 }: WarrantyIssuancePageProps) {
   const { user } = useAuth()
   const canManageQuality = canManageWarrantyIssuanceQuality(user?.email)
+  const canTeamLeaderApprove = canTeamLeaderApproveWarrantyRequest(user?.email)
+  const canReceiveRequest = canReceiveWarrantyRequest(user?.email)
   const [requestRecords, setRequestRecords] = useState(() => getWarrantyRequestRecords())
   const [requestEditing, setRequestEditing] = useState(false)
   const [requestSaveMessage, setRequestSaveMessage] = useState('')
@@ -132,10 +137,17 @@ export function WarrantyIssuancePage({
     request: WarrantyIssuanceRequest,
     options: { editScope: 'request' | 'quality' }
   ) => {
-    if (options.editScope === 'quality' && !canManageQuality) return
-
     const current = requestRecords.find((record) => record.id === id)
     if (!current) return
+
+    if (options.editScope === 'quality') {
+      const normalizedStatus = normalizeRequestStatus(current.status)
+      if (normalizedStatus === WARRANTY_REQUEST_STATUS_RECEIVED) {
+        if (!canReceiveRequest) return
+      } else if (!canManageQuality) {
+        return
+      }
+    }
 
     const nextStatus = resolveStatusAfterSave(current.status, options.editScope)
     const nextRecords = requestRecords.map((record) =>
@@ -172,7 +184,10 @@ export function WarrantyIssuancePage({
   }
 
   const handleRequestStatusChange = (id: string, nextStatus: string) => {
-    if (!canManageQuality) return
+    if (nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED && !canTeamLeaderApprove) {
+      window.alert(TEAM_LEADER_APPROVE_ONLY_MESSAGE)
+      return
+    }
 
     const nextRecords = requestRecords.map((record) =>
       record.id === id ? { ...record, status: nextStatus } : record
@@ -189,7 +204,11 @@ export function WarrantyIssuancePage({
     setRequestRecords(nextRecords)
     setViewingRequest((prev) => (prev?.id === id ? { ...prev, status: nextStatus } : prev))
     setHighlightedRequestId(id)
-    setRequestSaveMessage('상태가 작성 중으로 변경되었습니다.')
+    setRequestSaveMessage(
+      nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED
+        ? '팀장 승인되어 접수 처리되었습니다.'
+        : '상태가 변경되었습니다.'
+    )
     setTimeout(() => setRequestSaveMessage(''), 3000)
   }
 
@@ -340,6 +359,8 @@ export function WarrantyIssuancePage({
       <WarrantyIssuanceRequestModal
         open={requestModalOpen}
         canManageQuality={canManageQuality}
+        canTeamLeaderApprove={canTeamLeaderApprove}
+        canReceiveRequest={canReceiveRequest}
         onClose={() => {
           setRequestModalOpen(false)
           setViewingRequest(null)

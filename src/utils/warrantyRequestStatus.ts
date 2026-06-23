@@ -1,17 +1,18 @@
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
-  WARRANTY_REQUEST_STATUS_IN_PROGRESS,
   WARRANTY_REQUEST_STATUS_PENDING,
+  WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../constants/warrantyRequestStatus'
 import type { WarrantyIssuanceRequest } from '../types'
-import { parseFileAttachments } from './warrantyAttachments'
+
+const LEGACY_STATUS_IN_PROGRESS = '작성 중'
 
 export function countRequestsByStatus(
   records: { status: string }[]
 ): Record<string, number> {
   const counts: Record<string, number> = {
     [WARRANTY_REQUEST_STATUS_PENDING]: 0,
-    [WARRANTY_REQUEST_STATUS_IN_PROGRESS]: 0,
+    [WARRANTY_REQUEST_STATUS_RECEIVED]: 0,
     [WARRANTY_REQUEST_STATUS_COMPLETED]: 0,
   }
 
@@ -25,14 +26,11 @@ export function countRequestsByStatus(
   return counts
 }
 
-const LEGACY_STATUS_MAP: Record<string, string> = {
-  접수: WARRANTY_REQUEST_STATUS_PENDING,
-}
-
 export function normalizeRequestStatus(status: string): string {
   const trimmed = status.trim()
   if (!trimmed) return WARRANTY_REQUEST_STATUS_PENDING
-  return LEGACY_STATUS_MAP[trimmed] ?? trimmed
+  if (trimmed === LEGACY_STATUS_IN_PROGRESS) return WARRANTY_REQUEST_STATUS_RECEIVED
+  return trimmed
 }
 
 export function canEditRequestFields(status: string): boolean {
@@ -46,12 +44,12 @@ export function canEditRequestFields(status: string): boolean {
 export function canEditQualityFields(status: string): boolean {
   const normalized = normalizeRequestStatus(status)
   return (
-    normalized === WARRANTY_REQUEST_STATUS_IN_PROGRESS ||
+    normalized === WARRANTY_REQUEST_STATUS_RECEIVED ||
     normalized === WARRANTY_REQUEST_STATUS_COMPLETED
   )
 }
 
-export function canPromoteToInProgress(status: string): boolean {
+export function canPromoteToReceived(status: string): boolean {
   return normalizeRequestStatus(status) === WARRANTY_REQUEST_STATUS_PENDING
 }
 
@@ -66,20 +64,6 @@ export function isRequestCompleted(status: string): boolean {
 export function validateQualityCompletion(form: WarrantyIssuanceRequest): string | null {
   if (!form.issueDate.trim()) return '발행일자를 입력해 주세요.'
 
-  const hasCompanyWarranty =
-    parseFileAttachments(form.companyWarrantyAttachmentKo).length > 0 ||
-    parseFileAttachments(form.companyWarrantyAttachmentEn).length > 0
-  if (!hasCompanyWarranty) {
-    return '당사 Warranty 국문 또는 영문 파일을 첨부해 주세요.'
-  }
-
-  const hasSupplierWarranty =
-    parseFileAttachments(form.supplierWarrantyAttachmentKo).length > 0 ||
-    parseFileAttachments(form.supplierWarrantyAttachmentEn).length > 0
-  if (!hasSupplierWarranty) {
-    return '도료사 Warranty 국문 또는 영문 파일을 첨부해 주세요.'
-  }
-
   return null
 }
 
@@ -88,7 +72,7 @@ export function resolveStatusAfterSave(
   editScope: 'request' | 'quality'
 ): string {
   const status = normalizeRequestStatus(currentStatus)
-  if (editScope === 'quality' && status === WARRANTY_REQUEST_STATUS_IN_PROGRESS) {
+  if (editScope === 'quality' && status === WARRANTY_REQUEST_STATUS_RECEIVED) {
     return WARRANTY_REQUEST_STATUS_COMPLETED
   }
   return status

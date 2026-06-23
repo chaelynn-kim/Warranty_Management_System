@@ -248,7 +248,7 @@
         "countries": "포르투갈"
       }
     ],
-    "note": "※ 위 LIST 국가 외에, 호주, 뉴질랜드, 남미국가 (UV 지수 고위험 국가) 제외한 모든 국가",
+    "note": "이 외에 호주, 뉴질랜드, 남미국가 (UV 지수 고위험 국가)는 저위험 국가 LIST에서 제외됩니다.",
     "products": [
       {
         "productGroup": "RMP",
@@ -487,7 +487,10 @@
           "coat3": "20Y"
         }
       ],
-      "warrantyNote": "CHALK\nROOF / WALL\nΔE5.0 NO.8"
+      "colorFadingRoof": "≤ΔE5",
+      "colorFadingWall": "≤ΔE5",
+      "chalkRoof": "≥#8",
+      "chalkWall": "≥#8"
     },
     "lowRisk": {
       "rows": [
@@ -512,7 +515,10 @@
           "coat3": "30Y"
         }
       ],
-      "warrantyNote": "CHALK\nROOF / WALL\nΔE5.0 NO.8"
+      "colorFadingRoof": "≤ΔE5",
+      "colorFadingWall": "≤ΔE5",
+      "chalkRoof": "≥#8",
+      "chalkWall": "≥#8"
     }
   },
   "notCovered": {

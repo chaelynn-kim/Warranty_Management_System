@@ -18,8 +18,22 @@ const REQUEST_ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/p
 const REQUEST_ALLOWED_EXT = /\.(pdf|jpe?g|png)$/i
 
 const fieldLabel = 'mb-1.5 block text-sm font-medium text-text-secondary'
-const fieldInput =
-  'w-full rounded-lg border border-border bg-bg-primary/50 px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent disabled:cursor-not-allowed disabled:opacity-60'
+const qualityFieldBorderBase = 'border border-border'
+const qualityFieldBorderInteractive =
+  'transition-colors hover:border-fuchsia-400 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)] focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(232,121,249,0.55)]'
+const fieldInput = [
+  'w-full rounded-lg bg-bg-primary/50 px-3 py-2.5 text-sm text-text-primary outline-none',
+  'placeholder:text-text-muted disabled:cursor-not-allowed disabled:opacity-60',
+  qualityFieldBorderBase,
+  qualityFieldBorderInteractive,
+].join(' ')
+const qualityReadOnlyBox =
+  'rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm'
+const qualityDatePickerTrigger = [
+  'border border-border',
+  'hover:border-fuchsia-400 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]',
+  'focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(232,121,249,0.55)]',
+].join(' ')
 
 function FormField({
   label,
@@ -116,7 +130,9 @@ function RequestFileAttachmentField({
   }
 
   if (readOnly && files.length === 0) {
-    return <div className="rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm text-text-muted">-</div>
+    return (
+      <div className={`${qualityReadOnlyBox} text-text-muted`}>-</div>
+    )
   }
 
   return (
@@ -146,8 +162,8 @@ function RequestFileAttachmentField({
             }}
             className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors ${
               isDragging
-                ? 'border-accent bg-accent/10'
-                : 'border-border bg-bg-primary/30 hover:border-accent/60 hover:bg-bg-primary/50'
+                ? 'border-fuchsia-400 bg-fuchsia-400/10 shadow-[0_0_14px_rgba(232,121,249,0.55)]'
+                : `border-border bg-bg-primary/30 hover:border-fuchsia-400 hover:bg-bg-primary/50 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]`
             }`}
           >
             <CloudUpload className="h-8 w-8 text-text-muted" />
@@ -164,7 +180,7 @@ function RequestFileAttachmentField({
           {files.map((file) => (
             <li
               key={file.id}
-              className="flex items-start gap-3 rounded-lg border border-border bg-bg-primary/40 px-3 py-2.5"
+              className={`flex items-start gap-3 rounded-lg border border-border bg-bg-primary/40 px-3 py-2.5`}
             >
               <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
               <div className="min-w-0 flex-1">
@@ -245,11 +261,7 @@ function WarrantyLanguageUploadGroup({
 }) {
   return (
     <div className="space-y-3">
-      <p className={fieldLabel}>
-        {title}
-        <span className="ml-0.5 text-required">*</span>
-      </p>
-      <p className="text-xs text-text-muted">국문·영문 중 하나 이상의 파일을 첨부해 주세요.</p>
+      <p className={fieldLabel}>{title}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <FormField label="국문">
           <RequestFileAttachmentField
@@ -296,7 +308,7 @@ export function RequestQualitySection({
 
       {locked && (
         <p className="mb-4 text-xs text-text-muted">
-          품질팀장 검토 후 <span className="text-text-secondary">작성 중</span> 상태가 되면 입력할 수
+          품질팀장 승인 후 <span className="text-text-secondary">접수</span> 상태가 되면 담당자가 입력할 수
           있습니다.
         </p>
       )}
@@ -305,7 +317,7 @@ export function RequestQualitySection({
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           <FormField label="작성자">
             {readOnly ? (
-              <div className="rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm text-text-primary">
+              <div className={`${qualityReadOnlyBox} text-text-primary`}>
                 {qualityAuthor.trim() || '-'}
               </div>
             ) : (
@@ -320,9 +332,9 @@ export function RequestQualitySection({
             )}
           </FormField>
 
-          <FormField label="발행일자" required>
+          <FormField label="발행일자">
             {readOnly ? (
-              <div className="rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm text-text-primary">
+              <div className={`${qualityReadOnlyBox} text-text-primary`}>
                 {issueDate ? formatDisplayDate(issueDate) : '-'}
               </div>
             ) : (
@@ -330,14 +342,15 @@ export function RequestQualitySection({
                 value={issueDate}
                 onChange={onIssueDateChange}
                 className="cursor-pointer"
+                triggerClassName={qualityDatePickerTrigger}
               />
             )}
           </FormField>
         </div>
 
-        <FormField label="검토 결과" optional>
+        <FormField label="검토 결과">
           {readOnly ? (
-            <div className="min-h-[80px] whitespace-pre-wrap rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm leading-relaxed text-text-primary">
+            <div className={`min-h-[80px] whitespace-pre-wrap ${qualityReadOnlyBox} leading-relaxed text-text-primary`}>
               {reviewResult.trim() || '-'}
             </div>
           ) : (

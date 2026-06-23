@@ -3,15 +3,20 @@ import { X } from 'lucide-react'
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../../types'
 import { toWarrantyIssuanceRequest } from '../../utils/warrantyRequestStorage'
 import {
+  QUALITY_MANAGEMENT_ONLY_MESSAGE,
+  RECEIPT_ASSIGNEE_ONLY_MESSAGE,
+  TEAM_LEADER_APPROVE_ONLY_MESSAGE,
+} from '../../utils/authValidation'
+import {
   canEditRequestFields,
-  canPromoteToInProgress,
+  canPromoteToReceived,
   canStartQualityEdit,
   isRequestCompleted,
   normalizeRequestStatus,
 } from '../../utils/warrantyRequestStatus'
 import {
-  WARRANTY_REQUEST_STATUS_IN_PROGRESS,
   WARRANTY_REQUEST_STATUS_PENDING,
+  WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
 import {
   WarrantyIssuanceRequestForm,
@@ -25,6 +30,8 @@ interface WarrantyIssuanceRequestModalProps {
   open: boolean
   onClose: () => void
   canManageQuality?: boolean
+  canTeamLeaderApprove?: boolean
+  canReceiveRequest?: boolean
   onSubmit?: (request: WarrantyIssuanceRequest) => void
   onUpdate?: (
     id: string,
@@ -39,6 +46,8 @@ export function WarrantyIssuanceRequestModal({
   open,
   onClose,
   canManageQuality = false,
+  canTeamLeaderApprove = false,
+  canReceiveRequest = false,
   onSubmit,
   onUpdate,
   onStatusChange,
@@ -48,6 +57,8 @@ export function WarrantyIssuanceRequestModal({
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [editScope, setEditScope] = useState<EditScope | null>(null)
+  const [approveConfirmOpen, setApproveConfirmOpen] = useState(false)
+  const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
   const isViewMode = viewRequest != null
   const status = viewRequest ? normalizeRequestStatus(viewRequest.status) : ''
 
@@ -55,11 +66,15 @@ export function WarrantyIssuanceRequestModal({
     if (!open) {
       setIsEditing(false)
       setEditScope(null)
+      setApproveConfirmOpen(false)
+      setPublishConfirmOpen(false)
       return
     }
     setError('')
     setIsEditing(false)
     setEditScope(null)
+    setApproveConfirmOpen(false)
+    setPublishConfirmOpen(false)
     if (viewRequest) {
       formRef.current?.setValue(toWarrantyIssuanceRequest(viewRequest))
     } else {
@@ -71,7 +86,16 @@ export function WarrantyIssuanceRequestModal({
     if (!open) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key !== 'Escape') return
+      if (publishConfirmOpen) {
+        setPublishConfirmOpen(false)
+        return
+      }
+      if (approveConfirmOpen) {
+        setApproveConfirmOpen(false)
+        return
+      }
+      onClose()
     }
     document.addEventListener('keydown', handleKeyDown)
     document.body.style.overflow = 'hidden'
@@ -79,7 +103,7 @@ export function WarrantyIssuanceRequestModal({
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = ''
     }
-  }, [open, onClose])
+  }, [open, onClose, approveConfirmOpen, publishConfirmOpen])
 
   if (!open) return null
 
@@ -104,15 +128,33 @@ export function WarrantyIssuanceRequestModal({
     onClose()
   }
 
+  const executeSaveUpdate = () => {
+    if (!formRef.current || !viewRequest || !editScope) {
+      setError('폼을 불러올 수 없습니다.')
+      return
+    }
+
+    const request = formRef.current.getValue()
+    onUpdate?.(viewRequest.id, request, { editScope })
+    onClose()
+  }
+
   const handleSaveUpdate = () => {
     if (!formRef.current || !viewRequest || !editScope) {
       setError('폼을 불러올 수 없습니다.')
       return
     }
 
-    if (editScope === 'quality' && !canManageQuality) {
-      setError('품질경영팀 검토 결과를 수정할 권한이 없습니다.')
-      return
+    if (editScope === 'quality') {
+      if (status === WARRANTY_REQUEST_STATUS_RECEIVED) {
+        if (!canReceiveRequest) {
+          window.alert(RECEIPT_ASSIGNEE_ONLY_MESSAGE)
+          return
+        }
+      } else if (!canManageQuality) {
+        setError(QUALITY_MANAGEMENT_ONLY_MESSAGE)
+        return
+      }
     }
 
     if (editScope === 'request') {
@@ -129,9 +171,18 @@ export function WarrantyIssuanceRequestModal({
       }
     }
 
-    const request = formRef.current.getValue()
-    onUpdate?.(viewRequest.id, request, { editScope })
-    onClose()
+    if (editScope === 'quality' && !isRequestCompleted(status)) {
+      setError('')
+      setPublishConfirmOpen(true)
+      return
+    }
+
+    executeSaveUpdate()
+  }
+
+  const handleConfirmPublish = () => {
+    setPublishConfirmOpen(false)
+    executeSaveUpdate()
   }
 
   const handleStartRequestEdit = () => {
@@ -141,7 +192,15 @@ export function WarrantyIssuanceRequestModal({
   }
 
   const handleStartQualityEdit = () => {
-    if (!canManageQuality) return
+    if (status === WARRANTY_REQUEST_STATUS_RECEIVED) {
+      if (!canReceiveRequest) {
+        window.alert(RECEIPT_ASSIGNEE_ONLY_MESSAGE)
+        return
+      }
+    } else if (!canManageQuality) {
+      setError(QUALITY_MANAGEMENT_ONLY_MESSAGE)
+      return
+    }
     setError('')
     setEditScope('quality')
     setIsEditing(true)
@@ -156,17 +215,28 @@ export function WarrantyIssuanceRequestModal({
     }
   }
 
-  const handlePromoteToInProgress = () => {
-    if (!viewRequest || !canManageQuality) return
-    onStatusChange?.(viewRequest.id, WARRANTY_REQUEST_STATUS_IN_PROGRESS)
+  const handleTeamLeaderApprove = () => {
+    if (!viewRequest) return
+    if (!canTeamLeaderApprove) {
+      window.alert(TEAM_LEADER_APPROVE_ONLY_MESSAGE)
+      return
+    }
+    setError('')
+    setApproveConfirmOpen(true)
+  }
+
+  const handleConfirmTeamLeaderApprove = () => {
+    if (!viewRequest) return
+    onStatusChange?.(viewRequest.id, WARRANTY_REQUEST_STATUS_RECEIVED)
+    setApproveConfirmOpen(false)
     setError('')
   }
 
   const statusHint =
-    status === '접수 대기'
-      ? '품질팀장 검토 후 작성 중으로 변경할 수 있습니다.'
-      : status === '작성 중'
-        ? '작성 담당자가 품질팀 영역을 작성·저장하면 발행 완료됩니다.'
+    status === WARRANTY_REQUEST_STATUS_PENDING
+      ? '품질경영팀 팀장 승인 시 접수 처리됩니다.'
+      : status === WARRANTY_REQUEST_STATUS_RECEIVED
+        ? '작성 담당자가 검토 결과 영역을 작성·저장하면 발행 완료됩니다.'
         : status === '발행 완료'
           ? '발행 완료된 의뢰도 수정할 수 있습니다.'
           : ''
@@ -215,31 +285,113 @@ export function WarrantyIssuanceRequestModal({
             ref={formRef}
             readOnly={readOnly && !isEditing}
             requestReadOnly={requestReadOnly}
-            qualityReadOnly={qualityReadOnly || !canManageQuality}
+            qualityReadOnly={
+              qualityReadOnly ||
+              (status === WARRANTY_REQUEST_STATUS_RECEIVED ? !canReceiveRequest : !canManageQuality)
+            }
             showQualitySection={isViewMode}
-            qualityLocked={isViewMode && !isEditing && status === WARRANTY_REQUEST_STATUS_PENDING}
+            qualityLocked={
+              isViewMode &&
+              !isEditing &&
+              (status === WARRANTY_REQUEST_STATUS_PENDING ||
+                (status === WARRANTY_REQUEST_STATUS_RECEIVED && !canReceiveRequest))
+            }
           />
         </div>
+
+        {publishConfirmOpen && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="publish-confirm-title"
+              className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 shadow-2xl"
+            >
+              <p
+                id="publish-confirm-title"
+                className="text-center text-sm font-medium text-text-primary sm:text-base"
+              >
+                발행 하시겠습니까?
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleConfirmPublish}
+                  className="inline-flex h-11 min-w-[5.5rem] items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  예
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPublishConfirmOpen(false)}
+                  className="inline-flex h-11 min-w-[5.5rem] items-center justify-center rounded-lg border border-border bg-bg-tertiary px-6 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent"
+                >
+                  아니오
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {approveConfirmOpen && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 p-4">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="team-leader-approve-confirm-title"
+              className="w-full max-w-sm rounded-xl border border-border bg-bg-secondary p-6 shadow-2xl"
+            >
+              <p
+                id="team-leader-approve-confirm-title"
+                className="text-center text-sm font-medium text-text-primary sm:text-base"
+              >
+                승인 하시겠습니까?
+              </p>
+              <div className="mt-6 flex justify-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleConfirmTeamLeaderApprove}
+                  className="inline-flex h-11 min-w-[5.5rem] items-center justify-center rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
+                >
+                  예
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setApproveConfirmOpen(false)}
+                  className="inline-flex h-11 min-w-[5.5rem] items-center justify-center rounded-lg border border-border bg-bg-tertiary px-6 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent"
+                >
+                  아니오
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <footer className="flex shrink-0 items-center justify-between gap-4 border-t border-border bg-bg-tertiary/80 px-5 py-4 sm:px-6">
           {isViewMode && !isEditing ? (
             <>
-              <p className="text-sm text-text-muted">{statusHint || '의뢰 내역 조회'}</p>
+              <p
+                className={`min-h-[20px] text-sm ${error ? 'font-medium text-red-400' : 'text-text-muted'}`}
+                role={error ? 'alert' : undefined}
+                aria-live={error ? 'polite' : undefined}
+              >
+                {error || statusHint || '의뢰 내역 조회'}
+              </p>
               <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-                {canManageQuality && canPromoteToInProgress(status) && (
+                {canPromoteToReceived(status) && (
                   <button
                     type="button"
-                    onClick={handlePromoteToInProgress}
+                    onClick={handleTeamLeaderApprove}
                     className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
                   >
-                    작성 중으로 변경
+                    팀장 승인
                   </button>
                 )}
-                {canManageQuality && canStartQualityEdit(status) && (
+                {canStartQualityEdit(status) && (
                   <button
                     type="button"
                     onClick={handleStartQualityEdit}
-                    className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#1c1c1c] px-5 text-sm font-semibold text-white transition-colors hover:bg-[#2a2a2a]"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-fuchsia-400/70 bg-bg-tertiary px-5 text-sm font-semibold text-text-primary shadow-[0_0_10px_rgba(232,121,249,0.4)] transition-colors hover:border-fuchsia-400 hover:text-fuchsia-300 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]"
                   >
                     {isRequestCompleted(status) ? '품질 영역 수정' : '작성하기'}
                   </button>
@@ -250,7 +402,7 @@ export function WarrantyIssuanceRequestModal({
                     onClick={handleStartRequestEdit}
                     className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-5 text-sm font-semibold text-text-primary transition-colors hover:border-accent hover:text-accent"
                   >
-                    수정하기
+                    의뢰 내용 수정
                   </button>
                 )}
                 <button
@@ -280,9 +432,7 @@ export function WarrantyIssuanceRequestModal({
                   onClick={handleSaveUpdate}
                   className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
                 >
-                  {editScope === 'quality' && !isRequestCompleted(status)
-                    ? '저장 (발행 완료)'
-                    : '저장'}
+                  {editScope === 'quality' && !isRequestCompleted(status) ? '발행 완료' : '저장'}
                 </button>
               </div>
             </>

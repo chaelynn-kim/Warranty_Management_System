@@ -1,5 +1,20 @@
 /** Shared dark-theme styles for warranty period (보증연한) tab */
 
+export const periodSectionTitleClass =
+  'min-w-0 text-[calc(0.875rem-1pt)] font-semibold text-text-primary sm:text-[calc(1rem-1pt)]'
+
+export const periodCardTitleClass =
+  'inline-flex flex-wrap items-center gap-x-2 gap-y-1 leading-snug'
+
+export const periodCardHeaderClass = 'mb-4 space-y-1'
+
+export const periodCautionNoticeClass =
+  'flex min-w-0 items-center gap-1.5 text-sm font-bold leading-snug text-text-primary'
+
+export const periodCautionRowClass = 'flex items-center justify-between gap-3'
+
+export const periodCautionRowBlockClass = `mb-4 ${periodCautionRowClass}`
+
 export const periodThClass =
   'border border-border/60 bg-bg-tertiary px-2 py-2.5 text-center text-xs font-semibold whitespace-nowrap text-text-secondary sm:px-3 sm:py-3 sm:text-sm'
 

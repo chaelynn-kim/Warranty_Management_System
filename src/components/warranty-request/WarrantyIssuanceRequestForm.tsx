@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import { Check, ChevronDown, FileText, Globe, Package, RotateCcw, User, type LucideIcon } from 'lucide-react'
 import { DatePicker } from '../ui/DatePicker'
 import { CompanyWarrantyPreview } from './CompanyWarrantyPreview'
@@ -10,10 +10,12 @@ import {
   WARRANTY_REQUEST_DETAIL_REGION_CUSTOM,
   WARRANTY_REQUEST_LANGUAGES,
   WARRANTY_REQUEST_MATERIALS,
+  WARRANTY_REQUEST_MATERIAL_OTHER,
   WARRANTY_REQUEST_PAINT_COMPANIES,
   WARRANTY_REQUEST_PRODUCT_ITEMS,
   WARRANTY_REQUEST_REGIONS,
   WARRANTY_REQUEST_RESIN_ALL,
+  WARRANTY_REQUEST_RESIN_OTHER,
   WARRANTY_REQUEST_RESINS,
   WARRANTY_REQUEST_TEAM_OTHER,
   WARRANTY_REQUEST_TEAMS,
@@ -30,22 +32,50 @@ const fieldLabel = 'mb-1.5 block text-sm font-medium text-text-secondary'
 const fieldInput =
   'w-full rounded-lg border border-border bg-bg-primary/50 px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-muted focus:border-accent'
 const fieldSelect = `${fieldInput} cursor-pointer appearance-none`
+const toolbarButtonBase = 'inline-flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm'
+const toolbarStickyClass =
+  'sticky top-14 z-40 -mx-4 mb-8 space-y-2 border-b border-border/60 bg-bg-secondary/95 px-4 pb-4 backdrop-blur-sm sm:-mx-6 sm:px-6'
+const dropdownOptionClass = (active: boolean) =>
+  `flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
+    active ? 'font-medium text-accent' : 'text-text-primary'
+  }`
+const dropdownCheckboxClass = (active: boolean, rounded: 'square' | 'circle' = 'square') =>
+  `flex h-4 w-4 shrink-0 items-center justify-center border ${
+    rounded === 'circle' ? 'rounded-full' : 'rounded'
+  } ${active ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'}`
 
 function useDropdownOpen() {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
+    if (!open) return
+
+    const handleMouseDown = (event: MouseEvent) => {
+      if (ref.current?.contains(event.target as Node)) return
+      setOpen(false)
     }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [])
+
+    document.addEventListener('mousedown', handleMouseDown)
+    return () => document.removeEventListener('mousedown', handleMouseDown)
+  }, [open])
 
   return { open, setOpen, ref }
+}
+
+function keepDropdownOpenOnPress(event: ReactMouseEvent) {
+  event.preventDefault()
+}
+
+const dropdownPanelClass =
+  'absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto overscroll-contain rounded-lg border border-border bg-bg-secondary py-1 shadow-xl [scrollbar-gutter:stable]'
+
+function DropdownPanel({ children }: { children: ReactNode }) {
+  return (
+    <div className={dropdownPanelClass} onMouseDown={keepDropdownOpenOnPress}>
+      {children}
+    </div>
+  )
 }
 
 function OptionDropdownSingleSelect({
@@ -89,7 +119,7 @@ function OptionDropdownSingleSelect({
       </button>
 
       {open && (
-        <div className="absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
+        <DropdownPanel>
           {options.map((option) => {
             const checked = value === option
             return (
@@ -97,22 +127,16 @@ function OptionDropdownSingleSelect({
                 key={option}
                 type="button"
                 onClick={() => selectOption(option)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                  checked ? 'font-medium text-accent' : 'text-text-primary'
-                }`}
+                className={dropdownOptionClass(checked)}
               >
-                <span
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
-                    checked ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-                  }`}
-                >
+                <span className={dropdownCheckboxClass(checked, 'circle')}>
                   {checked && <Check className="h-3 w-3" strokeWidth={3} />}
                 </span>
-                {option}
+                <span className="flex-1">{option}</span>
               </button>
             )
           })}
-        </div>
+        </DropdownPanel>
       )}
     </div>
   )
@@ -126,6 +150,10 @@ function OptionDropdownMultiSelect({
   ariaLabel,
   disabled = false,
   disabledLabel,
+  otherOption,
+  otherCustomValue = '',
+  onOtherCustomChange,
+  otherPlaceholder,
 }: {
   value: string
   onChange: (value: string) => void
@@ -134,71 +162,118 @@ function OptionDropdownMultiSelect({
   ariaLabel: string
   disabled?: boolean
   disabledLabel?: string
+  otherOption?: string
+  otherCustomValue?: string
+  onOtherCustomChange?: (value: string) => void
+  otherPlaceholder?: string
 }) {
   const { open, setOpen, ref } = useDropdownOpen()
   const selected = parseMultiValue(value)
   const isEmpty = selected.length === 0
+  const showOtherInput = Boolean(otherOption && selected.includes(otherOption))
 
   const buttonLabel = useMemo(() => {
     if (disabled && disabledLabel) return disabledLabel
     if (isEmpty) return placeholder
-    if (selected.length === 1) return selected[0]
-    return `${selected[0]} 외 ${selected.length - 1}건`
-  }, [disabled, disabledLabel, isEmpty, placeholder, selected])
+    const labels = otherOption
+      ? selected.filter((item) => item !== otherOption)
+      : [...selected]
+    if (showOtherInput && otherOption) labels.push(otherOption)
+    if (labels.length === 0) return placeholder
+    if (labels.length === 1) return labels[0]
+    return `${labels[0]} 외 ${labels.length - 1}건`
+  }, [disabled, disabledLabel, isEmpty, otherOption, placeholder, selected, showOtherInput])
 
   const toggleOption = (option: string) => {
+    if (otherOption && option === otherOption) {
+      if (selected.includes(option)) {
+        onChange(joinMultiValue(selected.filter((item) => item !== option)))
+        onOtherCustomChange?.('')
+      } else {
+        onChange(joinMultiValue([otherOption]))
+      }
+      setOpen(false)
+      return
+    }
+
+    const withoutOther = otherOption
+      ? selected.filter((item) => item !== otherOption)
+      : selected
+    if (otherOption && selected.includes(otherOption)) {
+      onOtherCustomChange?.('')
+    }
+
     onChange(
       joinMultiValue(
-        selected.includes(option)
-          ? selected.filter((item) => item !== option)
-          : [...selected, option]
+        withoutOther.includes(option)
+          ? withoutOther.filter((item) => item !== option)
+          : [...withoutOther, option]
       )
     )
   }
 
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => !disabled && setOpen((prev) => !prev)}
-        disabled={disabled}
-        className={`${fieldSelect} flex items-center justify-between pr-3 text-left disabled:cursor-not-allowed disabled:opacity-50 ${
-          isEmpty ? 'text-text-muted' : 'text-text-primary'
-        }`}
-        aria-label={ariaLabel}
-        aria-expanded={open}
-      >
-        <span className="truncate">{buttonLabel}</span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+    <div className="space-y-3">
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => !disabled && setOpen((prev) => !prev)}
+          disabled={disabled}
+          className={`${fieldSelect} flex items-center justify-between pr-3 text-left disabled:cursor-not-allowed disabled:opacity-50 ${
+            isEmpty ? 'text-text-muted' : 'text-text-primary'
+          }`}
+          aria-label={ariaLabel}
+          aria-expanded={open}
+        >
+          <span className="truncate">{buttonLabel}</span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-      {open && !disabled && (
-        <div className="absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
-          {options.map((option) => {
-            const checked = selected.includes(option)
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => toggleOption(option)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                  checked ? 'font-medium text-accent' : 'text-text-primary'
-                }`}
-              >
-                <span
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                    checked ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-                  }`}
+        {open && !disabled && (
+          <DropdownPanel>
+            {options.map((option) => {
+              const checked = selected.includes(option)
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => toggleOption(option)}
+                  className={dropdownOptionClass(checked)}
                 >
-                  {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+                  <span className={dropdownCheckboxClass(checked)}>
+                    {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
+                  <span className="flex-1">{option}</span>
+                </button>
+              )
+            })}
+            {otherOption && (
+              <button
+                type="button"
+                onClick={() => toggleOption(otherOption)}
+                className={dropdownOptionClass(showOtherInput)}
+              >
+                <span className={dropdownCheckboxClass(showOtherInput)}>
+                  {showOtherInput && <Check className="h-3 w-3" strokeWidth={3} />}
                 </span>
-                {option}
+                <span className="flex-1">{otherOption}</span>
               </button>
-            )
-          })}
-        </div>
+            )}
+          </DropdownPanel>
+        )}
+      </div>
+
+      {showOtherInput && onOtherCustomChange && (
+        <input
+          type="text"
+          value={otherCustomValue}
+          onChange={(e) => onOtherCustomChange(e.target.value)}
+          placeholder={otherPlaceholder ?? '직접 입력'}
+          className={fieldInput}
+          aria-label={otherPlaceholder ?? '직접 입력'}
+        />
       )}
     </div>
   )
@@ -212,8 +287,10 @@ export function createEmptyWarrantyIssuanceRequest(): WarrantyIssuanceRequest {
     requesterName: '',
     colorName: '',
     resin: '',
+    resinCustom: '',
     paintCompany: '',
     material: '',
+    materialCustom: '',
     coatingStructure: '',
     productItem: '',
     region: '',
@@ -245,8 +322,20 @@ export function validateWarrantyIssuanceRequest(form: WarrantyIssuanceRequest): 
   if (!form.productItem.trim()) return '품목을 선택해 주세요.'
   if (!form.colorName.trim()) return '제품명(색상명)을 입력해 주세요.'
   if (!form.resin.trim()) return '수지를 선택해 주세요.'
+  if (
+    parseMultiValue(form.resin).includes(WARRANTY_REQUEST_RESIN_OTHER) &&
+    !form.resinCustom.trim()
+  ) {
+    return '수지를 입력해 주세요.'
+  }
   if (!form.paintCompany.trim()) return '도료사를 선택해 주세요.'
   if (!form.material.trim()) return '소재를 선택해 주세요.'
+  if (
+    parseMultiValue(form.material).includes(WARRANTY_REQUEST_MATERIAL_OTHER) &&
+    !form.materialCustom.trim()
+  ) {
+    return '소재를 입력해 주세요.'
+  }
   if (!form.coatingStructure.trim()) return '도장구조를 선택해 주세요.'
   if (!form.region.trim()) return '국가를 선택해 주세요.'
   if (!form.customer.trim()) return '수요가명을 입력해 주세요.'
@@ -258,12 +347,17 @@ export function validateWarrantyIssuanceRequest(form: WarrantyIssuanceRequest): 
   return null
 }
 
+export function isWarrantyIssuanceRequestComplete(form: WarrantyIssuanceRequest): boolean {
+  return validateWarrantyIssuanceRequest(form) === null
+}
+
 export interface WarrantyIssuanceRequestFormHandle {
   reset: () => void
   setValue: (value: WarrantyIssuanceRequest) => void
   getValue: () => WarrantyIssuanceRequest
   validate: () => string | null
   validateQuality: () => string | null
+  isComplete: () => boolean
 }
 
 interface WarrantyIssuanceRequestFormProps {
@@ -271,7 +365,7 @@ interface WarrantyIssuanceRequestFormProps {
   toolbarLabel?: ReactNode
   toolbarTitle?: ReactNode
   toolbarNotice?: ReactNode
-  actionSlot?: ReactNode
+  actionSlot?: ReactNode | ((context: { isComplete: boolean }) => ReactNode)
   readOnly?: boolean
   requestReadOnly?: boolean
   qualityReadOnly?: boolean
@@ -355,31 +449,49 @@ function SelectField({
 
 function ResinMultiSelect({
   value,
+  customValue,
   onChange,
+  onCustomChange,
 }: {
   value: string
+  customValue: string
   onChange: (value: string) => void
+  onCustomChange: (value: string) => void
 }) {
   const { open, setOpen, ref } = useDropdownOpen()
   const selected = parseMultiValue(value)
   const isEmpty = selected.length === 0
   const isAll = selected.includes(WARRANTY_REQUEST_RESIN_ALL)
+  const showOtherInput = selected.includes(WARRANTY_REQUEST_RESIN_OTHER)
+  const listedSelected = selected.filter(
+    (item) => item !== WARRANTY_REQUEST_RESIN_ALL && item !== WARRANTY_REQUEST_RESIN_OTHER
+  )
 
   const buttonLabel = useMemo(() => {
     if (isEmpty) return '수지 선택'
     if (isAll) return WARRANTY_REQUEST_RESIN_ALL
-    if (selected.length === 1) return selected[0]
-    return `${selected[0]} 외 ${selected.length - 1}건`
-  }, [isAll, isEmpty, selected])
+    const labels = [...listedSelected]
+    if (showOtherInput) labels.push(WARRANTY_REQUEST_RESIN_OTHER)
+    if (labels.length === 1) return labels[0]
+    return `${labels[0]} 외 ${labels.length - 1}건`
+  }, [isAll, isEmpty, listedSelected, showOtherInput])
 
   const setSelected = (next: string[]) => {
     onChange(joinMultiValue(next))
   }
 
-  const selectAll = () => setSelected([WARRANTY_REQUEST_RESIN_ALL])
+  const selectAll = () => {
+    onCustomChange('')
+    setSelected([WARRANTY_REQUEST_RESIN_ALL])
+  }
 
   const toggleResin = (resin: string) => {
-    const current = selected.filter((item) => item !== WARRANTY_REQUEST_RESIN_ALL)
+    const current = selected.filter(
+      (item) => item !== WARRANTY_REQUEST_RESIN_ALL && item !== WARRANTY_REQUEST_RESIN_OTHER
+    )
+    if (showOtherInput) {
+      onCustomChange('')
+    }
     setSelected(
       current.includes(resin)
         ? current.filter((item) => item !== resin)
@@ -387,64 +499,87 @@ function ResinMultiSelect({
     )
   }
 
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((prev) => !prev)}
-        className={`${fieldSelect} flex items-center justify-between pr-3 text-left ${
-          isEmpty ? 'text-text-muted' : 'text-text-primary'
-        }`}
-        aria-label="수지 선택"
-        aria-expanded={open}
-      >
-        <span className="truncate">{buttonLabel}</span>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
-        />
-      </button>
+  const toggleOther = () => {
+    if (showOtherInput) {
+      setSelected(selected.filter((item) => item !== WARRANTY_REQUEST_RESIN_OTHER))
+      onCustomChange('')
+      setOpen(false)
+      return
+    }
 
-      {open && (
-        <div className="absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
-          <button
-            type="button"
-            onClick={selectAll}
-            className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-              isAll ? 'font-semibold text-accent' : 'text-text-primary'
-            }`}
-          >
-            <span
-              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                isAll ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-              }`}
+    setSelected([WARRANTY_REQUEST_RESIN_OTHER])
+    setOpen(false)
+  }
+
+  return (
+    <div className="space-y-3">
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((prev) => !prev)}
+          className={`${fieldSelect} flex items-center justify-between pr-3 text-left ${
+            isEmpty ? 'text-text-muted' : 'text-text-primary'
+          }`}
+          aria-label="수지 선택"
+          aria-expanded={open}
+        >
+          <span className="truncate">{buttonLabel}</span>
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {open && (
+          <DropdownPanel>
+            <button
+              type="button"
+              onClick={selectAll}
+              className={dropdownOptionClass(isAll)}
             >
-              {isAll && <Check className="h-3 w-3" strokeWidth={3} />}
-            </span>
-            {WARRANTY_REQUEST_RESIN_ALL}
-          </button>
-          {WARRANTY_REQUEST_RESINS.map((resin) => {
-            const checked = !isAll && selected.includes(resin)
-            return (
-              <button
-                key={resin}
-                type="button"
-                onClick={() => toggleResin(resin)}
-                className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                  checked ? 'font-medium text-accent' : 'text-text-primary'
-                }`}
-              >
-                <span
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                    checked ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-                  }`}
+              <span className={dropdownCheckboxClass(isAll)}>
+                {isAll && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              <span className="flex-1">{WARRANTY_REQUEST_RESIN_ALL}</span>
+            </button>
+            {WARRANTY_REQUEST_RESINS.map((resin) => {
+              const checked = !isAll && selected.includes(resin)
+              return (
+                <button
+                  key={resin}
+                  type="button"
+                  onClick={() => toggleResin(resin)}
+                  className={dropdownOptionClass(checked)}
                 >
-                  {checked && <Check className="h-3 w-3" strokeWidth={3} />}
-                </span>
-                {resin}
-              </button>
-            )
-          })}
-        </div>
+                  <span className={dropdownCheckboxClass(checked)}>
+                    {checked && <Check className="h-3 w-3" strokeWidth={3} />}
+                  </span>
+                  <span className="flex-1">{resin}</span>
+                </button>
+              )
+            })}
+            <button
+              type="button"
+              onClick={toggleOther}
+              className={dropdownOptionClass(showOtherInput)}
+            >
+              <span className={dropdownCheckboxClass(showOtherInput)}>
+                {showOtherInput && <Check className="h-3 w-3" strokeWidth={3} />}
+              </span>
+              <span className="flex-1">{WARRANTY_REQUEST_RESIN_OTHER}</span>
+            </button>
+          </DropdownPanel>
+        )}
+      </div>
+
+      {showOtherInput && (
+        <input
+          type="text"
+          value={customValue}
+          onChange={(e) => onCustomChange(e.target.value)}
+          placeholder="수지 직접 입력"
+          className={fieldInput}
+          aria-label="수지 직접 입력"
+        />
       )}
     </div>
   )
@@ -472,7 +607,7 @@ function DetailRegionMultiSelect({
 
   const buttonLabel = useMemo(() => {
     if (!region) return '국가를 먼저 선택하세요'
-    if (isEmpty) return '국가 선택'
+    if (isEmpty) return '세부 국가명 선택'
     const labels = [...listedSelected]
     if (showCustomInput) labels.push(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)
     if (labels.length === 1) return labels[0]
@@ -489,15 +624,21 @@ function DetailRegionMultiSelect({
         setSelected(selected.filter((item) => item !== option))
         onCustomChange('')
       } else {
-        setSelected([...selected, option])
+        setSelected([WARRANTY_REQUEST_DETAIL_REGION_CUSTOM])
       }
+      setOpen(false)
       return
     }
 
+    const withoutCustom = selected.filter((item) => item !== WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)
+    if (selected.includes(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)) {
+      onCustomChange('')
+    }
+
     setSelected(
-      selected.includes(option)
-        ? selected.filter((item) => item !== option)
-        : [...selected, option]
+      withoutCustom.includes(option)
+        ? withoutCustom.filter((item) => item !== option)
+        : [...withoutCustom, option]
     )
   }
 
@@ -521,7 +662,7 @@ function DetailRegionMultiSelect({
         </button>
 
         {open && region && (
-          <div className="absolute top-full z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-lg border border-border bg-bg-secondary py-1 shadow-xl">
+          <DropdownPanel>
             {options.map((option) => {
               const checked = selected.includes(option)
               return (
@@ -529,38 +670,26 @@ function DetailRegionMultiSelect({
                   key={option}
                   type="button"
                   onClick={() => toggleOption(option)}
-                  className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                    checked ? 'font-medium text-accent' : 'text-text-primary'
-                  }`}
+                  className={dropdownOptionClass(checked)}
                 >
-                  <span
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                      checked ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-                    }`}
-                  >
+                  <span className={dropdownCheckboxClass(checked)}>
                     {checked && <Check className="h-3 w-3" strokeWidth={3} />}
                   </span>
-                  {option}
+                  <span className="flex-1">{option}</span>
                 </button>
               )
             })}
             <button
               type="button"
               onClick={() => toggleOption(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)}
-              className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
-                showCustomInput ? 'font-medium text-accent' : 'text-text-primary'
-              }`}
+              className={dropdownOptionClass(showCustomInput)}
             >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
-                  showCustomInput ? 'border-accent bg-accent text-white' : 'border-border bg-bg-primary/50'
-                }`}
-              >
+              <span className={dropdownCheckboxClass(showCustomInput)}>
                 {showCustomInput && <Check className="h-3 w-3" strokeWidth={3} />}
               </span>
-              {WARRANTY_REQUEST_DETAIL_REGION_CUSTOM}
+              <span className="flex-1">{WARRANTY_REQUEST_DETAIL_REGION_CUSTOM}</span>
             </button>
-          </div>
+          </DropdownPanel>
         )}
       </div>
 
@@ -569,9 +698,9 @@ function DetailRegionMultiSelect({
           type="text"
           value={customValue}
           onChange={(e) => onCustomChange(e.target.value)}
-          placeholder="세부 국가명 직접 입력"
+          placeholder="세부 국가명 입력"
           className={fieldInput}
-          aria-label="세부 국가명 직접 입력"
+          aria-label="세부 국가명 입력"
         />
       )}
     </div>
@@ -600,13 +729,20 @@ export const WarrantyIssuanceRequestForm = forwardRef<
   const isRequestReadOnly = readOnly || requestReadOnly
   const isQualityReadOnly = readOnly || qualityReadOnly
 
-  useImperativeHandle(ref, () => ({
-    reset: () => setForm(createEmptyWarrantyIssuanceRequest()),
-    setValue: (value: WarrantyIssuanceRequest) => setForm(value),
-    getValue: () => form,
-    validate: () => validateWarrantyIssuanceRequest(form),
-    validateQuality: () => validateQualityCompletion(form),
-  }))
+  useImperativeHandle(
+    ref,
+    () => ({
+      reset: () => setForm(createEmptyWarrantyIssuanceRequest()),
+      setValue: (value: WarrantyIssuanceRequest) => setForm(value),
+      getValue: () => form,
+      validate: () => validateWarrantyIssuanceRequest(form),
+      validateQuality: () => validateQualityCompletion(form),
+      isComplete: () => isWarrantyIssuanceRequestComplete(form),
+    }),
+    [form]
+  )
+
+  const isRequestComplete = isWarrantyIssuanceRequestComplete(form)
 
   const showCustomWarrantyTerm = form.warrantyTermMode === WARRANTY_TERM_OTHER
   const showCompanyWarrantyTerm = form.warrantyTermMode === WARRANTY_TERM_COMPANY
@@ -622,8 +758,26 @@ export const WarrantyIssuanceRequestForm = forwardRef<
         next.detailRegion = ''
         next.detailRegionCustom = ''
       }
+      if (
+        field === 'detailRegion' &&
+        !parseMultiValue(String(value)).includes(WARRANTY_REQUEST_DETAIL_REGION_CUSTOM)
+      ) {
+        next.detailRegionCustom = ''
+      }
       if (field === 'warrantyTermMode' && value !== WARRANTY_TERM_OTHER) {
         next.warrantyTermCustom = ''
+      }
+      if (
+        field === 'resin' &&
+        !parseMultiValue(String(value)).includes(WARRANTY_REQUEST_RESIN_OTHER)
+      ) {
+        next.resinCustom = ''
+      }
+      if (
+        field === 'material' &&
+        !parseMultiValue(String(value)).includes(WARRANTY_REQUEST_MATERIAL_OTHER)
+      ) {
+        next.materialCustom = ''
       }
       return next
     })
@@ -634,7 +788,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
   return (
     <>
       {showReset && !isRequestReadOnly && (
-        <div className="mb-8 space-y-2">
+        <div className={toolbarStickyClass}>
           {toolbarLabel}
           <div className="flex items-center justify-between gap-3">
             {toolbarTitle}
@@ -642,12 +796,12 @@ export const WarrantyIssuanceRequestForm = forwardRef<
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex h-[38px] items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+                className={`${toolbarButtonBase} border-border bg-bg-primary/50 text-text-secondary transition-colors hover:border-accent hover:text-text-primary`}
               >
                 <RotateCcw className="h-4 w-4" />
                 초기화
               </button>
-              {actionSlot}
+              {typeof actionSlot === 'function' ? actionSlot({ isComplete: isRequestComplete }) : actionSlot}
             </div>
           </div>
           {toolbarNotice}
@@ -722,7 +876,12 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                 </FormField>
 
                 <FormField label="수지" required>
-                  <ResinMultiSelect value={form.resin} onChange={(value) => patch('resin', value)} />
+                  <ResinMultiSelect
+                    value={form.resin}
+                    customValue={form.resinCustom}
+                    onChange={(value) => patch('resin', value)}
+                    onCustomChange={(value) => patch('resinCustom', value)}
+                  />
                 </FormField>
               </div>
 
@@ -743,6 +902,10 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                     options={WARRANTY_REQUEST_MATERIALS}
                     placeholder="소재 선택"
                     ariaLabel="소재 선택"
+                    otherOption={WARRANTY_REQUEST_MATERIAL_OTHER}
+                    otherCustomValue={form.materialCustom}
+                    otherPlaceholder="소재 직접 입력"
+                    onOtherCustomChange={(value) => patch('materialCustom', value)}
                     onChange={(value) => patch('material', value)}
                   />
                 </FormField>

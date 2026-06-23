@@ -56,8 +56,17 @@ export interface CoastalDistanceRow {
 
 export interface CoastalSideData {
   rows: CoastalDistanceRow[]
-  warrantyNote: string
+  colorFadingRoof: string
+  colorFadingWall: string
+  chalkRoof: string
+  chalkWall: string
 }
+
+export type CoastalSideSpecField =
+  | 'colorFadingRoof'
+  | 'colorFadingWall'
+  | 'chalkRoof'
+  | 'chalkWall'
 
 export interface CoastalAlSection {
   title: string
@@ -124,8 +133,10 @@ export interface WarrantyIssuanceRequest {
   requesterName: string
   colorName: string
   resin: string
+  resinCustom: string
   paintCompany: string
   material: string
+  materialCustom: string
   coatingStructure: string
   productItem: string
   region: string

@@ -1,5 +1,7 @@
 export const WARRANTY_REQUEST_RESIN_ALL = '전체'
 
+export const WARRANTY_REQUEST_RESIN_OTHER = '기타'
+
 export const WARRANTY_REQUEST_RESINS = [
   'RMP',
   'HDP',
@@ -22,6 +24,8 @@ export const WARRANTY_REQUEST_TEAM_OTHER = '기타'
 export const WARRANTY_REQUEST_COATING_STRUCTURES = ['2 Coat / 2 Bake', '3 Coat / 3 Bake'] as const
 
 export const WARRANTY_REQUEST_MATERIALS = ['GI', 'GL', 'AL'] as const
+
+export const WARRANTY_REQUEST_MATERIAL_OTHER = '기타'
 
 export const WARRANTY_REQUEST_PAINT_COMPANIES = ['NCC', 'KCC', 'AK', 'PPG', '삼화', '발스파'] as const
 
@@ -64,7 +68,7 @@ export const LOW_RISK_DETAIL_REGIONS = [
   '포르투갈',
 ] as const
 
-export const WARRANTY_REQUEST_DETAIL_REGION_CUSTOM = '직접 입력'
+export const WARRANTY_REQUEST_DETAIL_REGION_CUSTOM = '기타'
 
 export const WARRANTY_REQUEST_LANGUAGES = ['영문', '국문'] as const
 

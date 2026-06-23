@@ -5,7 +5,10 @@ import { periodInputClass } from './periodTheme'
 import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
 
 const highlightItemClass =
-  'rounded-md bg-accent/20 ring-2 ring-inset ring-accent shadow-[inset_0_0_0_1px_rgba(59,130,246,0.35)]'
+  'bg-rose-950/35 ring-2 ring-inset ring-rose-500/40 shadow-[inset_0_0_0_1px_rgba(190,80,80,0.25)]'
+
+const notCoveredIconBoxClass =
+  'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#3a1418] ring-1 ring-rose-900/45'
 
 /** public/not-covered/{파일명}.png — 항목 문구에 키워드가 포함되면 해당 아이콘 표시 */
 const NOT_COVERED_ICON_MATCHES: { keywords: string[]; file: string; tintItemText?: boolean }[] = [
@@ -35,6 +38,18 @@ const notCoveredIconMaskStyle = (src: string): CSSProperties => ({
   maskPosition: 'center',
   WebkitMaskPosition: 'center',
 })
+
+function NotCoveredIcon({ icon }: { icon: { src: string; tintItemText: boolean } }) {
+  return (
+    <span className={notCoveredIconBoxClass} aria-hidden>
+      {icon.tintItemText ? (
+        <span className="h-5 w-5 bg-rose-100/90" style={notCoveredIconMaskStyle(icon.src)} />
+      ) : (
+        <img src={icon.src} alt="" className="h-5 w-5 object-contain opacity-90" />
+      )}
+    </span>
+  )
+}
 
 interface NotCoveredGuideProps {
   section: NotCoveredSection
@@ -84,8 +99,8 @@ export function NotCoveredGuide({
           )}
         </p>
       )}
-      <div className="rounded-lg border border-rose-900/40 bg-rose-950/25 px-5 py-4">
-        <ul className="space-y-3">
+      <div className="overflow-hidden rounded-lg border border-rose-900/35 bg-bg-secondary/60">
+        <ul className="border-l-[3px] border-rose-600/75">
           {section.items.map((item, index) => {
             const isHighlighted = highlightedIndex === index
             const isInsertAnchor = editing && insertAnchorIndex === index
@@ -123,16 +138,16 @@ export function NotCoveredGuide({
                   setDraggingIndex(null)
                   setDragOverIndex(null)
                 }}
-                className={`group flex items-start gap-2 rounded-md px-2 py-1.5 text-sm leading-relaxed transition-all duration-300 ${
+                className={`group flex items-center gap-3 border-b border-border/25 px-4 py-3.5 text-sm leading-snug transition-colors duration-200 last:border-b-0 sm:px-5 sm:py-4 ${
                   editing && onSelectInsertAnchor ? 'cursor-pointer' : ''
-                } ${isHighlighted ? highlightItemClass : ''} ${
+                } ${isHighlighted ? highlightItemClass : 'hover:bg-rose-950/35'} ${
                   isInsertAnchor ? insertAnchorRowClass : ''
                 } ${isDragging ? 'opacity-40' : ''} ${
-                  isDragOver ? 'bg-accent/15 ring-1 ring-inset ring-accent/50' : ''
+                  isDragOver ? 'bg-rose-950/35 ring-1 ring-inset ring-rose-500/40' : ''
                 }`}
               >
                 {editing && (onDeleteItem || onReorderItem) && (
-                  <div className="mt-0.5 flex shrink-0 flex-col items-center gap-1">
+                  <div className="flex shrink-0 flex-col items-center gap-1">
                     {onDeleteItem && (
                       <button
                         type="button"
@@ -174,39 +189,27 @@ export function NotCoveredGuide({
                   </div>
                 )}
                 {icon ? (
-                  icon.tintItemText ? (
-                    <span
-                      aria-hidden
-                      className="mt-0.5 h-6 w-6 shrink-0 bg-rose-100/95"
-                      style={notCoveredIconMaskStyle(icon.src)}
-                    />
-                  ) : (
-                    <img
-                      src={icon.src}
-                      alt=""
-                      aria-hidden
-                      className="mt-0.5 h-6 w-6 shrink-0 object-contain"
-                    />
-                  )
+                  <NotCoveredIcon icon={icon} />
                 ) : (
-                  <span className="mt-0.5 shrink-0 font-semibold text-rose-300/90">•</span>
+                  <span className={notCoveredIconBoxClass}>
+                    <span className="text-xs font-bold text-rose-200/80">•</span>
+                  </span>
                 )}
                 {editing ? (
                   <input
                     type="text"
                     value={item}
                     onChange={(e) => onUpdateItem(index, e.target.value)}
-                    className={`${periodInputClass} flex-1 text-left text-rose-100`}
+                    className={`${periodInputClass} min-w-0 flex-1 text-left text-text-primary`}
                   />
                 ) : (
-                  <span className="text-rose-100/95">{item}</span>
+                  <span className="min-w-0 text-text-primary">{item}</span>
                 )}
               </li>
             )
           })}
         </ul>
       </div>
-
     </div>
   )
 }

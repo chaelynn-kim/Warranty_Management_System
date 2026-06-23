@@ -14,9 +14,33 @@ const WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS = new Set([
   'chaelynn.kim@seah.co.kr',
 ])
 
+export const QUALITY_MANAGEMENT_ONLY_MESSAGE = '품질경영팀만 수정 가능합니다.'
+export const TEAM_LEADER_APPROVE_ONLY_MESSAGE = '품질경영팀 팀장님만 승인 가능합니다.'
+export const RECEIPT_ASSIGNEE_ONLY_MESSAGE = '담당자만 접수 가능합니다.'
+
+const WARRANTY_TEAM_LEADER_EMAILS = new Set([
+  'sachunsa@seah.co.kr',
+  'chaelynn.kim@seah.co.kr',
+])
+const WARRANTY_RECEIPT_ASSIGNEE_EMAILS = new Set([
+  'jonghyuk.lee@seah.co.kr',
+  'chaelynn.kim@seah.co.kr',
+])
+
+function normalizeEmail(email: string | undefined | null): string {
+  return typeof email === 'string' ? email.trim().toLowerCase() : ''
+}
+
 export function canManageWarrantyIssuanceQuality(email: string | undefined | null): boolean {
-  if (typeof email !== 'string') return false
-  return WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS.has(email.trim().toLowerCase())
+  return WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS.has(normalizeEmail(email))
+}
+
+export function canTeamLeaderApproveWarrantyRequest(email: string | undefined | null): boolean {
+  return WARRANTY_TEAM_LEADER_EMAILS.has(normalizeEmail(email))
+}
+
+export function canReceiveWarrantyRequest(email: string | undefined | null): boolean {
+  return WARRANTY_RECEIPT_ASSIGNEE_EMAILS.has(normalizeEmail(email))
 }
 
 export function isCompanyEmail(email: string | undefined | null): boolean {

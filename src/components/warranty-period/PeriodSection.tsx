@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { Pencil, Plus, RotateCcw, Save } from 'lucide-react'
+import { periodSectionTitleClass } from './periodTheme'
 
 export type PeriodSectionId =
   | 'highRisk:countries'
@@ -8,7 +9,8 @@ export type PeriodSectionId =
   | 'lowRisk:countries'
   | 'lowRisk:paint'
   | 'lowRisk:print'
-  | 'coastalAl'
+  | 'coastalAl:highRisk'
+  | 'coastalAl:lowRisk'
   | 'notCovered'
 
 function EditingToolbar({
@@ -55,7 +57,7 @@ function EditingToolbar({
 }
 
 interface PeriodSectionProps {
-  title: ReactNode
+  title?: ReactNode
   canEdit: boolean
   editing: boolean
   saveMessage?: string
@@ -66,6 +68,8 @@ interface PeriodSectionProps {
   onAdd?: () => void
   children: ReactNode
   className?: string
+  headerless?: boolean
+  hideEditButton?: boolean
 }
 
 export function PeriodSection({
@@ -80,12 +84,17 @@ export function PeriodSection({
   onAdd,
   children,
   className = 'mb-6',
+  headerless = false,
+  hideEditButton = false,
 }: PeriodSectionProps) {
   return (
     <section className={className}>
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <h3 className="min-w-0 text-sm font-semibold text-text-primary sm:text-base">{title}</h3>
-        {canEdit && (
+      {!headerless && (title || canEdit) && (
+        <div
+          className={`mb-3 flex items-center gap-3 ${title ? 'justify-between' : 'justify-end'}`}
+        >
+          {title ? <h3 className={periodSectionTitleClass}>{title}</h3> : null}
+        {canEdit && !hideEditButton && (
           <button
             type="button"
             onClick={onEdit}
@@ -101,7 +110,8 @@ export function PeriodSection({
             <Pencil className="h-4 w-4" />
           </button>
         )}
-      </div>
+        </div>
+      )}
 
       {editing && (
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -141,16 +151,50 @@ export function PeriodSection({
   )
 }
 
+export type SectionEditControl = {
+  canEdit: boolean
+  editing: boolean
+  onEdit: () => void
+}
+
+export function PeriodSectionInlineHeader({
+  children,
+  sectionEdit,
+}: {
+  children: ReactNode
+  sectionEdit?: SectionEditControl
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="min-w-0 flex-1">{children}</div>
+      {sectionEdit && (
+        <PeriodSectionEditButton
+          canEdit={sectionEdit.canEdit}
+          editing={sectionEdit.editing}
+          onEdit={sectionEdit.onEdit}
+        />
+      )}
+    </div>
+  )
+}
+
 export function PeriodSectionEditButton({
   canEdit,
   editing,
   onEdit,
+  size = 'default',
 }: {
   canEdit: boolean
   editing: boolean
   onEdit: () => void
+  size?: 'default' | 'compact'
 }) {
   if (!canEdit) return null
+
+  const isCompact = size === 'compact'
+  const stateClass = editing
+    ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
+    : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
 
   return (
     <button
@@ -159,13 +203,11 @@ export function PeriodSectionEditButton({
       disabled={editing}
       aria-label="수정"
       title="수정"
-      className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
-        editing
-          ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
-          : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
-      }`}
+      className={`inline-flex shrink-0 items-center justify-center border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
+        isCompact ? 'rounded-md px-2 py-1' : 'h-[38px] w-[38px] rounded-lg'
+      } ${stateClass}`}
     >
-      <Pencil className="h-4 w-4" />
+      <Pencil className={isCompact ? 'h-3 w-3' : 'h-4 w-4'} />
     </button>
   )
 }

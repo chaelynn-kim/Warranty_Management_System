@@ -70,6 +70,7 @@ interface DatePickerProps {
   onChange: (value: string) => void
   placeholder?: string
   className?: string
+  triggerClassName?: string
   variant?: 'button' | 'input'
 }
 
@@ -78,6 +79,7 @@ export function DatePicker({
   onChange,
   placeholder = '날짜 선택',
   className = '',
+  triggerClassName,
   variant = 'button',
 }: DatePickerProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -264,9 +266,10 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-bg-primary/50 px-3 py-2.5 text-left text-sm outline-none transition-colors hover:border-accent/50 focus:border-accent ${
-          displayValue ? 'text-text-primary' : 'text-text-muted'
-        }`}
+        className={`flex w-full items-center justify-between gap-3 rounded-lg bg-bg-primary/50 px-3 py-2.5 text-left text-sm outline-none transition-colors ${
+          triggerClassName ??
+          'border border-border hover:border-accent/50 focus:border-accent'
+        } ${displayValue ? 'text-text-primary' : 'text-text-muted'}`}
         aria-label="날짜 선택"
         aria-expanded={open}
       >

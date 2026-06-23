@@ -160,11 +160,17 @@ def parse_coastal(rows: list[list[str]]) -> dict:
         'title': 'AL 소재 적용 불소 제품 (해안 거리별 보증)',
         'highRisk': {
             'rows': high_rows,
-            'warrantyNote': high_note or 'CHALK\nROOF / WALL\nΔE 5.0 NO.8',
+            'colorFadingRoof': '≤ΔE5',
+            'colorFadingWall': '≤ΔE5',
+            'chalkRoof': '≥#8',
+            'chalkWall': '≥#8',
         },
         'lowRisk': {
             'rows': low_rows,
-            'warrantyNote': low_note or 'CHALK\nROOF / WALL\nΔE 5.0 NO.8',
+            'colorFadingRoof': '≤ΔE5',
+            'colorFadingWall': '≤ΔE5',
+            'chalkRoof': '≥#8',
+            'chalkWall': '≥#8',
         },
     }
 

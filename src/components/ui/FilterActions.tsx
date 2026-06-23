@@ -7,7 +7,7 @@ interface FilterActionsProps {
 
 export function FilterActions({ onSearch, onReset }: FilterActionsProps) {
   return (
-    <div className="flex shrink-0 items-end gap-2">
+    <div className="flex shrink-0 items-center gap-2">
       <button
         type="button"
         onClick={onSearch}
@@ -32,7 +32,7 @@ const inputClass =
   'w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary outline-none focus:border-accent'
 
 interface SearchInputProps {
-  label: string
+  label?: string
   value: string
   onChange: (value: string) => void
   onEnter?: () => void
@@ -50,14 +50,14 @@ export function SearchInput({
 }: SearchInputProps) {
   return (
     <div className={`min-w-[140px] flex-1 ${className}`}>
-      <label className="mb-1 block text-xs text-text-muted">{label}</label>
+      {label && <label className="mb-1 block text-xs text-text-muted">{label}</label>}
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && onEnter?.()}
         placeholder={placeholder}
-        className={inputClass}
+        className={`${inputClass} h-[38px]`}
       />
     </div>
   )
