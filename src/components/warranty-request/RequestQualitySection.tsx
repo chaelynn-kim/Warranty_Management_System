@@ -11,6 +11,7 @@ import {
 import {
   downloadFileAttachment,
   formatFileSize,
+  MAX_ATTACHMENT_COUNT,
   mergeFileAttachments,
   parseFileAttachments,
   removeFileAttachmentWithStorage,
@@ -210,7 +211,9 @@ function RequestFileAttachmentField({
               <p className="text-sm font-medium text-text-primary">
                 {isUploading ? '업로드 중…' : 'PDF / JPG / PNG 업로드'}
               </p>
-              <p className="mt-1 text-xs text-text-muted">최대 {MAX_ATTACHMENT_LABEL_MB}MB</p>
+              <p className="mt-1 text-xs text-text-muted">
+                파일당 최대 {MAX_ATTACHMENT_LABEL_MB}MB · 슬롯당 최대 {MAX_ATTACHMENT_COUNT}개
+              </p>
             </div>
           </button>
         </>
@@ -318,7 +321,6 @@ function WarrantyLanguageUploadGroup({
             recordId={recordId}
             slot={koSlot}
             readOnly={readOnly}
-            singleFile
             onChange={onKoChange}
           />
         </FormField>
@@ -328,7 +330,6 @@ function WarrantyLanguageUploadGroup({
             recordId={recordId}
             slot={enSlot}
             readOnly={readOnly}
-            singleFile
             onChange={onEnChange}
           />
         </FormField>

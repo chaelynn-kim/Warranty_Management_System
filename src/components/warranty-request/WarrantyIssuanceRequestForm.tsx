@@ -388,6 +388,7 @@ interface WarrantyIssuanceRequestFormProps {
   showQualitySection?: boolean
   qualityLocked?: boolean
   recordId?: string
+  onAttachmentPersist?: (request: WarrantyIssuanceRequest) => void
 }
 
 function FormField({
@@ -740,12 +741,30 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     showQualitySection = true,
     qualityLocked = false,
     recordId,
+    onAttachmentPersist,
   },
   ref
 ) {
   const [form, setForm] = useState<WarrantyIssuanceRequest>(createEmptyWarrantyIssuanceRequest)
   const isRequestReadOnly = readOnly || requestReadOnly
   const isQualityReadOnly = readOnly || qualityReadOnly
+
+  const patchAttachment = (
+    field:
+      | 'companyWarrantyAttachmentKo'
+      | 'companyWarrantyAttachmentEn'
+      | 'supplierWarrantyAttachmentKo'
+      | 'supplierWarrantyAttachmentEn',
+    value: string
+  ) => {
+    setForm((prev) => {
+      const next = { ...prev, [field]: value }
+      if (recordId && onAttachmentPersist && !isQualityReadOnly) {
+        onAttachmentPersist(next)
+      }
+      return next
+    })
+  }
 
   useImperativeHandle(
     ref,
@@ -1059,16 +1078,16 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           readOnly={isQualityReadOnly}
           locked={qualityLocked}
           onCompanyWarrantyAttachmentKoChange={(value) =>
-            patch('companyWarrantyAttachmentKo', value)
+            patchAttachment('companyWarrantyAttachmentKo', value)
           }
           onCompanyWarrantyAttachmentEnChange={(value) =>
-            patch('companyWarrantyAttachmentEn', value)
+            patchAttachment('companyWarrantyAttachmentEn', value)
           }
           onSupplierWarrantyAttachmentKoChange={(value) =>
-            patch('supplierWarrantyAttachmentKo', value)
+            patchAttachment('supplierWarrantyAttachmentKo', value)
           }
           onSupplierWarrantyAttachmentEnChange={(value) =>
-            patch('supplierWarrantyAttachmentEn', value)
+            patchAttachment('supplierWarrantyAttachmentEn', value)
           }
           onIssueDateChange={(value) => patch('issueDate', value)}
           onQualityAuthorChange={(value) => patch('qualityAuthor', value)}

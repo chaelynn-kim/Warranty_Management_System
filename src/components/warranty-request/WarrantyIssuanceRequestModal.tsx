@@ -38,6 +38,7 @@ interface WarrantyIssuanceRequestModalProps {
     request: WarrantyIssuanceRequest,
     options: { editScope: EditScope }
   ) => void
+  onPersist?: (id: string, request: WarrantyIssuanceRequest) => void
   onStatusChange?: (id: string, nextStatus: string) => void
   viewRequest?: WarrantyIssuanceRequestRecord | null
 }
@@ -50,6 +51,7 @@ export function WarrantyIssuanceRequestModal({
   canReceiveRequest = false,
   onSubmit,
   onUpdate,
+  onPersist,
   onStatusChange,
   viewRequest = null,
 }: WarrantyIssuanceRequestModalProps) {
@@ -126,6 +128,11 @@ export function WarrantyIssuanceRequestModal({
     const request = formRef.current.getValue()
     onSubmit?.(request)
     onClose()
+  }
+
+  const handleAttachmentPersist = (request: WarrantyIssuanceRequest) => {
+    if (!viewRequest || !isEditing || editScope !== 'quality') return
+    onPersist?.(viewRequest.id, request)
   }
 
   const executeSaveUpdate = () => {
@@ -284,6 +291,9 @@ export function WarrantyIssuanceRequestModal({
           <WarrantyIssuanceRequestForm
             ref={formRef}
             recordId={viewRequest?.id}
+            onAttachmentPersist={
+              isEditing && editScope === 'quality' ? handleAttachmentPersist : undefined
+            }
             readOnly={readOnly && !isEditing}
             requestReadOnly={requestReadOnly}
             qualityReadOnly={

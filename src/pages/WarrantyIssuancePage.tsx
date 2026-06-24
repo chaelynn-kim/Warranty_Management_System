@@ -142,6 +142,25 @@ export function WarrantyIssuancePage({
     setRequestSaveMessage('')
   }
 
+  const handleRequestPersist = (id: string, request: WarrantyIssuanceRequest) => {
+    const current = requestRecords.find((record) => record.id === id)
+    if (!current) return
+
+    const nextRecords = requestRecords.map((record) =>
+      record.id === id ? { ...record, ...request, status: record.status } : record
+    )
+
+    try {
+      persistWarrantyRequestRecords(nextRecords)
+    } catch {
+      console.error('[저장] 첨부 파일 정보 동기화 실패')
+      return
+    }
+
+    setRequestRecords(nextRecords)
+    setViewingRequest((prev) => (prev?.id === id ? { ...prev, ...request } : prev))
+  }
+
   const handleRequestUpdate = async (
     id: string,
     request: WarrantyIssuanceRequest,
@@ -388,6 +407,7 @@ export function WarrantyIssuancePage({
           setViewingRequest(null)
         }}
         onUpdate={handleRequestUpdate}
+        onPersist={handleRequestPersist}
         onStatusChange={handleRequestStatusChange}
         viewRequest={viewingRequest}
       />

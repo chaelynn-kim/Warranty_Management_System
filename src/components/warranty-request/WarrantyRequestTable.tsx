@@ -56,15 +56,16 @@ function CompanyWarrantyAttachmentCell({
   enValue: string
 }) {
   const attachments: {
-    label: '국문' | '영문'
     language: 'ko' | 'en'
     file: ReturnType<typeof parseFileAttachments>[number]
   }[] = []
 
-  const koFile = parseFileAttachments(koValue)[0]
-  const enFile = parseFileAttachments(enValue)[0]
-  if (koFile) attachments.push({ label: '국문', language: 'ko', file: koFile })
-  if (enFile) attachments.push({ label: '영문', language: 'en', file: enFile })
+  for (const file of parseFileAttachments(koValue)) {
+    attachments.push({ language: 'ko', file })
+  }
+  for (const file of parseFileAttachments(enValue)) {
+    attachments.push({ language: 'en', file })
+  }
 
   if (attachments.length === 0) {
     return <div className={`${cellClass} text-center text-text-muted`}>-</div>
@@ -72,16 +73,16 @@ function CompanyWarrantyAttachmentCell({
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5 px-1 py-1.5">
-      {attachments.map(({ label, language, file }) => (
+      {attachments.map(({ language, file }) => (
         <button
-          key={label}
+          key={file.id}
           type="button"
           onClick={(event) => {
             event.stopPropagation()
             void downloadFileAttachment(file)
           }}
-          aria-label={`당사 Warranty ${label} 다운로드: ${file.name}`}
-          title={`${label} · ${file.name}`}
+          aria-label={`당사 Warranty ${language === 'ko' ? '국문' : '영문'} 다운로드: ${file.name}`}
+          title={`${language === 'ko' ? '국문' : '영문'} · ${file.name}`}
           className={attachmentButtonClass}
         >
           <LanguageFlagIcon language={language} />
