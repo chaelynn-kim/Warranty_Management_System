@@ -91,7 +91,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
         description="보증서 발행을 위해 아래 양식 작성 후 [의뢰하기] 버튼을 클릭해 주세요."
       />
 
-      <section className="rounded-xl border border-border bg-bg-secondary p-4 sm:p-6">
+      <section className="overflow-visible rounded-xl border border-border bg-bg-secondary p-4 sm:p-6">
         <WarrantyIssuanceRequestForm
           ref={formRef}
           showReset

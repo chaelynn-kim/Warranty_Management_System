@@ -26,21 +26,31 @@ interface WarrantyRequestTableProps {
 }
 
 const thClass =
-  'whitespace-nowrap border-b border-r border-border px-3 py-2.5 text-xs font-semibold text-text-secondary last:border-r-0 sm:px-3 sm:text-sm'
+  'whitespace-nowrap border-b border-r border-border px-2 py-2.5 text-xs font-semibold text-text-secondary last:border-r-0 sm:px-2 sm:text-sm'
 const tdBorderClass = 'border-b border-r border-border last:border-r-0'
-const cellClass =
-  'px-3 py-2 text-xs text-text-primary whitespace-pre-wrap break-words sm:text-sm'
+const cellClass = 'px-2 py-2 text-xs text-text-primary sm:text-sm'
 
 function ReadOnlyCell({
   value,
   align = 'left',
+  nowrap = false,
+  truncate = false,
 }: {
   value: string
   align?: 'center' | 'left'
+  nowrap?: boolean
+  truncate?: boolean
 }) {
+  const display = value.trim() || '-'
+
   return (
-    <div className={`${cellClass} ${align === 'center' ? 'text-center' : 'text-left'}`}>
-      {value.trim() || '-'}
+    <div
+      title={truncate && display !== '-' ? display : undefined}
+      className={`${cellClass} ${align === 'center' ? 'text-center' : 'text-left'} ${
+        nowrap ? 'whitespace-nowrap' : truncate ? 'truncate' : 'whitespace-pre-wrap break-words'
+      }`}
+    >
+      {display}
     </div>
   )
 }
@@ -164,21 +174,21 @@ export function WarrantyRequestTable({
         )
       )}
       <div ref={scrollContainerRef} className="max-h-[420px] overflow-auto rounded-lg border border-border">
-        <table className="w-full min-w-[1080px] border-separate border-spacing-0">
+        <table className="w-full min-w-[1080px] table-fixed border-separate border-spacing-0">
           <thead>
             <tr className="sticky top-0 z-10 bg-bg-tertiary">
               {editing && (onDelete || onReorder) && <th className={`${thClass} w-14`} />}
-              <th className={`${thClass} text-center w-12`}>No</th>
-              <th className={`${thClass} text-center`}>요청일자</th>
-              <th className={`${thClass} text-center`}>발행일자</th>
-              <th className={`${thClass} text-center`}>요청자</th>
-              <th className={`${thClass} text-center`}>색상명</th>
-              <th className={`${thClass} text-center`}>도료사</th>
-              <th className={`${thClass} text-center`}>수지</th>
+              <th className={`${thClass} w-12 text-center`}>No</th>
+              <th className={`${thClass} w-[6.5rem] text-center`}>요청일자</th>
+              <th className={`${thClass} w-[6.5rem] text-center`}>발행일자</th>
+              <th className={`${thClass} w-[5.5rem] text-center`}>요청자</th>
+              <th className={`${thClass} w-[10rem] text-center`}>색상명</th>
+              <th className={`${thClass} w-[6rem] text-center`}>도료사</th>
+              <th className={`${thClass} w-[6rem] text-center`}>수지</th>
               <th className={`${thClass} text-center`}>세부국가명</th>
-              <th className={`${thClass} text-center min-w-[100px]`}>수요가명</th>
-              <th className={`${thClass} text-center min-w-[120px]`}>파일첨부</th>
-              <th className={`${thClass} text-center`}>상태</th>
+              <th className={`${thClass} w-[8rem]   text-center`}>수요가명</th>
+              <th className={`${thClass} w-[7.5rem] text-center`}>파일첨부</th>
+              <th className={`${thClass} w-[6.5rem] text-center`}>상태</th>
             </tr>
           </thead>
           <tbody>
@@ -274,16 +284,32 @@ export function WarrantyRequestTable({
                     <ReadOnlyCell value={String(record.sequenceNo)} align="center" />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={formatDisplayDate(record.requestDate)} align="center" />
+                    <ReadOnlyCell
+                      value={formatDisplayDate(record.requestDate)}
+                      align="center"
+                      nowrap
+                    />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={formatDisplayDate(record.issueDate)} align="center" />
+                    <ReadOnlyCell
+                      value={formatDisplayDate(record.issueDate)}
+                      align="center"
+                      nowrap
+                    />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={displayRequestValue(record.requesterName)} align="center" />
+                    <ReadOnlyCell
+                      value={displayRequestValue(record.requesterName)}
+                      align="center"
+                      nowrap
+                    />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={displayRequestValue(record.colorName)} align="center" />
+                    <ReadOnlyCell
+                      value={displayRequestValue(record.colorName)}
+                      align="center"
+                      truncate
+                    />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
                     <ReadOnlyCell value={displayRequestValue(record.paintCompany)} align="center" />
@@ -292,7 +318,11 @@ export function WarrantyRequestTable({
                     <ReadOnlyCell value={formatRequestResin(record)} align="center" />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={formatRequestDetailRegion(record)} align="center" />
+                    <ReadOnlyCell
+                      value={formatRequestDetailRegion(record)}
+                      align="center"
+                      truncate
+                    />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
                     <ReadOnlyCell value={displayRequestValue(record.customer)} align="center" />
@@ -304,8 +334,8 @@ export function WarrantyRequestTable({
                     />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <div className="flex justify-center py-1">
-                      <RequestStatusBadge status={record.status} />
+                    <div className="flex justify-center whitespace-nowrap py-1">
+                      <RequestStatusBadge status={record.status} className="shrink-0 whitespace-nowrap" />
                     </div>
                   </td>
                 </tr>
