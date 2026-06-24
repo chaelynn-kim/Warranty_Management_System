@@ -26,6 +26,7 @@ import {
 } from '../../constants/warrantyRequestOptions'
 import type { WarrantyIssuanceRequest } from '../../types'
 import { defaultRequestDate } from '../../utils/helpers'
+import { formatRequestDetailRegion } from '../../utils/warrantyRequestStorage'
 import { validateQualityCompletion } from '../../utils/warrantyRequestStatus'
 import { periodCardHeaderClass } from '../warranty-period/periodTheme'
 import {
@@ -1056,8 +1057,11 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           primerThickness={form.primerThickness}
           productItem={form.productItem}
           resin={form.resin}
+          resinCustom={form.resinCustom}
+          colorName={form.colorName}
           region={form.region}
           coatingStructure={form.coatingStructure}
+          detailRegionLabel={formatRequestDetailRegion(form)}
           companyWarrantyTerms={form.companyWarrantyTerms}
           companyWarrantyTermsLookupKey={form.companyWarrantyTermsLookupKey}
           reviewResult={form.reviewResult}

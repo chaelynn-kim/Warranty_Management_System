@@ -7,6 +7,7 @@ import {
 import { getQualityStatusOptions, normalizeRequestStatus } from '../../utils/warrantyRequestStatus'
 import { RequestStatusBadge } from './RequestStatusBadge'
 import { CompanyWarrantyPreview } from './CompanyWarrantyPreview'
+import { WarrantyCertificateSection } from './WarrantyCertificateSection'
 import {
   buildCompanyWarrantyLookupKey,
   lookupCompanyWarrantyTerms,
@@ -374,8 +375,11 @@ interface RequestQualitySectionProps {
   primerThickness: string
   productItem: string
   resin: string
+  resinCustom: string
+  colorName: string
   region: string
   coatingStructure: string
+  detailRegionLabel: string
   companyWarrantyTerms: string
   companyWarrantyTermsLookupKey: string
   reviewResult: string
@@ -457,8 +461,11 @@ export function RequestQualitySection({
   primerThickness,
   productItem,
   resin,
+  resinCustom,
+  colorName,
   region,
   coatingStructure,
+  detailRegionLabel,
   companyWarrantyTerms,
   companyWarrantyTermsLookupKey,
   reviewResult,
@@ -601,16 +608,30 @@ export function RequestQualitySection({
           </FormField>
         </div>
 
-        <FormField label="당사 보증 연한">
-          <CompanyWarrantyPreview
-            productItem={productItem}
-            resin={resin}
-            region={region}
-            coatingStructure={coatingStructure}
-            products={warrantyProducts.length > 0 ? warrantyProducts : undefined}
-            editing={!readOnly}
-            onProductFieldChange={handleWarrantyFieldChange}
-          />
+        <FormField label="보증 내용">
+          <div className="space-y-4">
+            <CompanyWarrantyPreview
+              productItem={productItem}
+              resin={resin}
+              region={region}
+              coatingStructure={coatingStructure}
+              products={warrantyProducts.length > 0 ? warrantyProducts : undefined}
+              editing={!readOnly}
+              onProductFieldChange={handleWarrantyFieldChange}
+            />
+            <WarrantyCertificateSection
+              productItem={productItem}
+              resin={resin}
+              resinCustom={resinCustom}
+              colorName={colorName}
+              coatingStructure={coatingStructure}
+              detailRegionLabel={detailRegionLabel}
+              issueDate={issueDate}
+              totalCoatingThickness={totalCoatingThickness}
+              primerThickness={primerThickness}
+              companyWarrantyTerms={companyWarrantyTerms}
+            />
+          </div>
         </FormField>
 
         <FormField label="검토 결과">
