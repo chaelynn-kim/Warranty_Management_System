@@ -56,7 +56,7 @@ export function FileAttachmentCell({ value, editing, onChange }: FileAttachmentC
           <li key={file.id}>
             <button
               type="button"
-              onClick={() => downloadFileAttachment(file)}
+              onClick={() => void downloadFileAttachment(file)}
               className="flex w-full items-start gap-1 rounded px-1 py-0.5 text-left text-xs text-accent transition-colors hover:bg-accent/10 hover:underline sm:text-sm"
               title={`${file.name} (${formatFileSize(file.size)})`}
             >

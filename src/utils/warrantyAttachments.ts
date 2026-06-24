@@ -1,7 +1,16 @@
 import type { WarrantyFileAttachment } from '../types'
+import { getAttachmentDownloadUrl } from '../lib/storageAttachments'
 
 export const MAX_ATTACHMENT_COUNT = 10
-export const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024
+export const MAX_ATTACHMENT_SIZE_BYTES = 100 * 1024 * 1024
+
+function hasStoragePath(file: WarrantyFileAttachment): boolean {
+  return typeof file.storagePath === 'string' && file.storagePath.length > 0
+}
+
+function hasDataUrl(file: WarrantyFileAttachment): boolean {
+  return typeof file.dataUrl === 'string' && file.dataUrl.startsWith('data:')
+}
 
 function isValidAttachment(value: unknown): value is WarrantyFileAttachment {
   if (!value || typeof value !== 'object') return false
@@ -11,8 +20,7 @@ function isValidAttachment(value: unknown): value is WarrantyFileAttachment {
     typeof file.name === 'string' &&
     typeof file.size === 'number' &&
     typeof file.type === 'string' &&
-    typeof file.dataUrl === 'string' &&
-    file.dataUrl.startsWith('data:')
+    (hasStoragePath(file) || hasDataUrl(file))
   )
 }
 
@@ -36,7 +44,27 @@ export function parseFileAttachments(raw: string): WarrantyFileAttachment[] {
 
 export function serializeFileAttachments(files: WarrantyFileAttachment[]): string {
   if (files.length === 0) return ''
-  return JSON.stringify(files)
+
+  const lean = files
+    .map((file) => {
+      const base = {
+        id: file.id,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+      }
+      if (hasStoragePath(file)) {
+        return { ...base, storagePath: file.storagePath }
+      }
+      if (hasDataUrl(file)) {
+        return { ...base, dataUrl: file.dataUrl }
+      }
+      return null
+    })
+    .filter((file): file is NonNullable<typeof file> => file !== null)
+
+  if (lean.length === 0) return ''
+  return JSON.stringify(lean)
 }
 
 export function formatAttachmentNames(raw: string): string {
@@ -59,6 +87,18 @@ export function removeFileAttachment(raw: string, fileId: string): string {
   return serializeFileAttachments(next)
 }
 
+export async function removeFileAttachmentWithStorage(
+  raw: string,
+  fileId: string,
+  deleteFromStorage: (storagePath: string) => Promise<void>
+): Promise<string> {
+  const target = parseFileAttachments(raw).find((file) => file.id === fileId)
+  if (target?.storagePath) {
+    await deleteFromStorage(target.storagePath)
+  }
+  return removeFileAttachment(raw, fileId)
+}
+
 function readFileAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
@@ -68,6 +108,7 @@ function readFileAsDataUrl(file: File): Promise<string> {
   })
 }
 
+/** @deprecated Storage 미사용 환경 폴백 — 신규 업로드는 uploadRequestAttachmentFiles 사용 */
 export async function filesToAttachments(
   fileList: FileList | File[],
   maxSizeBytes = MAX_ATTACHMENT_SIZE_BYTES
@@ -129,11 +170,25 @@ export function mergeFileAttachments(
   }
 }
 
-export function downloadFileAttachment(file: WarrantyFileAttachment): void {
+export async function resolveAttachmentDownloadUrl(file: WarrantyFileAttachment): Promise<string> {
+  if (hasStoragePath(file)) {
+    return getAttachmentDownloadUrl(file.storagePath!)
+  }
+  if (hasDataUrl(file)) {
+    return file.dataUrl!
+  }
+  throw new Error('다운로드할 파일 정보가 없습니다.')
+}
+
+export async function downloadFileAttachment(file: WarrantyFileAttachment): Promise<void> {
+  const href = await resolveAttachmentDownloadUrl(file)
   const link = document.createElement('a')
-  link.href = file.dataUrl
+  link.href = href
   link.download = file.name
   link.rel = 'noopener'
+  if (hasStoragePath(file)) {
+    link.target = '_blank'
+  }
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

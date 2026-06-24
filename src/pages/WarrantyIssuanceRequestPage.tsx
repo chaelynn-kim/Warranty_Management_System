@@ -62,7 +62,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
     try {
       persistWarrantyRequestRecords(nextRecords)
     } catch {
-      setError('저장 용량을 초과했습니다. 첨부 파일 크기를 줄여 주세요.')
+      setError('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')
       setConfirmOpen(false)
       setIsSubmitting(false)
       return

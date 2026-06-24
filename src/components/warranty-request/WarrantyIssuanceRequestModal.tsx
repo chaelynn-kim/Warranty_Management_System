@@ -283,6 +283,7 @@ export function WarrantyIssuanceRequestModal({
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">
           <WarrantyIssuanceRequestForm
             ref={formRef}
+            recordId={viewRequest?.id}
             readOnly={readOnly && !isEditing}
             requestReadOnly={requestReadOnly}
             qualityReadOnly={

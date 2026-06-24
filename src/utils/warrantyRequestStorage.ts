@@ -15,7 +15,7 @@ import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '9'
+const CURRENT_VERSION = '10'
 
 function normalizeDetailRegionValue(detailRegion: string): string {
   return joinMultiValue(

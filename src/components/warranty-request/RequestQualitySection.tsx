@@ -1,21 +1,26 @@
 import { useRef, useState, type ReactNode } from 'react'
-import { Check, CloudUpload, Paperclip, ShieldCheck, X } from 'lucide-react'
+import { Check, CloudUpload, Loader2, Paperclip, ShieldCheck, X } from 'lucide-react'
 import { DatePicker } from '../ui/DatePicker'
 import { FormSectionHeader } from './FormSectionHeader'
 import {
+  deleteStorageAttachment,
+  REQUEST_MAX_ATTACHMENT_BYTES,
+  uploadRequestAttachmentFiles,
+  type RequestAttachmentSlot,
+} from '../../lib/storageAttachments'
+import {
   downloadFileAttachment,
-  filesToAttachments,
   formatFileSize,
   mergeFileAttachments,
   parseFileAttachments,
-  removeFileAttachment,
+  removeFileAttachmentWithStorage,
   serializeFileAttachments,
 } from '../../utils/warrantyAttachments'
 import { formatDisplayDate } from '../../utils/helpers'
 
-const REQUEST_MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024
 const REQUEST_ALLOWED_TYPES = new Set(['application/pdf', 'image/jpeg', 'image/png'])
 const REQUEST_ALLOWED_EXT = /\.(pdf|jpe?g|png)$/i
+const MAX_ATTACHMENT_LABEL_MB = Math.round(REQUEST_MAX_ATTACHMENT_BYTES / (1024 * 1024))
 
 const fieldLabel = 'mb-1.5 block text-sm font-medium text-text-secondary'
 const qualityFieldBorderBase = 'border border-border'
@@ -60,7 +65,7 @@ function FormField({
 
 function validateRequestFile(file: File): string | null {
   if (file.size > REQUEST_MAX_ATTACHMENT_BYTES) {
-    return `${file.name}: 파일 크기는 20MB 이하여야 합니다.`
+    return `${file.name}: 파일 크기는 ${MAX_ATTACHMENT_LABEL_MB}MB 이하여야 합니다.`
   }
   const typeOk = REQUEST_ALLOWED_TYPES.has(file.type)
   const extOk = REQUEST_ALLOWED_EXT.test(file.name)
@@ -72,6 +77,8 @@ function validateRequestFile(file: File): string | null {
 
 interface RequestFileAttachmentFieldProps {
   value: string
+  recordId: string
+  slot: RequestAttachmentSlot
   readOnly?: boolean
   singleFile?: boolean
   onChange: (value: string) => void
@@ -79,6 +86,8 @@ interface RequestFileAttachmentFieldProps {
 
 function RequestFileAttachmentField({
   value,
+  recordId,
+  slot,
   readOnly = false,
   singleFile = false,
   onChange,
@@ -86,10 +95,11 @@ function RequestFileAttachmentField({
   const inputRef = useRef<HTMLInputElement>(null)
   const [error, setError] = useState('')
   const [isDragging, setIsDragging] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
   const files = parseFileAttachments(value)
 
   const handlePickFiles = async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0 || readOnly) return
+    if (!fileList || fileList.length === 0 || readOnly || isUploading) return
 
     setError('')
     const picked = Array.from(fileList)
@@ -99,34 +109,57 @@ function RequestFileAttachmentField({
       return
     }
 
-    const { attachments, errors: readErrors } = await filesToAttachments(picked, REQUEST_MAX_ATTACHMENT_BYTES)
-    const errors = [...readErrors]
+    setIsUploading(true)
 
-    if (singleFile) {
-      if (attachments.length > 0) {
-        onChange(serializeFileAttachments(attachments.slice(0, 1)))
+    try {
+      if (singleFile) {
+        const existing = files[0]
+        if (existing?.storagePath) {
+          await deleteStorageAttachment(existing.storagePath)
+        }
       }
-    } else {
-      const { value: nextValue, errors: mergeErrors } = mergeFileAttachments(value, attachments)
-      errors.push(...mergeErrors)
-      if (nextValue !== value) {
-        onChange(nextValue)
+
+      const { attachments, errors: uploadErrors } = await uploadRequestAttachmentFiles(
+        picked,
+        recordId,
+        slot
+      )
+      const errors = [...uploadErrors]
+
+      if (singleFile) {
+        if (attachments.length > 0) {
+          onChange(serializeFileAttachments(attachments.slice(0, 1)))
+        }
+      } else {
+        const { value: nextValue, errors: mergeErrors } = mergeFileAttachments(value, attachments)
+        errors.push(...mergeErrors)
+        if (nextValue !== value) {
+          onChange(nextValue)
+        }
       }
-    }
 
-    if (errors.length > 0) {
-      setError(errors[0])
-    }
-
-    if (inputRef.current) {
-      inputRef.current.value = ''
+      if (errors.length > 0) {
+        setError(errors[0])
+      }
+    } catch {
+      setError('파일 업로드에 실패했습니다. 다시 시도해 주세요.')
+    } finally {
+      setIsUploading(false)
+      if (inputRef.current) {
+        inputRef.current.value = ''
+      }
     }
   }
 
-  const handleRemove = (fileId: string) => {
-    if (readOnly) return
+  const handleRemove = async (fileId: string) => {
+    if (readOnly || isUploading) return
     setError('')
-    onChange(removeFileAttachment(value, fileId))
+    try {
+      const nextValue = await removeFileAttachmentWithStorage(value, fileId, deleteStorageAttachment)
+      onChange(nextValue)
+    } catch {
+      setError('파일 삭제에 실패했습니다.')
+    }
   }
 
   if (readOnly && files.length === 0) {
@@ -145,14 +178,16 @@ function RequestFileAttachmentField({
             multiple={!singleFile}
             accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
             className="hidden"
+            disabled={isUploading}
             onChange={(e) => void handlePickFiles(e.target.files)}
           />
           <button
             type="button"
+            disabled={isUploading}
             onClick={() => inputRef.current?.click()}
             onDragOver={(e) => {
               e.preventDefault()
-              setIsDragging(true)
+              if (!isUploading) setIsDragging(true)
             }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(e) => {
@@ -160,16 +195,22 @@ function RequestFileAttachmentField({
               setIsDragging(false)
               void handlePickFiles(e.dataTransfer.files)
             }}
-            className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors ${
+            className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isDragging
                 ? 'border-fuchsia-400 bg-fuchsia-400/10 shadow-[0_0_14px_rgba(232,121,249,0.55)]'
                 : `border-border bg-bg-primary/30 hover:border-fuchsia-400 hover:bg-bg-primary/50 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]`
             }`}
           >
-            <CloudUpload className="h-8 w-8 text-text-muted" />
+            {isUploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-fuchsia-400" />
+            ) : (
+              <CloudUpload className="h-8 w-8 text-text-muted" />
+            )}
             <div>
-              <p className="text-sm font-medium text-text-primary">PDF / JPG / PNG 업로드</p>
-              <p className="mt-1 text-xs text-text-muted">최대 20MB</p>
+              <p className="text-sm font-medium text-text-primary">
+                {isUploading ? '업로드 중…' : 'PDF / JPG / PNG 업로드'}
+              </p>
+              <p className="mt-1 text-xs text-text-muted">최대 {MAX_ATTACHMENT_LABEL_MB}MB</p>
             </div>
           </button>
         </>
@@ -187,7 +228,7 @@ function RequestFileAttachmentField({
                 {readOnly ? (
                   <button
                     type="button"
-                    onClick={() => downloadFileAttachment(file)}
+                    onClick={() => void downloadFileAttachment(file)}
                     className="w-full break-all text-left text-sm leading-snug text-accent hover:underline"
                     title={file.name}
                   >
@@ -208,8 +249,9 @@ function RequestFileAttachmentField({
               ) : (
                 <button
                   type="button"
-                  onClick={() => handleRemove(file.id)}
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-text-muted transition-colors hover:bg-red-500/15 hover:text-red-400"
+                  disabled={isUploading}
+                  onClick={() => void handleRemove(file.id)}
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded text-text-muted transition-colors hover:bg-red-500/15 hover:text-red-400 disabled:opacity-50"
                   aria-label={`${file.name} 삭제`}
                 >
                   <X className="h-4 w-4" />
@@ -226,6 +268,7 @@ function RequestFileAttachmentField({
 }
 
 interface RequestQualitySectionProps {
+  recordId: string
   companyWarrantyAttachmentKo: string
   companyWarrantyAttachmentEn: string
   supplierWarrantyAttachmentKo: string
@@ -246,6 +289,9 @@ interface RequestQualitySectionProps {
 
 function WarrantyLanguageUploadGroup({
   title,
+  recordId,
+  koSlot,
+  enSlot,
   koValue,
   enValue,
   readOnly,
@@ -253,6 +299,9 @@ function WarrantyLanguageUploadGroup({
   onEnChange,
 }: {
   title: string
+  recordId: string
+  koSlot: RequestAttachmentSlot
+  enSlot: RequestAttachmentSlot
   koValue: string
   enValue: string
   readOnly?: boolean
@@ -266,6 +315,8 @@ function WarrantyLanguageUploadGroup({
         <FormField label="국문">
           <RequestFileAttachmentField
             value={koValue}
+            recordId={recordId}
+            slot={koSlot}
             readOnly={readOnly}
             singleFile
             onChange={onKoChange}
@@ -274,6 +325,8 @@ function WarrantyLanguageUploadGroup({
         <FormField label="영문">
           <RequestFileAttachmentField
             value={enValue}
+            recordId={recordId}
+            slot={enSlot}
             readOnly={readOnly}
             singleFile
             onChange={onEnChange}
@@ -285,6 +338,7 @@ function WarrantyLanguageUploadGroup({
 }
 
 export function RequestQualitySection({
+  recordId,
   companyWarrantyAttachmentKo,
   companyWarrantyAttachmentEn,
   supplierWarrantyAttachmentKo,
@@ -367,6 +421,9 @@ export function RequestQualitySection({
 
         <WarrantyLanguageUploadGroup
           title="당사 Warranty"
+          recordId={recordId}
+          koSlot="company-ko"
+          enSlot="company-en"
           koValue={companyWarrantyAttachmentKo}
           enValue={companyWarrantyAttachmentEn}
           readOnly={readOnly}
@@ -376,6 +433,9 @@ export function RequestQualitySection({
 
         <WarrantyLanguageUploadGroup
           title="도료사 Warranty"
+          recordId={recordId}
+          koSlot="supplier-ko"
+          enSlot="supplier-en"
           koValue={supplierWarrantyAttachmentKo}
           enValue={supplierWarrantyAttachmentEn}
           readOnly={readOnly}

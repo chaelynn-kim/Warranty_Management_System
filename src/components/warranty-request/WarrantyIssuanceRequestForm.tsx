@@ -387,6 +387,7 @@ interface WarrantyIssuanceRequestFormProps {
   qualityReadOnly?: boolean
   showQualitySection?: boolean
   qualityLocked?: boolean
+  recordId?: string
 }
 
 function FormField({
@@ -738,6 +739,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     qualityReadOnly = true,
     showQualitySection = true,
     qualityLocked = false,
+    recordId,
   },
   ref
 ) {
@@ -1044,8 +1046,9 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           </FormSection>
       </div>
 
-      {showQualitySection && (
+      {showQualitySection && recordId && (
         <RequestQualitySection
+          recordId={recordId}
           companyWarrantyAttachmentKo={form.companyWarrantyAttachmentKo}
           companyWarrantyAttachmentEn={form.companyWarrantyAttachmentEn}
           supplierWarrantyAttachmentKo={form.supplierWarrantyAttachmentKo}

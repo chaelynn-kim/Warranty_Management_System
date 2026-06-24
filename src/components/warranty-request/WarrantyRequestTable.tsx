@@ -78,7 +78,7 @@ function CompanyWarrantyAttachmentCell({
           type="button"
           onClick={(event) => {
             event.stopPropagation()
-            downloadFileAttachment(file)
+            void downloadFileAttachment(file)
           }}
           aria-label={`당사 Warranty ${label} 다운로드: ${file.name}`}
           title={`${label} · ${file.name}`}

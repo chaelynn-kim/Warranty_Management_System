@@ -20,7 +20,10 @@ export interface WarrantyFileAttachment {
   name: string
   size: number
   type: string
-  dataUrl: string
+  /** Firebase Storage object path */
+  storagePath?: string
+  /** @deprecated legacy inline base64 — migrated to Storage automatically */
+  dataUrl?: string
 }
 
 export interface CountryEntry {
