@@ -21,7 +21,7 @@ export function WarrantyRequestStatusSummary({ records }: WarrantyRequestStatusS
       <StatCard
         variant="amber"
         icon={Clock}
-        label="접수 대기"
+        label="승인 대기"
         value={`${counts[WARRANTY_REQUEST_STATUS_PENDING] ?? 0}건`}
         subtext="품질 팀장 승인 대기 중"
       />

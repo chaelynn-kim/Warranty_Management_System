@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { ProductWarranty } from '../../types'
 import { parseMultiValue } from '../../constants/warrantyOptions'
 import { resolveChalkMode, resolveColorFadingMode } from '../../utils/productWarrantyHelpers'
+import type { CompanyWarrantyEditableField } from '../../utils/companyWarrantyTerms'
 import {
   findCompanyWarrantyProducts,
   regionToRiskSection,
@@ -29,9 +30,28 @@ interface CompanyWarrantyPreviewProps {
   resin: string
   region: string
   coatingStructure: string
+  editing?: boolean
+  products?: ProductWarranty[]
+  onProductFieldChange?: (
+    productGroup: string,
+    field: CompanyWarrantyEditableField,
+    value: string
+  ) => void
 }
 
-function PreviewTable({ products }: { products: ProductWarranty[] }) {
+function PreviewTable({
+  products,
+  editing = false,
+  onFieldChange,
+}: {
+  products: ProductWarranty[]
+  editing?: boolean
+  onFieldChange?: (
+    productGroup: string,
+    field: CompanyWarrantyEditableField,
+    value: string
+  ) => void
+}) {
   const groupHeader = <span className="font-semibold text-text-secondary">제품군</span>
 
   return (
@@ -92,52 +112,92 @@ function PreviewTable({ products }: { products: ProductWarranty[] }) {
                 )}
               </td>
               <td className={periodTdClass}>
-                <GuideCell value={product.peelFlake} editing={false} onChange={() => {}} />
+                <GuideCell
+                  value={product.peelFlake}
+                  editing={editing}
+                  onChange={(value) => onFieldChange?.(product.productGroup, 'peelFlake', value)}
+                />
               </td>
               <td className={periodTdClass}>
-                <GuideCell value={product.perforation} editing={false} onChange={() => {}} />
+                <GuideCell
+                  value={product.perforation}
+                  editing={editing}
+                  onChange={(value) => onFieldChange?.(product.productGroup, 'perforation', value)}
+                />
               </td>
               {isColorFadingMerged ? (
                 <td colSpan={3} className={periodTdClass}>
-                  <GuideCell value={product.colorFading} editing={false} onChange={() => {}} />
+                  <GuideCell
+                    value={product.colorFading}
+                    editing={editing}
+                    onChange={(value) => onFieldChange?.(product.productGroup, 'colorFading', value)}
+                  />
                 </td>
               ) : (
                 <>
                   <td className={periodTdClass}>
-                    <GuideCell value={product.colorFading} editing={false} onChange={() => {}} />
+                    <GuideCell
+                      value={product.colorFading}
+                      editing={editing}
+                      onChange={(value) =>
+                        onFieldChange?.(product.productGroup, 'colorFading', value)
+                      }
+                    />
                   </td>
                   <td className={periodTdClass}>
                     <GuideCell
                       value={product.colorFadingRoof}
-                      editing={false}
+                      editing={editing}
                       formatSplit
-                      onChange={() => {}}
+                      onChange={(value) =>
+                        onFieldChange?.(product.productGroup, 'colorFadingRoof', value)
+                      }
                     />
                   </td>
                   <td className={periodTdClass}>
                     <GuideCell
                       value={product.colorFadingWall}
-                      editing={false}
+                      editing={editing}
                       formatSplit
-                      onChange={() => {}}
+                      onChange={(value) =>
+                        onFieldChange?.(product.productGroup, 'colorFadingWall', value)
+                      }
                     />
                   </td>
                 </>
               )}
               {isChalkMerged ? (
                 <td colSpan={3} className={periodTdClass}>
-                  <GuideCell value={product.chalk} editing={false} onChange={() => {}} />
+                  <GuideCell
+                    value={product.chalk}
+                    editing={editing}
+                    onChange={(value) => onFieldChange?.(product.productGroup, 'chalk', value)}
+                  />
                 </td>
               ) : (
                 <>
                   <td className={periodTdClass}>
-                    <GuideCell value={product.chalk} editing={false} onChange={() => {}} />
+                    <GuideCell
+                      value={product.chalk}
+                      editing={editing}
+                      onChange={(value) => onFieldChange?.(product.productGroup, 'chalk', value)}
+                    />
                   </td>
                   <td className={periodTdClass}>
-                    <GuideCell value={product.chalkRoof} editing={false} formatSplit onChange={() => {}} />
+                    <GuideCell
+                      value={product.chalkRoof}
+                      editing={editing}
+                      formatSplit
+                      onChange={(value) => onFieldChange?.(product.productGroup, 'chalkRoof', value)}
+                    />
                   </td>
                   <td className={periodTdClass}>
-                    <GuideCell value={product.chalkWall} editing={false} formatSplit onChange={() => {}} />
+                    <GuideCell
+                      value={product.chalkWall}
+                      editing={editing}
+                      formatSplit
+                      onChange={(value) => onFieldChange?.(product.productGroup, 'chalkWall', value)}
+                    />
                   </td>
                 </>
               )}
@@ -154,11 +214,14 @@ export function CompanyWarrantyPreview({
   resin,
   region,
   coatingStructure,
+  editing = false,
+  products: productsOverride,
+  onProductFieldChange,
 }: CompanyWarrantyPreviewProps) {
   const riskVariant = regionToRiskSection(region) === 'highRisk' ? 'high' : 'low'
   const isPrint = productItem === 'PRINT'
 
-  const products = useMemo(() => {
+  const lookedUpProducts = useMemo(() => {
     const data = loadWarrantyPeriod()
     return findCompanyWarrantyProducts(data, {
       productItem,
@@ -167,6 +230,8 @@ export function CompanyWarrantyPreview({
       coatingStructure,
     })
   }, [productItem, resin, region, coatingStructure])
+
+  const products = productsOverride ?? lookedUpProducts
 
   const missingFields =
     !productItem ||
@@ -202,7 +267,11 @@ export function CompanyWarrantyPreview({
         <span className="text-xs font-bold tracking-[0.14em] text-text-primary">{productItem}</span>
       </div>
       <div className="overflow-x-auto">
-        <PreviewTable products={products} />
+        <PreviewTable
+          products={products}
+          editing={editing}
+          onFieldChange={onProductFieldChange}
+        />
       </div>
     </div>
   )

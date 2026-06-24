@@ -10,11 +10,13 @@ import {
 import {
   canEditRequestFields,
   canPromoteToReceived,
+  canSetQualityTargetStatus,
   canStartQualityEdit,
   isRequestCompleted,
   normalizeRequestStatus,
 } from '../../utils/warrantyRequestStatus'
 import {
+  WARRANTY_REQUEST_STATUS_COMPLETED,
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
@@ -32,11 +34,12 @@ interface WarrantyIssuanceRequestModalProps {
   canManageQuality?: boolean
   canTeamLeaderApprove?: boolean
   canReceiveRequest?: boolean
+  canEditRequestContent?: boolean
   onSubmit?: (request: WarrantyIssuanceRequest) => void
   onUpdate?: (
     id: string,
     request: WarrantyIssuanceRequest,
-    options: { editScope: EditScope }
+    options: { editScope: EditScope; targetStatus?: string }
   ) => void
   onPersist?: (id: string, request: WarrantyIssuanceRequest) => void
   onStatusChange?: (id: string, nextStatus: string) => void
@@ -49,6 +52,7 @@ export function WarrantyIssuanceRequestModal({
   canManageQuality = false,
   canTeamLeaderApprove = false,
   canReceiveRequest = false,
+  canEditRequestContent = false,
   onSubmit,
   onUpdate,
   onPersist,
@@ -62,6 +66,7 @@ export function WarrantyIssuanceRequestModal({
   const [editScope, setEditScope] = useState<EditScope | null>(null)
   const [approveConfirmOpen, setApproveConfirmOpen] = useState(false)
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false)
+  const [qualityTargetStatus, setQualityTargetStatus] = useState('')
   const isViewMode = viewRequest != null
   const status = viewRequest ? normalizeRequestStatus(viewRequest.status) : ''
 
@@ -71,6 +76,7 @@ export function WarrantyIssuanceRequestModal({
       setEditScope(null)
       setApproveConfirmOpen(false)
       setPublishConfirmOpen(false)
+      setQualityTargetStatus('')
       openedRequestIdRef.current = null
       return
     }
@@ -88,6 +94,7 @@ export function WarrantyIssuanceRequestModal({
     setEditScope(null)
     setApproveConfirmOpen(false)
     setPublishConfirmOpen(false)
+    setQualityTargetStatus('')
     if (viewRequest) {
       formRef.current?.setValue(toWarrantyIssuanceRequest(viewRequest))
     } else {
@@ -123,6 +130,11 @@ export function WarrantyIssuanceRequestModal({
   const readOnly = isViewMode && !isEditing
   const requestReadOnly = readOnly || editScope === 'quality'
   const qualityReadOnly = readOnly || editScope !== 'quality'
+  const canChangeQualityStatus =
+    isEditing &&
+    editScope === 'quality' &&
+    ((status === WARRANTY_REQUEST_STATUS_RECEIVED && canReceiveRequest) ||
+      (status === WARRANTY_REQUEST_STATUS_COMPLETED && canManageQuality))
 
   const handleSubmit = () => {
     if (!formRef.current) {
@@ -153,7 +165,10 @@ export function WarrantyIssuanceRequestModal({
     }
 
     const request = formRef.current.getValue()
-    onUpdate?.(viewRequest.id, request, { editScope })
+    onUpdate?.(viewRequest.id, request, {
+      editScope,
+      targetStatus: editScope === 'quality' ? qualityTargetStatus : undefined,
+    })
     onClose()
   }
 
@@ -176,23 +191,32 @@ export function WarrantyIssuanceRequestModal({
     }
 
     if (editScope === 'request') {
+      if (!canEditRequestContent) return
       const validationError = formRef.current.validate()
       if (validationError) {
         setError(validationError)
         return
       }
-    } else {
-      const qualityError = formRef.current.validateQuality()
-      if (qualityError) {
-        setError(qualityError)
+    } else if (editScope === 'quality') {
+      if (!canSetQualityTargetStatus(status, qualityTargetStatus)) {
+        setError('변경할 수 없는 상태입니다.')
         return
       }
-    }
 
-    if (editScope === 'quality' && !isRequestCompleted(status)) {
-      setError('')
-      setPublishConfirmOpen(true)
-      return
+      const isPublishingToCompleted =
+        normalizeRequestStatus(qualityTargetStatus) === WARRANTY_REQUEST_STATUS_COMPLETED &&
+        normalizeRequestStatus(status) !== WARRANTY_REQUEST_STATUS_COMPLETED
+
+      if (isPublishingToCompleted) {
+        const qualityError = formRef.current.validateQuality()
+        if (qualityError) {
+          setError(qualityError)
+          return
+        }
+        setError('')
+        setPublishConfirmOpen(true)
+        return
+      }
     }
 
     executeSaveUpdate()
@@ -204,6 +228,7 @@ export function WarrantyIssuanceRequestModal({
   }
 
   const handleStartRequestEdit = () => {
+    if (!canEditRequestContent) return
     setError('')
     setEditScope('request')
     setIsEditing(true)
@@ -221,6 +246,7 @@ export function WarrantyIssuanceRequestModal({
     }
     setError('')
     setEditScope('quality')
+    setQualityTargetStatus(status)
     setIsEditing(true)
   }
 
@@ -228,6 +254,7 @@ export function WarrantyIssuanceRequestModal({
     setError('')
     setIsEditing(false)
     setEditScope(null)
+    setQualityTargetStatus('')
     if (viewRequest) {
       formRef.current?.setValue(toWarrantyIssuanceRequest(viewRequest))
     }
@@ -254,9 +281,9 @@ export function WarrantyIssuanceRequestModal({
     status === WARRANTY_REQUEST_STATUS_PENDING
       ? '품질경영팀 팀장 승인 시 접수 처리됩니다.'
       : status === WARRANTY_REQUEST_STATUS_RECEIVED
-        ? '작성 담당자가 검토 결과 영역을 작성·저장하면 발행 완료됩니다.'
-        : status === '발행 완료'
-          ? '발행 완료된 의뢰도 수정할 수 있습니다.'
+        ? '검토 결과 작성 후 상태를 발행 완료로 변경하고 저장하면 요청자에게 알림이 발송됩니다.'
+        : status === WARRANTY_REQUEST_STATUS_COMPLETED
+          ? '품질경영팀 담당자가 검토 결과·상태를 수정할 수 있습니다.'
           : ''
 
   return (
@@ -302,6 +329,10 @@ export function WarrantyIssuanceRequestModal({
           <WarrantyIssuanceRequestForm
             ref={formRef}
             recordId={viewRequest?.id}
+            recordStatus={status}
+            qualityTargetStatus={qualityTargetStatus}
+            canChangeQualityStatus={canChangeQualityStatus}
+            onQualityTargetStatusChange={setQualityTargetStatus}
             onAttachmentPersist={
               isEditing && editScope === 'quality' ? handleAttachmentPersist : undefined
             }
@@ -413,12 +444,12 @@ export function WarrantyIssuanceRequestModal({
                   <button
                     type="button"
                     onClick={handleStartQualityEdit}
-                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-fuchsia-400/70 bg-bg-tertiary px-5 text-sm font-semibold text-text-primary shadow-[0_0_10px_rgba(232,121,249,0.4)] transition-colors hover:border-fuchsia-400 hover:text-fuchsia-300 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]"
+                    className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-5 text-sm font-semibold text-text-primary transition-colors hover:border-fuchsia-400 hover:text-fuchsia-300"
                   >
                     {isRequestCompleted(status) ? '품질 영역 수정' : '작성하기'}
                   </button>
                 )}
-                {canEditRequestFields(status) && (
+                {canEditRequestFields(status) && canEditRequestContent && (
                   <button
                     type="button"
                     onClick={handleStartRequestEdit}
@@ -454,7 +485,7 @@ export function WarrantyIssuanceRequestModal({
                   onClick={handleSaveUpdate}
                   className="inline-flex h-11 items-center gap-2 rounded-lg bg-accent px-6 text-sm font-semibold text-white transition-colors hover:bg-accent-hover"
                 >
-                  {editScope === 'quality' && !isRequestCompleted(status) ? '발행 완료' : '저장'}
+                  저장
                 </button>
               </div>
             </>

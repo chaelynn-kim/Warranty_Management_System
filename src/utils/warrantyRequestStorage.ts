@@ -15,12 +15,49 @@ import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '10'
+const CURRENT_VERSION = '12'
 
 function normalizeDetailRegionValue(detailRegion: string): string {
   return joinMultiValue(
     parseMultiValue(detailRegion).map((part) => (part === '직접 입력' ? WARRANTY_REQUEST_DETAIL_REGION_CUSTOM : part))
   )
+}
+
+function compareRequestRecordsBySequenceDesc(
+  a: WarrantyIssuanceRequestRecord,
+  b: WarrantyIssuanceRequestRecord
+): number {
+  const noA = a.sequenceNo ?? 0
+  const noB = b.sequenceNo ?? 0
+  if (noA !== noB) return noB - noA
+
+  const dateA = a.requestDate || ''
+  const dateB = b.requestDate || ''
+  if (dateA !== dateB) return dateB.localeCompare(dateA)
+
+  return b.id.localeCompare(a.id)
+}
+
+export function sortWarrantyRequestRecordsBySequenceDesc(
+  records: WarrantyIssuanceRequestRecord[]
+): WarrantyIssuanceRequestRecord[] {
+  return [...records].sort(compareRequestRecordsBySequenceDesc)
+}
+
+/** 정렬 후 No를 최댓값부터 1씩 감소하며 연속 번호로 재부여 (예: 41, 40, 39 …) */
+export function resequenceWarrantyRequestRecordsBySequenceDesc(
+  records: WarrantyIssuanceRequestRecord[]
+): WarrantyIssuanceRequestRecord[] {
+  const sorted = sortWarrantyRequestRecordsBySequenceDesc(records)
+  if (sorted.length === 0) return sorted
+
+  const currentMax = sorted.reduce((max, record) => Math.max(max, record.sequenceNo ?? 0), 0)
+  const peakNo = Math.max(currentMax, sorted.length)
+
+  return sorted.map((record, index) => ({
+    ...record,
+    sequenceNo: peakNo - index,
+  }))
 }
 
 function assignSequenceNumbers(
@@ -70,6 +107,16 @@ export function createRequestRecord(
   }
 }
 
+function normalizeCoatingStructure(value: string): string {
+  return joinMultiValue(
+    parseMultiValue(value).map((part) => {
+      if (part === '2 Coat / 2 Bake') return '2COAT, 2BAKE'
+      if (part === '3 Coat / 3 Bake') return '3COAT, 3BAKE'
+      return part
+    })
+  )
+}
+
 function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): WarrantyIssuanceRequestRecord {
   const legacy = record as WarrantyIssuanceRequestRecord & {
     reviewMemo?: string
@@ -94,8 +141,13 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
     resinCustom: record.resinCustom ?? '',
     materialCustom: record.materialCustom ?? '',
     qualityAuthor: record.qualityAuthor ?? '',
+    totalCoatingThickness: record.totalCoatingThickness ?? '',
+    primerThickness: record.primerThickness ?? '',
+    companyWarrantyTerms: record.companyWarrantyTerms ?? '',
+    companyWarrantyTermsLookupKey: record.companyWarrantyTermsLookupKey ?? '',
     reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
     status: normalizeRequestStatus(record.status),
+    coatingStructure: normalizeCoatingStructure(record.coatingStructure ?? ''),
     detailRegion: normalizeDetailRegionValue(record.detailRegion ?? ''),
     requesterEmail: record.requesterEmail?.trim() ?? '',
   }
@@ -107,7 +159,9 @@ export function loadWarrantyRequestRecords(): WarrantyIssuanceRequestRecord[] {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
       const parsed = JSON.parse(saved) as WarrantyIssuanceRequestRecord[]
-      const normalized = assignSequenceNumbers(parsed.map(normalizeRequestRecord))
+      const normalized = resequenceWarrantyRequestRecordsBySequenceDesc(
+        assignSequenceNumbers(parsed.map(normalizeRequestRecord))
+      )
       if (version !== CURRENT_VERSION) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
         localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
@@ -122,7 +176,9 @@ export function loadWarrantyRequestRecords(): WarrantyIssuanceRequestRecord[] {
 }
 
 export function saveWarrantyRequestRecords(records: WarrantyIssuanceRequestRecord[]): void {
-  const normalized = assignSequenceNumbers(records.map(normalizeRequestRecord))
+  const normalized = resequenceWarrantyRequestRecordsBySequenceDesc(
+    assignSequenceNumbers(records.map(normalizeRequestRecord))
+  )
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
   queueFirestorePush('warranty-issuance-requests')

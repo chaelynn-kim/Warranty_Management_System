@@ -324,6 +324,10 @@ export function createEmptyWarrantyIssuanceRequest(): WarrantyIssuanceRequest {
     supplierWarrantyAttachmentEn: '',
     issueDate: '',
     qualityAuthor: '',
+    totalCoatingThickness: '',
+    primerThickness: '',
+    companyWarrantyTerms: '',
+    companyWarrantyTermsLookupKey: '',
     reviewResult: '',
   }
 }
@@ -388,6 +392,10 @@ interface WarrantyIssuanceRequestFormProps {
   showQualitySection?: boolean
   qualityLocked?: boolean
   recordId?: string
+  recordStatus?: string
+  qualityTargetStatus?: string
+  canChangeQualityStatus?: boolean
+  onQualityTargetStatusChange?: (status: string) => void
   onAttachmentPersist?: (request: WarrantyIssuanceRequest) => void
 }
 
@@ -706,6 +714,10 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     showQualitySection = true,
     qualityLocked = false,
     recordId,
+    recordStatus,
+    qualityTargetStatus,
+    canChangeQualityStatus = false,
+    onQualityTargetStatusChange,
     onAttachmentPersist,
   },
   ref
@@ -1040,7 +1052,18 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           supplierWarrantyAttachmentEn={form.supplierWarrantyAttachmentEn}
           issueDate={form.issueDate}
           qualityAuthor={form.qualityAuthor}
+          totalCoatingThickness={form.totalCoatingThickness}
+          primerThickness={form.primerThickness}
+          productItem={form.productItem}
+          resin={form.resin}
+          region={form.region}
+          coatingStructure={form.coatingStructure}
+          companyWarrantyTerms={form.companyWarrantyTerms}
+          companyWarrantyTermsLookupKey={form.companyWarrantyTermsLookupKey}
           reviewResult={form.reviewResult}
+          recordStatus={recordStatus}
+          qualityTargetStatus={qualityTargetStatus}
+          canChangeQualityStatus={canChangeQualityStatus}
           readOnly={isQualityReadOnly}
           locked={qualityLocked}
           onCompanyWarrantyAttachmentKoChange={(value) =>
@@ -1057,7 +1080,17 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           }
           onIssueDateChange={(value) => patch('issueDate', value)}
           onQualityAuthorChange={(value) => patch('qualityAuthor', value)}
+          onTotalCoatingThicknessChange={(value) => patch('totalCoatingThickness', value)}
+          onPrimerThicknessChange={(value) => patch('primerThickness', value)}
+          onCompanyWarrantyTermsChange={(terms, lookupKey) =>
+            setForm((prev) => ({
+              ...prev,
+              companyWarrantyTerms: terms,
+              companyWarrantyTermsLookupKey: lookupKey,
+            }))
+          }
           onReviewResultChange={(value) => patch('reviewResult', value)}
+          onQualityTargetStatusChange={onQualityTargetStatusChange}
         />
       )}
     </>

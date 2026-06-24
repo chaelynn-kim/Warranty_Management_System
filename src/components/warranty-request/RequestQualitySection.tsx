@@ -1,5 +1,20 @@
-import { useRef, useState, type ReactNode } from 'react'
-import { Check, CloudUpload, Loader2, Paperclip, ShieldCheck, X } from 'lucide-react'
+import { useRef, useState, useEffect, type ReactNode } from 'react'
+import { Check, ChevronDown, CloudUpload, Loader2, Paperclip, ShieldCheck, X } from 'lucide-react'
+import {
+  WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_RECEIVED,
+} from '../../constants/warrantyRequestStatus'
+import { getQualityStatusOptions, normalizeRequestStatus } from '../../utils/warrantyRequestStatus'
+import { RequestStatusBadge } from './RequestStatusBadge'
+import { CompanyWarrantyPreview } from './CompanyWarrantyPreview'
+import {
+  buildCompanyWarrantyLookupKey,
+  lookupCompanyWarrantyTerms,
+  parseCompanyWarrantyTerms,
+  serializeCompanyWarrantyTerms,
+  updateCompanyWarrantyProductField,
+  type CompanyWarrantyEditableField,
+} from '../../utils/companyWarrantyTerms'
 import { DatePicker } from '../ui/DatePicker'
 import { FormSectionHeader } from './FormSectionHeader'
 import {
@@ -26,7 +41,7 @@ const MAX_ATTACHMENT_LABEL_MB = Math.round(REQUEST_MAX_ATTACHMENT_BYTES / (1024 
 const fieldLabel = 'mb-1.5 block text-sm font-medium text-text-secondary'
 const qualityFieldBorderBase = 'border border-border'
 const qualityFieldBorderInteractive =
-  'transition-colors hover:border-fuchsia-400 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)] focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(232,121,249,0.55)]'
+  'transition-colors hover:border-fuchsia-400 focus:border-fuchsia-400'
 const fieldInput = [
   'w-full rounded-lg bg-bg-primary/50 px-3 py-2.5 text-sm text-text-primary outline-none',
   'placeholder:text-text-muted disabled:cursor-not-allowed disabled:opacity-60',
@@ -37,19 +52,21 @@ const qualityReadOnlyBox =
   'rounded-lg border border-border bg-bg-primary/30 px-3 py-2.5 text-sm'
 const qualityDatePickerTrigger = [
   'border border-border',
-  'hover:border-fuchsia-400 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]',
-  'focus:border-fuchsia-400 focus:shadow-[0_0_14px_rgba(232,121,249,0.55)]',
+  'hover:border-fuchsia-400',
+  'focus:border-fuchsia-400',
 ].join(' ')
 
 function FormField({
   label,
   required,
   optional,
+  optionalLabel = '선택',
   children,
 }: {
   label: string
   required?: boolean
   optional?: boolean
+  optionalLabel?: string
   children: ReactNode
 }) {
   return (
@@ -57,7 +74,7 @@ function FormField({
       <label className={fieldLabel}>
         {label}
         {required && <span className="ml-0.5 text-required">*</span>}
-        {optional && <span className="ml-1 text-xs text-text-muted">(선택)</span>}
+        {optional && <span className="ml-1 text-xs text-text-muted">({optionalLabel})</span>}
       </label>
       {children}
     </div>
@@ -198,8 +215,8 @@ function RequestFileAttachmentField({
             }}
             className={`flex w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed px-4 py-10 text-center transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
               isDragging
-                ? 'border-fuchsia-400 bg-fuchsia-400/10 shadow-[0_0_14px_rgba(232,121,249,0.55)]'
-                : `border-border bg-bg-primary/30 hover:border-fuchsia-400 hover:bg-bg-primary/50 hover:shadow-[0_0_14px_rgba(232,121,249,0.55)]`
+                ? 'border-fuchsia-400 bg-fuchsia-400/10'
+                : 'border-border bg-bg-primary/30 hover:border-fuchsia-400 hover:bg-bg-primary/50'
             }`}
           >
             {isUploading ? (
@@ -270,6 +287,81 @@ function RequestFileAttachmentField({
   )
 }
 
+function QualityStatusSelect({
+  value,
+  options,
+  onChange,
+}: {
+  value: string
+  options: readonly string[]
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  const selectOption = (option: string) => {
+    if (value !== option) {
+      onChange(option)
+    }
+    setOpen(false)
+  }
+
+  return (
+    <div
+      ref={ref}
+      className="relative"
+      onBlur={(e) => {
+        if (!ref.current?.contains(e.relatedTarget as Node)) {
+          setOpen(false)
+        }
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => options.length > 1 && setOpen((prev) => !prev)}
+        disabled={options.length <= 1}
+        className={`${fieldInput} flex items-center justify-between pr-3 text-left disabled:cursor-default`}
+        aria-label="상태 변경"
+        aria-expanded={open}
+      >
+        <RequestStatusBadge status={value} className="border-0 bg-transparent px-0 py-0" />
+        {options.length > 1 && (
+          <ChevronDown
+            className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
+          />
+        )}
+      </button>
+
+      {open && options.length > 1 && (
+        <div className="absolute z-20 mt-1 w-full overflow-hidden rounded-lg border border-border bg-bg-secondary shadow-lg">
+          {options.map((option) => {
+            const checked = value === option
+            return (
+              <button
+                key={option}
+                type="button"
+                onClick={() => selectOption(option)}
+                className={`flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm transition-colors hover:bg-bg-tertiary ${
+                  checked ? 'bg-bg-tertiary' : ''
+                }`}
+              >
+                <span
+                  className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border ${
+                    checked ? 'border-fuchsia-400 bg-fuchsia-400/20' : 'border-border'
+                  }`}
+                >
+                  {checked && <Check className="h-3 w-3 text-fuchsia-400" strokeWidth={3} />}
+                </span>
+                <RequestStatusBadge status={option} />
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
 interface RequestQualitySectionProps {
   recordId: string
   companyWarrantyAttachmentKo: string
@@ -278,7 +370,18 @@ interface RequestQualitySectionProps {
   supplierWarrantyAttachmentEn: string
   issueDate: string
   qualityAuthor: string
+  totalCoatingThickness: string
+  primerThickness: string
+  productItem: string
+  resin: string
+  region: string
+  coatingStructure: string
+  companyWarrantyTerms: string
+  companyWarrantyTermsLookupKey: string
   reviewResult: string
+  recordStatus?: string
+  qualityTargetStatus?: string
+  canChangeQualityStatus?: boolean
   readOnly?: boolean
   locked?: boolean
   onCompanyWarrantyAttachmentKoChange: (value: string) => void
@@ -287,7 +390,11 @@ interface RequestQualitySectionProps {
   onSupplierWarrantyAttachmentEnChange: (value: string) => void
   onIssueDateChange: (value: string) => void
   onQualityAuthorChange: (value: string) => void
+  onTotalCoatingThicknessChange: (value: string) => void
+  onPrimerThicknessChange: (value: string) => void
+  onCompanyWarrantyTermsChange: (terms: string, lookupKey: string) => void
   onReviewResultChange: (value: string) => void
+  onQualityTargetStatusChange?: (value: string) => void
 }
 
 function WarrantyLanguageUploadGroup({
@@ -346,7 +453,18 @@ export function RequestQualitySection({
   supplierWarrantyAttachmentEn,
   issueDate,
   qualityAuthor,
+  totalCoatingThickness,
+  primerThickness,
+  productItem,
+  resin,
+  region,
+  coatingStructure,
+  companyWarrantyTerms,
+  companyWarrantyTermsLookupKey,
   reviewResult,
+  recordStatus = '',
+  qualityTargetStatus = '',
+  canChangeQualityStatus = false,
   readOnly = false,
   locked = false,
   onCompanyWarrantyAttachmentKoChange,
@@ -355,8 +473,52 @@ export function RequestQualitySection({
   onSupplierWarrantyAttachmentEnChange,
   onIssueDateChange,
   onQualityAuthorChange,
+  onTotalCoatingThicknessChange,
+  onPrimerThicknessChange,
+  onCompanyWarrantyTermsChange,
   onReviewResultChange,
+  onQualityTargetStatusChange,
 }: RequestQualitySectionProps) {
+  const normalizedRecordStatus = normalizeRequestStatus(recordStatus)
+  const statusOptions = getQualityStatusOptions(recordStatus)
+  const showStatusChange =
+    normalizedRecordStatus === WARRANTY_REQUEST_STATUS_RECEIVED ||
+    normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED
+  const displayStatus = qualityTargetStatus || recordStatus
+  const lookupKey = buildCompanyWarrantyLookupKey(productItem, resin, region, coatingStructure)
+  const warrantyProducts = parseCompanyWarrantyTerms(companyWarrantyTerms)
+
+  useEffect(() => {
+    if (readOnly) return
+    if (companyWarrantyTermsLookupKey === lookupKey) return
+
+    const lookedUp = lookupCompanyWarrantyTerms({
+      productItem,
+      resin,
+      region,
+      coatingStructure,
+    })
+    onCompanyWarrantyTermsChange(serializeCompanyWarrantyTerms(lookedUp), lookupKey)
+  }, [
+    lookupKey,
+    companyWarrantyTermsLookupKey,
+    productItem,
+    resin,
+    region,
+    coatingStructure,
+    onCompanyWarrantyTermsChange,
+    readOnly,
+  ])
+
+  const handleWarrantyFieldChange = (
+    productGroup: string,
+    field: CompanyWarrantyEditableField,
+    value: string
+  ) => {
+    const next = updateCompanyWarrantyProductField(warrantyProducts, productGroup, field, value)
+    onCompanyWarrantyTermsChange(serializeCompanyWarrantyTerms(next), lookupKey)
+  }
+
   return (
     <section className="border-t border-border pt-8">
       <FormSectionHeader title="품질경영팀 검토 결과" icon={ShieldCheck} accent="pink" />
@@ -403,6 +565,54 @@ export function RequestQualitySection({
           </FormField>
         </div>
 
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <FormField label="총도막두께" optional optionalLabel="μm">
+            {readOnly ? (
+              <div className={`${qualityReadOnlyBox} text-text-primary`}>
+                {totalCoatingThickness.trim() || '-'}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={totalCoatingThickness}
+                onChange={(e) => onTotalCoatingThicknessChange(e.target.value)}
+                placeholder="총도막두께 입력"
+                className={fieldInput}
+                aria-label="총도막두께"
+              />
+            )}
+          </FormField>
+
+          <FormField label="프라이머두께" optional optionalLabel="μm">
+            {readOnly ? (
+              <div className={`${qualityReadOnlyBox} text-text-primary`}>
+                {primerThickness.trim() || '-'}
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={primerThickness}
+                onChange={(e) => onPrimerThicknessChange(e.target.value)}
+                placeholder="프라이머두께 입력"
+                className={fieldInput}
+                aria-label="프라이머두께"
+              />
+            )}
+          </FormField>
+        </div>
+
+        <FormField label="당사 보증 연한">
+          <CompanyWarrantyPreview
+            productItem={productItem}
+            resin={resin}
+            region={region}
+            coatingStructure={coatingStructure}
+            products={warrantyProducts.length > 0 ? warrantyProducts : undefined}
+            editing={!readOnly}
+            onProductFieldChange={handleWarrantyFieldChange}
+          />
+        </FormField>
+
         <FormField label="검토 결과">
           {readOnly ? (
             <div className={`min-h-[80px] whitespace-pre-wrap ${qualityReadOnlyBox} leading-relaxed text-text-primary`}>
@@ -443,6 +653,38 @@ export function RequestQualitySection({
           onKoChange={onSupplierWarrantyAttachmentKoChange}
           onEnChange={onSupplierWarrantyAttachmentEnChange}
         />
+
+        {showStatusChange && (
+          <FormField label="상태 변경">
+            {readOnly || !canChangeQualityStatus ? (
+              <div className="flex items-center">
+                <RequestStatusBadge status={readOnly ? recordStatus : displayStatus} />
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <QualityStatusSelect
+                  value={displayStatus}
+                  options={statusOptions}
+                  onChange={(value) => onQualityTargetStatusChange?.(value)}
+                />
+                {normalizedRecordStatus === WARRANTY_REQUEST_STATUS_RECEIVED && (
+                  <p className="text-xs text-text-muted">
+                    <span className="text-text-secondary">접수</span> 상태에서{' '}
+                    <span className="text-text-secondary">발행 완료</span>로 변경 후 저장하면 요청자에게
+                    알림이 발송됩니다.
+                  </p>
+                )}
+                {normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED && (
+                  <p className="text-xs text-text-muted">
+                    품질경영팀 담당자만 상태를 변경할 수 있습니다.{' '}
+                    <span className="text-text-secondary">접수</span>·
+                    <span className="text-text-secondary">승인 대기</span>로 되돌릴 수 있습니다.
+                  </p>
+                )}
+              </div>
+            )}
+          </FormField>
+        )}
       </div>
     </section>
   )

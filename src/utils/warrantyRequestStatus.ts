@@ -6,6 +6,7 @@ import {
 import type { WarrantyIssuanceRequest } from '../types'
 
 const LEGACY_STATUS_IN_PROGRESS = '작성 중'
+const LEGACY_STATUS_PENDING = '접수 대기'
 
 export function countRequestsByStatus(
   records: { status: string }[]
@@ -30,6 +31,7 @@ export function normalizeRequestStatus(status: string): string {
   const trimmed = status.trim()
   if (!trimmed) return WARRANTY_REQUEST_STATUS_PENDING
   if (trimmed === LEGACY_STATUS_IN_PROGRESS) return WARRANTY_REQUEST_STATUS_RECEIVED
+  if (trimmed === LEGACY_STATUS_PENDING) return WARRANTY_REQUEST_STATUS_PENDING
   return trimmed
 }
 
@@ -67,13 +69,33 @@ export function validateQualityCompletion(form: WarrantyIssuanceRequest): string
   return null
 }
 
+const QUALITY_STATUS_CHANGE_OPTIONS = [
+  WARRANTY_REQUEST_STATUS_PENDING,
+  WARRANTY_REQUEST_STATUS_RECEIVED,
+  WARRANTY_REQUEST_STATUS_COMPLETED,
+] as const
+
+export function getQualityStatusOptions(_currentStatus: string): string[] {
+  return [...QUALITY_STATUS_CHANGE_OPTIONS]
+}
+
+export function canSetQualityTargetStatus(currentStatus: string, targetStatus: string): boolean {
+  const current = normalizeRequestStatus(currentStatus)
+  const target = normalizeRequestStatus(targetStatus)
+  if (current === target) return true
+
+  const changeable = new Set<string>(QUALITY_STATUS_CHANGE_OPTIONS)
+  return changeable.has(current) && changeable.has(target)
+}
+
 export function resolveStatusAfterSave(
   currentStatus: string,
-  editScope: 'request' | 'quality'
+  editScope: 'request' | 'quality',
+  targetStatus?: string
 ): string {
   const status = normalizeRequestStatus(currentStatus)
-  if (editScope === 'quality' && status === WARRANTY_REQUEST_STATUS_RECEIVED) {
-    return WARRANTY_REQUEST_STATUS_COMPLETED
+  if (editScope === 'quality' && targetStatus) {
+    return normalizeRequestStatus(targetStatus)
   }
   return status
 }

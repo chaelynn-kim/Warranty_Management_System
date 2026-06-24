@@ -11,6 +11,7 @@ import {
   displayRequestValue,
   formatRequestDetailRegion,
   formatRequestResin,
+  sortWarrantyRequestRecordsBySequenceDesc,
 } from '../../utils/warrantyRequestStorage'
 import { LanguageFlagIcon } from './LanguageFlagIcon'
 import { RequestStatusBadge } from './RequestStatusBadge'
@@ -116,15 +117,10 @@ export function WarrantyRequestTable({
   const [dragOverId, setDragOverId] = useState<string | null>(null)
   const canReorder = editing && Boolean(onReorder)
 
-  const displayRecords = useMemo(() => {
-    if (editing) return records
-    return [...records].sort((a, b) => {
-      const dateA = a.requestDate || ''
-      const dateB = b.requestDate || ''
-      if (dateA !== dateB) return dateB.localeCompare(dateA)
-      return b.id.localeCompare(a.id)
-    })
-  }, [records, editing])
+  const displayRecords = useMemo(
+    () => sortWarrantyRequestRecordsBySequenceDesc(records),
+    [records]
+  )
 
   useEffect(() => {
     if (!highlightedRowId) return

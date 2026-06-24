@@ -69,6 +69,11 @@ export function canEditWarrantyIssuanceLog(email: string | undefined | null): bo
   return isWarrantyAdmin(email)
 }
 
+/** 보증 발행 의뢰서 본문(의뢰 영역) 수정 — 세아 회사 계정 전원 */
+export function canEditWarrantyRequestContent(email: string | undefined | null): boolean {
+  return isCompanyEmail(email)
+}
+
 export async function enforceCompanyEmail(
   auth: Auth,
   email: string | undefined | null

@@ -21,7 +21,7 @@ export const WARRANTY_REQUEST_TEAMS = ['영업1팀', '영업2팀', '수출팀', 
 
 export const WARRANTY_REQUEST_TEAM_OTHER = '기타'
 
-export const WARRANTY_REQUEST_COATING_STRUCTURES = ['2 Coat / 2 Bake', '3 Coat / 3 Bake'] as const
+export const WARRANTY_REQUEST_COATING_STRUCTURES = ['2COAT, 2BAKE', '3COAT, 3BAKE'] as const
 
 export const WARRANTY_REQUEST_MATERIALS = ['GI', 'GL', 'AL'] as const
 

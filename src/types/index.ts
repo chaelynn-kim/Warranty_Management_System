@@ -161,6 +161,14 @@ export interface WarrantyIssuanceRequest {
   supplierWarrantyAttachmentEn: string
   issueDate: string
   qualityAuthor: string
+  /** 품질 영역 — 총도막두께 (선택) */
+  totalCoatingThickness: string
+  /** 품질 영역 — 프라이머두께 (선택) */
+  primerThickness: string
+  /** 품질 영역 — 당사 보증 연한 (JSON: ProductWarranty[]) */
+  companyWarrantyTerms: string
+  /** 당사 보증 연한 자동 조회 기준 키 (품목·수지·국가·도장구조) */
+  companyWarrantyTermsLookupKey: string
   reviewResult: string
 }
 

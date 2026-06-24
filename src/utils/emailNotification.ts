@@ -111,7 +111,7 @@ export function buildWarrantyCompletedEmailParams(
   }
 }
 
-/** 보증서 의뢰 등록(접수 대기) 시 품질팀 알림 메일 */
+/** 보증서 의뢰 등록(승인 대기) 시 품질팀 알림 메일 */
 export async function sendWarrantyRequestPendingEmail(
   request: WarrantyIssuanceRequest,
   options?: { requesterEmail?: string }

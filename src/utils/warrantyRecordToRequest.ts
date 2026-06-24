@@ -91,6 +91,10 @@ export function warrantyRecordToRequest(record: WarrantyRecord): WarrantyIssuanc
     supplierWarrantyAttachmentEn: '',
     issueDate: source.issueDate,
     qualityAuthor: '',
+    totalCoatingThickness: '',
+    primerThickness: '',
+    companyWarrantyTerms: '',
+    companyWarrantyTermsLookupKey: '',
     reviewResult: source.reviewResult ?? '',
   }
 }

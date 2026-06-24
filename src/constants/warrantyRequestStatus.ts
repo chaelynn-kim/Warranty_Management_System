@@ -1,4 +1,4 @@
-export const WARRANTY_REQUEST_STATUS_PENDING = '접수 대기'
+export const WARRANTY_REQUEST_STATUS_PENDING = '승인 대기'
 export const WARRANTY_REQUEST_STATUS_RECEIVED = '접수'
 export const WARRANTY_REQUEST_STATUS_COMPLETED = '발행 완료'
 

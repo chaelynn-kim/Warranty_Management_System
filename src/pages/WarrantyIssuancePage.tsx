@@ -9,10 +9,18 @@ import { WarrantyRequestPeriodSearch } from '../components/warranty-request/Warr
 import { WarrantyRequestStatusSummary } from '../components/warranty-request/WarrantyRequestStatusSummary'
 import { useAuth } from '../contexts/AuthContext'
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
-import { canManageWarrantyIssuanceQuality, canReceiveWarrantyRequest, canTeamLeaderApproveWarrantyRequest, canEditWarrantyIssuanceLog, TEAM_LEADER_APPROVE_ONLY_MESSAGE } from '../utils/authValidation'
+import {
+  canManageWarrantyIssuanceQuality,
+  canReceiveWarrantyRequest,
+  canTeamLeaderApproveWarrantyRequest,
+  canEditWarrantyIssuanceLog,
+  canEditWarrantyRequestContent,
+  TEAM_LEADER_APPROVE_ONLY_MESSAGE,
+} from '../utils/authValidation'
 import { resolveStatusAfterSave, normalizeRequestStatus } from '../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../constants/warrantyRequestStatus'
 import { sendWarrantyRequestCompletedEmail } from '../utils/emailNotification'
@@ -21,6 +29,7 @@ import {
   persistWarrantyRequestRecords,
   reloadWarrantyRequestRecords,
 } from '../utils/warrantyRequestRecordsCache'
+import { resequenceWarrantyRequestRecordsBySequenceDesc } from '../utils/warrantyRequestStorage'
 import { downloadWarrantyRequestExcel } from '../utils/warrantyExcel'
 import {
   filterRecordsByIssueDateRange,
@@ -45,6 +54,7 @@ export function WarrantyIssuancePage({
   const canTeamLeaderApprove = canTeamLeaderApproveWarrantyRequest(user?.email)
   const canReceiveRequest = canReceiveWarrantyRequest(user?.email)
   const canEditLog = canEditWarrantyIssuanceLog(user?.email)
+  const canEditRequestContent = canEditWarrantyRequestContent(user?.email)
   const [requestRecords, setRequestRecords] = useState(() => getWarrantyRequestRecords())
   const [requestEditing, setRequestEditing] = useState(false)
   const [requestSaveMessage, setRequestSaveMessage] = useState('')
@@ -121,7 +131,9 @@ export function WarrantyIssuancePage({
   }
 
   const handleRequestSave = () => {
-    persistWarrantyRequestRecords(requestRecords)
+    const resequenced = resequenceWarrantyRequestRecordsBySequenceDesc(requestRecords)
+    setRequestRecords(resequenced)
+    persistWarrantyRequestRecords(resequenced)
     setRequestEditing(false)
     setHighlightedRequestId(null)
     setRequestSaveMessage('저장되었습니다.')
@@ -137,7 +149,9 @@ export function WarrantyIssuancePage({
   }
 
   const handleDeleteRequest = (id: string) => {
-    setRequestRecords((prev) => prev.filter((record) => record.id !== id))
+    setRequestRecords((prev) =>
+      resequenceWarrantyRequestRecordsBySequenceDesc(prev.filter((record) => record.id !== id))
+    )
     if (highlightedRequestId === id) setHighlightedRequestId(null)
     setRequestSaveMessage('')
   }
@@ -164,12 +178,14 @@ export function WarrantyIssuancePage({
   const handleRequestUpdate = async (
     id: string,
     request: WarrantyIssuanceRequest,
-    options: { editScope: 'request' | 'quality' }
+    options: { editScope: 'request' | 'quality'; targetStatus?: string }
   ) => {
     const current = requestRecords.find((record) => record.id === id)
     if (!current) return
 
-    if (options.editScope === 'quality') {
+    if (options.editScope === 'request') {
+      if (!canEditRequestContent) return
+    } else if (options.editScope === 'quality') {
       const normalizedStatus = normalizeRequestStatus(current.status)
       if (normalizedStatus === WARRANTY_REQUEST_STATUS_RECEIVED) {
         if (!canReceiveRequest) return
@@ -178,7 +194,11 @@ export function WarrantyIssuancePage({
       }
     }
 
-    const nextStatus = resolveStatusAfterSave(current.status, options.editScope)
+    const nextStatus = resolveStatusAfterSave(
+      current.status,
+      options.editScope,
+      options.targetStatus
+    )
     const isNewlyCompleted =
       nextStatus === WARRANTY_REQUEST_STATUS_COMPLETED &&
       normalizeRequestStatus(current.status) !== WARRANTY_REQUEST_STATUS_COMPLETED
@@ -211,7 +231,24 @@ export function WarrantyIssuancePage({
         )
       }
     } else {
-      setRequestSaveMessage('의뢰 내용이 수정되었습니다.')
+      const previousStatus = normalizeRequestStatus(current.status)
+      const revertedToPending =
+        options.editScope === 'quality' &&
+        nextStatus === WARRANTY_REQUEST_STATUS_PENDING &&
+        previousStatus !== WARRANTY_REQUEST_STATUS_PENDING
+      const revertedToReceived =
+        options.editScope === 'quality' &&
+        nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED &&
+        previousStatus === WARRANTY_REQUEST_STATUS_COMPLETED
+      setRequestSaveMessage(
+        revertedToPending
+          ? '승인 대기 상태로 되돌렸습니다.'
+          : revertedToReceived
+            ? '접수 상태로 되돌렸습니다.'
+            : options.editScope === 'quality'
+              ? '검토 결과가 저장되었습니다.'
+              : '의뢰 내용이 수정되었습니다.'
+      )
     }
 
     setTimeout(() => setRequestSaveMessage(''), 3000)
@@ -402,6 +439,7 @@ export function WarrantyIssuancePage({
         canManageQuality={canManageQuality}
         canTeamLeaderApprove={canTeamLeaderApprove}
         canReceiveRequest={canReceiveRequest}
+        canEditRequestContent={canEditRequestContent}
         onClose={() => {
           setRequestModalOpen(false)
           setViewingRequest(null)
