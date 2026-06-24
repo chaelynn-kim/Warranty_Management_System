@@ -62,7 +62,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       return
     }
 
-    void sendWarrantyRequestPendingEmail(request, { replyToEmail: user?.email ?? undefined }).catch(
+    void sendWarrantyRequestPendingEmail(request, { requesterEmail: user?.email ?? undefined }).catch(
       (mailError) => {
         console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
       }
