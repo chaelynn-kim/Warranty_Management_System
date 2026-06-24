@@ -15,7 +15,7 @@ import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '8'
+const CURRENT_VERSION = '9'
 
 function normalizeDetailRegionValue(detailRegion: string): string {
   return joinMultiValue(
@@ -51,17 +51,21 @@ function assignSequenceNumbers(
 
 export function createRequestRecord(
   request: WarrantyIssuanceRequest,
-  existingRecords: WarrantyIssuanceRequestRecord[] = []
+  existingRecords: WarrantyIssuanceRequestRecord[] = [],
+  options?: { requesterEmail?: string }
 ): WarrantyIssuanceRequestRecord {
   const maxSequenceNo = existingRecords.reduce(
     (max, record) => Math.max(max, record.sequenceNo ?? 0),
     0
   )
 
+  const requesterEmail = options?.requesterEmail?.trim() ?? ''
+
   return {
     id: crypto.randomUUID(),
     status: WARRANTY_REQUEST_STATUS_PENDING,
     sequenceNo: maxSequenceNo + 1,
+    ...(requesterEmail ? { requesterEmail } : {}),
     ...request,
   }
 }
@@ -93,6 +97,7 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
     reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
     status: normalizeRequestStatus(record.status),
     detailRegion: normalizeDetailRegionValue(record.detailRegion ?? ''),
+    requesterEmail: record.requesterEmail?.trim() ?? '',
   }
 }
 

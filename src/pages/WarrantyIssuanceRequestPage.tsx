@@ -52,7 +52,9 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
 
     const request = formRef.current.getValue()
     const existingRecords = getWarrantyRequestRecords()
-    const newRecord = createRequestRecord(request, existingRecords)
+    const newRecord = createRequestRecord(request, existingRecords, {
+      requesterEmail: user?.email ?? undefined,
+    })
     const nextRecords = [newRecord, ...existingRecords]
 
     setIsSubmitting(true)

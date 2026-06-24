@@ -12,8 +12,10 @@ import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../
 import { canManageWarrantyIssuanceQuality, canReceiveWarrantyRequest, canTeamLeaderApproveWarrantyRequest, canEditWarrantyIssuanceLog, TEAM_LEADER_APPROVE_ONLY_MESSAGE } from '../utils/authValidation'
 import { resolveStatusAfterSave, normalizeRequestStatus } from '../utils/warrantyRequestStatus'
 import {
+  WARRANTY_REQUEST_STATUS_COMPLETED,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../constants/warrantyRequestStatus'
+import { sendWarrantyRequestCompletedEmail } from '../utils/emailNotification'
 import {
   getWarrantyRequestRecords,
   persistWarrantyRequestRecords,
@@ -140,7 +142,7 @@ export function WarrantyIssuancePage({
     setRequestSaveMessage('')
   }
 
-  const handleRequestUpdate = (
+  const handleRequestUpdate = async (
     id: string,
     request: WarrantyIssuanceRequest,
     options: { editScope: 'request' | 'quality' }
@@ -158,6 +160,9 @@ export function WarrantyIssuancePage({
     }
 
     const nextStatus = resolveStatusAfterSave(current.status, options.editScope)
+    const isNewlyCompleted =
+      nextStatus === WARRANTY_REQUEST_STATUS_COMPLETED &&
+      normalizeRequestStatus(current.status) !== WARRANTY_REQUEST_STATUS_COMPLETED
     const nextRecords = requestRecords.map((record) =>
       record.id === id ? { ...record, ...request, status: nextStatus } : record
     )
@@ -172,9 +177,24 @@ export function WarrantyIssuancePage({
 
     setRequestRecords(nextRecords)
     setHighlightedRequestId(id)
-    setRequestSaveMessage(
-      nextStatus === '발행 완료' ? '발행 완료 처리되었습니다.' : '의뢰 내용이 수정되었습니다.'
-    )
+
+    if (isNewlyCompleted) {
+      const updatedRecord = nextRecords.find((record) => record.id === id)
+      try {
+        await sendWarrantyRequestCompletedEmail(request, {
+          requesterEmail: updatedRecord?.requesterEmail ?? current.requesterEmail,
+        })
+        setRequestSaveMessage('발행 완료 처리되었습니다.')
+      } catch (mailError) {
+        console.error('[EmailJS] 발행 완료 알림 메일 발송 실패', mailError)
+        setRequestSaveMessage(
+          '발행 완료되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
+        )
+      }
+    } else {
+      setRequestSaveMessage('의뢰 내용이 수정되었습니다.')
+    }
+
     setTimeout(() => setRequestSaveMessage(''), 3000)
   }
 

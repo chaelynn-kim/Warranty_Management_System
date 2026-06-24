@@ -165,6 +165,8 @@ export interface WarrantyIssuanceRequestRecord extends WarrantyIssuanceRequest {
   id: string
   status: string
   sequenceNo: number
+  /** 의뢰 등록 시 로그인 계정 이메일 — 발행 완료 알림 수신용 */
+  requesterEmail?: string
 }
 
 export type TabId = 'issuanceRequest' | 'issuance' | 'period' | 'externalTest'
