@@ -430,41 +430,6 @@ function FormSection({
   )
 }
 
-function SelectField({
-  value,
-  onChange,
-  placeholder,
-  options,
-  disabled = false,
-}: {
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-  options: readonly string[]
-  disabled?: boolean
-}) {
-  return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className={`${fieldSelect} pr-8 disabled:cursor-not-allowed disabled:opacity-50 ${
-          value ? 'text-text-primary' : 'text-text-muted'
-        }`}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-2.5 h-4 w-4 -translate-y-1/2 text-text-muted" />
-    </div>
-  )
-}
-
 function ResinMultiSelect({
   value,
   customValue,
@@ -860,11 +825,12 @@ export const WarrantyIssuanceRequestForm = forwardRef<
 
               <FormField label="요청팀" required>
                 <div className="space-y-3">
-                  <SelectField
+                  <OptionDropdownSingleSelect
                     value={form.requestTeam}
                     onChange={(value) => patch('requestTeam', value)}
-                    placeholder="팀 선택"
                     options={WARRANTY_REQUEST_TEAMS}
+                    placeholder="팀 선택"
+                    ariaLabel="요청팀 선택"
                   />
                   {showCustomRequestTeam && (
                     <input
