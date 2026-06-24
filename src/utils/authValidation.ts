@@ -5,6 +5,10 @@ export const COMPANY_EMAIL_SUFFIX = '@seah.co.kr'
 export const WARRANTY_ADMIN_EMAIL = 'chaelynn.kim@seah.co.kr'
 /** 이 웹사이트 자동 발송 메일의 발신자 표시명 */
 export const WARRANTY_SITE_OWNER_SENDER_NAME = '김채린/세아씨엠'
+/** 배포된 보증서 시스템 URL (메일 링크용) */
+export const WARRANTY_SITE_URL =
+  (import.meta.env.VITE_SITE_URL as string | undefined)?.trim() ||
+  'https://warranty-management-common.web.app'
 export const EXTERNAL_TEST_TAB_ALLOWED_EMAIL = WARRANTY_ADMIN_EMAIL
 
 const WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS = new Set([

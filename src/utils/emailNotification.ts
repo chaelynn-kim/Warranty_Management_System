@@ -1,6 +1,6 @@
 import emailjs from '@emailjs/browser'
 import type { WarrantyIssuanceRequest } from '../types'
-import { WARRANTY_SITE_OWNER_SENDER_NAME } from './authValidation'
+import { WARRANTY_SITE_OWNER_SENDER_NAME, WARRANTY_SITE_URL } from './authValidation'
 import { formatDisplayDate } from './helpers'
 import {
   formatRequestDetailRegion,
@@ -37,6 +37,9 @@ export type WarrantyRequestEmailParams = {
   reply_to: string
   /** Cc — 템플릿 Cc 필드에 {{cc_email}} */
   cc_email: string
+  /** 링크 href — 템플릿: <a href="{{website_url}}">{{website_link_label}}</a> */
+  website_url: string
+  website_link_label: string
 }
 
 export function buildWarrantyRequestEmailParams(
@@ -56,6 +59,8 @@ export function buildWarrantyRequestEmailParams(
     from_name: fromName,
     reply_to: requesterEmail,
     cc_email: requesterEmail,
+    website_url: WARRANTY_SITE_URL,
+    website_link_label: '보증서 관리 시스템 바로가기',
   }
 }
 
