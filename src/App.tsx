@@ -10,7 +10,7 @@ import type { TabId } from './types'
 
 function App() {
   const { user } = useAuth()
-  const [activeTab, setActiveTab] = useState<TabId>('issuanceRequest')
+  const [activeTab, setActiveTab] = useState<TabId>('issuance')
   const [highlightRequestId, setHighlightRequestId] = useState<string | null>(null)
   const canAccessExternalTest = canAccessExternalTestTab(user?.email)
 
