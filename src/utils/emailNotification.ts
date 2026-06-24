@@ -33,12 +33,27 @@ export type WarrantyRequestEmailParams = {
   cc_email: string
 }
 
+const COMPANY_SENDER_LABEL = '세아씨엠'
+
+function resolveSenderDisplayName(
+  request: WarrantyIssuanceRequest,
+  senderDisplayName?: string
+): string {
+  const requester = request.requesterName.trim()
+  if (requester) return `${requester}/${COMPANY_SENDER_LABEL}`
+
+  const custom = senderDisplayName?.trim()
+  if (custom) return custom
+
+  return COMPANY_SENDER_LABEL
+}
+
 export function buildWarrantyRequestEmailParams(
   request: WarrantyIssuanceRequest,
-  options?: { requesterEmail?: string }
+  options?: { requesterEmail?: string; senderDisplayName?: string }
 ): WarrantyRequestEmailParams {
   const requesterEmail = options?.requesterEmail?.trim() ?? ''
-  const fromName = '세아씨엠 보증서 시스템'
+  const fromName = resolveSenderDisplayName(request, options?.senderDisplayName)
 
   return {
     request_date: formatDisplayDate(request.requestDate),
@@ -56,7 +71,7 @@ export function buildWarrantyRequestEmailParams(
 /** 보증서 의뢰 등록(접수 대기) 시 품질팀 알림 메일 */
 export async function sendWarrantyRequestPendingEmail(
   request: WarrantyIssuanceRequest,
-  options?: { requesterEmail?: string }
+  options?: { requesterEmail?: string; senderDisplayName?: string }
 ): Promise<void> {
   if (!isEmailJsConfigured()) {
     throw new Error('EmailJS 환경 변수(VITE_EMAILJS_*)가 설정되지 않았습니다.')
