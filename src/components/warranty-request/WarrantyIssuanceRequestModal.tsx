@@ -56,6 +56,7 @@ export function WarrantyIssuanceRequestModal({
   viewRequest = null,
 }: WarrantyIssuanceRequestModalProps) {
   const formRef = useRef<WarrantyIssuanceRequestFormHandle>(null)
+  const openedRequestIdRef = useRef<string | null>(null)
   const [error, setError] = useState('')
   const [isEditing, setIsEditing] = useState(false)
   const [editScope, setEditScope] = useState<EditScope | null>(null)
@@ -70,8 +71,18 @@ export function WarrantyIssuanceRequestModal({
       setEditScope(null)
       setApproveConfirmOpen(false)
       setPublishConfirmOpen(false)
+      openedRequestIdRef.current = null
       return
     }
+
+    const requestId = viewRequest?.id ?? null
+    const isNewRequestContext = openedRequestIdRef.current !== requestId
+
+    if (!isNewRequestContext) {
+      return
+    }
+
+    openedRequestIdRef.current = requestId
     setError('')
     setIsEditing(false)
     setEditScope(null)
