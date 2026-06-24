@@ -1,5 +1,6 @@
 import emailjs from '@emailjs/browser'
 import type { WarrantyIssuanceRequest } from '../types'
+import { WARRANTY_SITE_OWNER_SENDER_NAME } from './authValidation'
 import { formatDisplayDate } from './helpers'
 import {
   formatRequestDetailRegion,
@@ -18,6 +19,11 @@ export function isEmailJsConfigured(): boolean {
   return Boolean(SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY)
 }
 
+/** 모든 자동 발송 메일의 From Name (EmailJS {{name}} / {{from_name}}) */
+export function getEmailSenderDisplayName(): string {
+  return WARRANTY_SITE_OWNER_SENDER_NAME
+}
+
 /** EmailJS 템플릿 변수명과 1:1로 맞춥니다. */
 export type WarrantyRequestEmailParams = {
   request_date: string
@@ -33,27 +39,12 @@ export type WarrantyRequestEmailParams = {
   cc_email: string
 }
 
-const COMPANY_SENDER_LABEL = '세아씨엠'
-
-function resolveSenderDisplayName(
-  request: WarrantyIssuanceRequest,
-  senderDisplayName?: string
-): string {
-  const requester = request.requesterName.trim()
-  if (requester) return `${requester}/${COMPANY_SENDER_LABEL}`
-
-  const custom = senderDisplayName?.trim()
-  if (custom) return custom
-
-  return COMPANY_SENDER_LABEL
-}
-
 export function buildWarrantyRequestEmailParams(
   request: WarrantyIssuanceRequest,
-  options?: { requesterEmail?: string; senderDisplayName?: string }
+  options?: { requesterEmail?: string }
 ): WarrantyRequestEmailParams {
   const requesterEmail = options?.requesterEmail?.trim() ?? ''
-  const fromName = resolveSenderDisplayName(request, options?.senderDisplayName)
+  const fromName = getEmailSenderDisplayName()
 
   return {
     request_date: formatDisplayDate(request.requestDate),
@@ -71,7 +62,7 @@ export function buildWarrantyRequestEmailParams(
 /** 보증서 의뢰 등록(접수 대기) 시 품질팀 알림 메일 */
 export async function sendWarrantyRequestPendingEmail(
   request: WarrantyIssuanceRequest,
-  options?: { requesterEmail?: string; senderDisplayName?: string }
+  options?: { requesterEmail?: string }
 ): Promise<void> {
   if (!isEmailJsConfigured()) {
     throw new Error('EmailJS 환경 변수(VITE_EMAILJS_*)가 설정되지 않았습니다.')

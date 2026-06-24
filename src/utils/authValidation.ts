@@ -3,6 +3,8 @@ import { signOut } from 'firebase/auth'
 
 export const COMPANY_EMAIL_SUFFIX = '@seah.co.kr'
 export const WARRANTY_ADMIN_EMAIL = 'chaelynn.kim@seah.co.kr'
+/** 이 웹사이트 자동 발송 메일의 발신자 표시명 */
+export const WARRANTY_SITE_OWNER_SENDER_NAME = '김채린/세아씨엠'
 export const EXTERNAL_TEST_TAB_ALLOWED_EMAIL = WARRANTY_ADMIN_EMAIL
 
 const WARRANTY_ISSUANCE_QUALITY_ADMIN_EMAILS = new Set([

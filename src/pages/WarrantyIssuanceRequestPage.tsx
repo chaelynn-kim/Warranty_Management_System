@@ -10,7 +10,6 @@ import {
 import { periodCardLabelClass, periodCardTitleHeadingClass } from '../components/warranty-period/periodTheme'
 import { useAuth } from '../contexts/AuthContext'
 import { sendWarrantyRequestPendingEmail } from '../utils/emailNotification'
-import { getUserProfileLabel } from '../utils/userDisplay'
 import { createRequestRecord } from '../utils/warrantyRequestStorage'
 import {
   getWarrantyRequestRecords,
@@ -70,7 +69,6 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
     try {
       await sendWarrantyRequestPendingEmail(request, {
         requesterEmail: user?.email ?? undefined,
-        senderDisplayName: user ? getUserProfileLabel(user) : undefined,
       })
     } catch (mailError) {
       console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
