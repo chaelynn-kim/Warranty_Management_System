@@ -25,6 +25,7 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
   const formRef = useRef<WarrantyIssuanceRequestFormHandle>(null)
   const [error, setError] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmitClick = () => {
     if (!formRef.current) {
@@ -42,8 +43,8 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
     setConfirmOpen(true)
   }
 
-  const handleConfirmSubmit = () => {
-    if (!formRef.current) {
+  const handleConfirmSubmit = async () => {
+    if (!formRef.current || isSubmitting) {
       setError('폼을 불러올 수 없습니다.')
       setConfirmOpen(false)
       return
@@ -54,22 +55,27 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
     const newRecord = createRequestRecord(request, existingRecords)
     const nextRecords = [newRecord, ...existingRecords]
 
+    setIsSubmitting(true)
+
     try {
       persistWarrantyRequestRecords(nextRecords)
     } catch {
       setError('저장 용량을 초과했습니다. 첨부 파일 크기를 줄여 주세요.')
       setConfirmOpen(false)
+      setIsSubmitting(false)
       return
     }
 
-    void sendWarrantyRequestPendingEmail(request, { requesterEmail: user?.email ?? undefined }).catch(
-      (mailError) => {
-        console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
-      }
-    )
+    try {
+      await sendWarrantyRequestPendingEmail(request, { requesterEmail: user?.email ?? undefined })
+    } catch (mailError) {
+      console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
+      setError('의뢰는 접수되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.')
+    }
 
     formRef.current.reset()
     setConfirmOpen(false)
+    setIsSubmitting(false)
     onRequestSubmitted?.(newRecord.id)
   }
 
@@ -115,8 +121,12 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       <ConfirmDialog
         open={confirmOpen}
         message="의뢰 하시겠습니까?"
-        onCancel={() => setConfirmOpen(false)}
-        onConfirm={handleConfirmSubmit}
+        confirming={isSubmitting}
+        onCancel={() => {
+          if (isSubmitting) return
+          setConfirmOpen(false)
+        }}
+        onConfirm={() => void handleConfirmSubmit()}
       />
     </div>
   )

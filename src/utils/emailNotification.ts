@@ -10,6 +10,10 @@ const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID ?? ''
 const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? ''
 const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? ''
 
+if (PUBLIC_KEY) {
+  emailjs.init({ publicKey: PUBLIC_KEY })
+}
+
 export function isEmailJsConfigured(): boolean {
   return Boolean(SERVICE_ID && TEMPLATE_ID && PUBLIC_KEY)
 }
@@ -55,8 +59,7 @@ export async function sendWarrantyRequestPendingEmail(
   options?: { requesterEmail?: string }
 ): Promise<void> {
   if (!isEmailJsConfigured()) {
-    console.warn('[EmailJS] VITE_EMAILJS_* 환경 변수가 설정되지 않았습니다.')
-    return
+    throw new Error('EmailJS 환경 변수(VITE_EMAILJS_*)가 설정되지 않았습니다.')
   }
 
   const templateParams = buildWarrantyRequestEmailParams(request, options)

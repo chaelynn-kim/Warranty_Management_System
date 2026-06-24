@@ -5,6 +5,7 @@ interface ConfirmDialogProps {
   message: string
   confirmLabel?: string
   cancelLabel?: string
+  confirming?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -14,6 +15,7 @@ export function ConfirmDialog({
   message,
   confirmLabel = '확인',
   cancelLabel = '취소',
+  confirming = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -57,16 +59,18 @@ export function ConfirmDialog({
           <button
             type="button"
             onClick={onCancel}
-            className="inline-flex h-[38px] min-w-[88px] items-center justify-center rounded-lg border border-border bg-bg-tertiary px-4 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary"
+            disabled={confirming}
+            className="inline-flex h-[38px] min-w-[88px] items-center justify-center rounded-lg border border-border bg-bg-tertiary px-4 text-sm font-medium text-text-secondary transition-colors hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
           >
             {cancelLabel}
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="inline-flex h-[38px] min-w-[88px] items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition-colors hover:bg-accent-hover"
+            disabled={confirming}
+            className="inline-flex h-[38px] min-w-[88px] items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/30 transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-70"
           >
-            {confirmLabel}
+            {confirming ? '처리 중…' : confirmLabel}
           </button>
         </div>
       </div>
