@@ -3,6 +3,10 @@ import type { ProductWarranty } from '../../types'
 import { translateDetailRegionToEnglish } from './countryTranslation'
 import type { SlideReplacement } from './pptxReplacer'
 import { applySlideReplacements } from './pptxReplacer'
+import { postProcessSlideXml } from './pptxPostProcess'
+import {
+  WARRANTY_TEMPLATE_URLS,
+} from './templateAssets'
 import {
   extractWarrantyYears,
   formatCoatingStructureEn,
@@ -27,6 +31,7 @@ import {
 } from './warrantyValueFormatters'
 
 export type WarrantyCertificateLanguage = 'ko' | 'en'
+export type WarrantyCertificateFormat = 'pptx' | 'pdf'
 
 export interface WarrantyCertificateInput {
   productItem: string
@@ -41,15 +46,19 @@ export interface WarrantyCertificateInput {
   companyWarrantyTerms: ProductWarranty[]
 }
 
-const TEMPLATE_FILES: Record<string, Record<WarrantyCertificateLanguage, string>> = {
-  PAINT: {
-    ko: 'PAINT_국문_260427.pptx',
-    en: 'PAINT_영문_260427.pptx',
-  },
-  PRINT: {
-    ko: 'PRINT_국문_250624.pptx',
-    en: 'PRINT_영문_250624.pptx',
-  },
+async function loadBinaryAsset(url: string, label: string): Promise<ArrayBuffer> {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) {
+      throw new Error(`${label}을(를) 불러오지 못했습니다.`)
+    }
+    return response.arrayBuffer()
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('불러오지 못했습니다')) {
+      throw error
+    }
+    throw new Error(`${label}을(를) 불러오지 못했습니다. 네트워크 연결을 확인해 주세요.`)
+  }
 }
 
 interface ReplacementContext {
@@ -128,12 +137,12 @@ function buildPaintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 0, 1, formatYearsKo(perfYears)),
     rule(2, 5, 0, ctx.resin),
     rule(2, 5, 1, formatYearsKo(perfYears)),
-    rule(2, 45, 0, formatYearsKoSpaced(peelYears)),
-    rule(2, 48, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 45, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 48, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 50, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
     rule(2, 52, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkRoof'))),
-    rule(2, 58, 0, formatYearsKoSpaced(peelYears)),
-    rule(2, 61, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 58, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 61, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 63, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 65, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkWall'))),
     rule(3, 3, 0, `${ctx.resin} `),
@@ -157,12 +166,12 @@ function buildPaintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 0, 1, formatYearsEnUpper(perfYears)),
     rule(2, 5, 0, ctx.resin),
     rule(2, 5, 1, formatYearsEnLower(perfYears)),
-    rule(2, 45, 0, formatYearsEnShort(peelYears)),
-    rule(2, 48, 0, formatYearsEnShort(perfYears)),
+    rule(2, 45, 0, formatYearsEnShort(perfYears)),
+    rule(2, 48, 0, formatYearsEnShort(peelYears)),
     rule(2, 50, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
     rule(2, 52, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkRoof'))),
-    rule(2, 59, 0, formatYearsEnShort(peelYears)),
-    rule(2, 62, 0, formatYearsEnShort(perfYears)),
+    rule(2, 59, 0, formatYearsEnShort(perfYears)),
+    rule(2, 62, 0, formatYearsEnShort(peelYears)),
     rule(2, 64, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 66, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkWall'))),
     rule(3, 3, 0, ctx.resin),
@@ -182,7 +191,6 @@ function buildPaintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
 
 function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const peelYears = extractWarrantyYears(ctx.product.peelFlake)
-  const colorYears = extractWarrantyYears(ctx.product.colorFading)
 
   const rules: SlideReplacement[] = [
     rule(1, 0, 0, String(ctx.perforationYears), { useCoverYearGray: true }),
@@ -190,7 +198,7 @@ function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 0, 0, ctx.resin),
     rule(2, 0, 1, formatYearsKo(ctx.perforationYears)),
     rule(2, 4, 0, formatYearsKoSpacedTrailing(peelYears)),
-    rule(2, 6, 0, formatYearsKoSpaced(colorYears)),
+    rule(2, 6, 0, formatYearsKoSpaced(ctx.perforationYears)),
     rule(2, 40, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 43, 0, formatYearsKoSpaced(ctx.perforationYears)),
     rule(2, 45, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
@@ -291,7 +299,11 @@ export function validateWarrantyCertificateInput(
     input.productItem
   )
   if (!product) {
-    return { ok: false, message: '보증 내용 데이터가 없습니다.' }
+    return {
+      ok: false,
+      message:
+        '선택한 조건에 맞는 당사 보증 연한이 없습니다. 품목·수지·도장구조·국가를 확인해 주세요.',
+    }
   }
   if (getPerforationYears(product) <= 0) {
     return { ok: false, message: '천공(PERFORATION) 보증 연한이 필요합니다.' }
@@ -309,8 +321,8 @@ export async function generateWarrantyCertificate(
     throw new Error(validation.message ?? '보증서를 생성할 수 없습니다.')
   }
 
-  const templateName = TEMPLATE_FILES[input.productItem]?.[language]
-  if (!templateName) {
+  const templateUrl = WARRANTY_TEMPLATE_URLS[input.productItem]?.[language]
+  if (!templateUrl) {
     throw new Error('지원하지 않는 품목입니다.')
   }
 
@@ -319,13 +331,7 @@ export async function generateWarrantyCertificate(
     throw new Error('보증서 데이터를 구성할 수 없습니다.')
   }
 
-  const templateUrl = `${import.meta.env.BASE_URL}warranty-templates/${encodeURIComponent(templateName)}`
-  const response = await fetch(templateUrl)
-  if (!response.ok) {
-    throw new Error('보증서 양식 파일을 불러오지 못했습니다.')
-  }
-
-  const templateBuffer = await response.arrayBuffer()
+  const templateBuffer = await loadBinaryAsset(templateUrl, '보증서 양식 파일')
   const zip = await JSZip.loadAsync(templateBuffer)
   const replacements = buildReplacements(input.productItem, language, ctx)
 
@@ -336,21 +342,73 @@ export async function generateWarrantyCertificate(
 
     const slideXml = await slideFile.async('string')
     const slideRules = replacements.filter((item) => item.slide === slide)
-    zip.file(slidePath, applySlideReplacements(slideXml, slideRules))
+    const replaced = applySlideReplacements(slideXml, slideRules)
+    zip.file(slidePath, postProcessSlideXml(replaced, slide, language, {
+      productItem:
+        input.productItem === 'PRINT' || input.productItem === 'PAINT'
+          ? input.productItem
+          : undefined,
+    }))
   }
 
   const output = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' })
   return output
 }
 
+export async function convertWarrantyCertificateToPdf(pptxBlob: Blob): Promise<Blob> {
+  const apiBaseUrl = import.meta.env.VITE_PPTX_TO_PDF_API_URL?.trim()
+  if (!apiBaseUrl) {
+    throw new Error(
+      'PDF 변환 서버가 설정되지 않았습니다. PPTX로 다운로드한 뒤 PowerPoint에서 PDF로 저장해 주세요.'
+    )
+  }
+
+  const formData = new FormData()
+  formData.append('file', pptxBlob, 'certificate.pptx')
+
+  const headers: Record<string, string> = {}
+  const apiKey = import.meta.env.VITE_PPTX_TO_PDF_API_KEY?.trim()
+  if (apiKey) headers['x-api-key'] = apiKey
+
+  let response: Response
+  try {
+    response = await fetch(`${apiBaseUrl.replace(/\/$/, '')}/convert`, {
+      method: 'POST',
+      body: formData,
+      headers,
+    })
+  } catch {
+    throw new Error('PDF 변환 서버에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => null)) as { error?: string } | null
+    throw new Error(payload?.error ?? 'PDF 변환에 실패했습니다.')
+  }
+
+  return response.blob()
+}
+
+export async function generateWarrantyCertificateFile(
+  input: WarrantyCertificateInput,
+  language: WarrantyCertificateLanguage,
+  format: WarrantyCertificateFormat
+): Promise<Blob> {
+  const pptxBlob = await generateWarrantyCertificate(input, language)
+  if (format === 'pptx') return pptxBlob
+  return convertWarrantyCertificateToPdf(pptxBlob)
+}
+
 export function buildWarrantyCertificateFilename(
   input: WarrantyCertificateInput,
-  language: WarrantyCertificateLanguage
+  language: WarrantyCertificateLanguage,
+  format: WarrantyCertificateFormat = 'pptx'
 ): string {
   const langLabel = language === 'ko' ? '국문' : '영문'
   const color = input.colorName.trim().replace(/[\\/:*?"<>|]/g, '_') || '보증서'
   const date = formatIssueDateDot(input.issueDate).replace(/\./g, '') || '미정'
-  return `보증서_${input.productItem}_${langLabel}_${color}_${date}.pptx`
+  const extension = format === 'pdf' ? 'pdf' : 'pptx'
+  return `보증서_${input.productItem}_${langLabel}_${color}_${date}.${extension}`
 }
 
 export function downloadWarrantyCertificate(blob: Blob, filename: string): void {

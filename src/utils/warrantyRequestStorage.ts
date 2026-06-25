@@ -1,5 +1,6 @@
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
 import { joinMultiValue, parseMultiValue } from '../constants/warrantyOptions'
+import { parseCoatingStructures } from './warrantyPeriodLookup'
 import {
   WARRANTY_REQUEST_DETAIL_REGION_CUSTOM,
   WARRANTY_REQUEST_MATERIAL_OTHER,
@@ -108,13 +109,7 @@ export function createRequestRecord(
 }
 
 function normalizeCoatingStructure(value: string): string {
-  return joinMultiValue(
-    parseMultiValue(value).map((part) => {
-      if (part === '2 Coat / 2 Bake') return '2COAT, 2BAKE'
-      if (part === '3 Coat / 3 Bake') return '3COAT, 3BAKE'
-      return part
-    })
-  )
+  return joinMultiValue(parseCoatingStructures(value))
 }
 
 function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): WarrantyIssuanceRequestRecord {

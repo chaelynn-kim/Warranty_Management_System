@@ -318,12 +318,12 @@ function ProductGuideTableGrid({
               {groupHeader}
             </th>
             <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-              <span className="block break-all">PEEL/FLAKE</span>
-              <span className="block">(도막박리)</span>
-            </th>
-            <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
               <span className="block break-all">PERFORATION</span>
               <span className="block">(천공)</span>
+            </th>
+            <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
+              <span className="block break-all">PEEL/FLAKE</span>
+              <span className="block">(도막박리)</span>
             </th>
             <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
               COLOR FADING (변색/탈색)
@@ -487,20 +487,20 @@ function ProductGuideTableGrid({
                       product.productGroup
                     )}
                   </td>
-                  <td className={periodTdClass}>
-                    <GuideCell
-                      value={product.peelFlake}
-                      editing={editing}
-                      onChange={(v) => onUpdate(index, 'peelFlake', v)}
-                    />
-                  </td>
-                  <td className={periodTdClass}>
-                    <GuideCell
-                      value={product.perforation}
-                      editing={editing}
-                      onChange={(v) => onUpdate(index, 'perforation', v)}
-                    />
-                  </td>
+              <td className={periodTdClass}>
+                <GuideCell
+                  value={product.perforation}
+                  editing={editing}
+                  onChange={(v) => onUpdate(index, 'perforation', v)}
+                />
+              </td>
+              <td className={periodTdClass}>
+                <GuideCell
+                  value={product.peelFlake}
+                  editing={editing}
+                  onChange={(v) => onUpdate(index, 'peelFlake', v)}
+                />
+              </td>
                   {isColorFadingMerged ? (
                     <td colSpan={3} className={`${periodTdClass} text-center`}>
                       <GuideCell

@@ -98,6 +98,7 @@ interface RequestFileAttachmentFieldProps {
   value: string
   recordId: string
   slot: RequestAttachmentSlot
+  /** false이면 업로드·삭제 불가 (다운로드는 가능) */
   readOnly?: boolean
   singleFile?: boolean
   onChange: (value: string) => void
@@ -246,23 +247,17 @@ function RequestFileAttachmentField({
             >
               <Paperclip className="mt-0.5 h-4 w-4 shrink-0 text-text-muted" />
               <div className="min-w-0 flex-1">
-                {readOnly ? (
-                  <button
-                    type="button"
-                    onClick={() => void downloadFileAttachment(file)}
-                    className="w-full break-all text-left text-sm leading-snug text-accent hover:underline"
-                    title={file.name}
-                  >
-                    {file.name}
-                  </button>
-                ) : (
-                  <p className="break-all text-sm leading-snug text-text-primary" title={file.name}>
-                    {file.name}
-                  </p>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void downloadFileAttachment(file)}
+                  className="w-full break-all text-left text-sm leading-snug text-accent hover:underline"
+                  title={file.name}
+                >
+                  {file.name}
+                </button>
                 <p className="text-xs text-text-muted">
                   {formatFileSize(file.size)}
-                  {readOnly ? '' : ' · 업로드 완료'}
+                  {readOnly ? ' · 다운로드' : ' · 업로드 완료'}
                 </p>
               </div>
               {readOnly ? (
@@ -387,6 +382,7 @@ interface RequestQualitySectionProps {
   qualityTargetStatus?: string
   canChangeQualityStatus?: boolean
   readOnly?: boolean
+  canEditAttachments?: boolean
   locked?: boolean
   onCompanyWarrantyAttachmentKoChange: (value: string) => void
   onCompanyWarrantyAttachmentEnChange: (value: string) => void
@@ -408,7 +404,7 @@ function WarrantyLanguageUploadGroup({
   enSlot,
   koValue,
   enValue,
-  readOnly,
+  canEditAttachments = false,
   onKoChange,
   onEnChange,
 }: {
@@ -418,10 +414,12 @@ function WarrantyLanguageUploadGroup({
   enSlot: RequestAttachmentSlot
   koValue: string
   enValue: string
-  readOnly?: boolean
+  canEditAttachments?: boolean
   onKoChange: (value: string) => void
   onEnChange: (value: string) => void
 }) {
+  const attachmentReadOnly = !canEditAttachments
+
   return (
     <div className="space-y-3">
       <p className={fieldLabel}>{title}</p>
@@ -431,7 +429,7 @@ function WarrantyLanguageUploadGroup({
             value={koValue}
             recordId={recordId}
             slot={koSlot}
-            readOnly={readOnly}
+            readOnly={attachmentReadOnly}
             onChange={onKoChange}
           />
         </FormField>
@@ -440,7 +438,7 @@ function WarrantyLanguageUploadGroup({
             value={enValue}
             recordId={recordId}
             slot={enSlot}
-            readOnly={readOnly}
+            readOnly={attachmentReadOnly}
             onChange={onEnChange}
           />
         </FormField>
@@ -473,6 +471,7 @@ export function RequestQualitySection({
   qualityTargetStatus = '',
   canChangeQualityStatus = false,
   readOnly = false,
+  canEditAttachments = false,
   locked = false,
   onCompanyWarrantyAttachmentKoChange,
   onCompanyWarrantyAttachmentEnChange,
@@ -497,7 +496,8 @@ export function RequestQualitySection({
 
   useEffect(() => {
     if (readOnly) return
-    if (companyWarrantyTermsLookupKey === lookupKey) return
+    const current = parseCompanyWarrantyTerms(companyWarrantyTerms)
+    if (companyWarrantyTermsLookupKey === lookupKey && current.length > 0) return
 
     const lookedUp = lookupCompanyWarrantyTerms({
       productItem,
@@ -509,6 +509,7 @@ export function RequestQualitySection({
   }, [
     lookupKey,
     companyWarrantyTermsLookupKey,
+    companyWarrantyTerms,
     productItem,
     resin,
     region,
@@ -624,6 +625,7 @@ export function RequestQualitySection({
               resin={resin}
               resinCustom={resinCustom}
               colorName={colorName}
+              region={region}
               coatingStructure={coatingStructure}
               detailRegionLabel={detailRegionLabel}
               issueDate={issueDate}
@@ -658,7 +660,7 @@ export function RequestQualitySection({
           enSlot="company-en"
           koValue={companyWarrantyAttachmentKo}
           enValue={companyWarrantyAttachmentEn}
-          readOnly={readOnly}
+          canEditAttachments={canEditAttachments}
           onKoChange={onCompanyWarrantyAttachmentKoChange}
           onEnChange={onCompanyWarrantyAttachmentEnChange}
         />
@@ -670,7 +672,7 @@ export function RequestQualitySection({
           enSlot="supplier-en"
           koValue={supplierWarrantyAttachmentKo}
           enValue={supplierWarrantyAttachmentEn}
-          readOnly={readOnly}
+          canEditAttachments={canEditAttachments}
           onKoChange={onSupplierWarrantyAttachmentKoChange}
           onEnChange={onSupplierWarrantyAttachmentEnChange}
         />

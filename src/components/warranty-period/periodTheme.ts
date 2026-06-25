@@ -24,7 +24,7 @@ export const periodCautionRowBlockClass = `mb-4 ${periodCautionRowClass}`
 export const periodThClass =
   'border border-border/60 bg-bg-tertiary px-2 py-2.5 text-center text-xs font-semibold whitespace-nowrap text-text-secondary sm:px-3 sm:py-3 sm:text-sm'
 
-/** Two-line EN/KO headers (PEEL/FLAKE, PERFORATION) — shrinks on narrow widths */
+/** Two-line EN/KO headers (PERFORATION, PEEL/FLAKE) — shrinks on narrow widths */
 export const periodThStackedClass =
   'border border-border/60 bg-bg-tertiary px-1 py-2 text-center font-semibold text-text-secondary align-middle whitespace-normal leading-[1.15] text-[clamp(0.5625rem,2.5vw,0.875rem)] min-w-[3.25rem] sm:px-2 sm:py-2.5'
 

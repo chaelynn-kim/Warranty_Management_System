@@ -390,6 +390,7 @@ interface WarrantyIssuanceRequestFormProps {
   readOnly?: boolean
   requestReadOnly?: boolean
   qualityReadOnly?: boolean
+  canEditQualityAttachments?: boolean
   showQualitySection?: boolean
   qualityLocked?: boolean
   recordId?: string
@@ -712,6 +713,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     readOnly = false,
     requestReadOnly = false,
     qualityReadOnly = true,
+    canEditQualityAttachments = false,
     showQualitySection = true,
     qualityLocked = false,
     recordId,
@@ -1069,6 +1071,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
           qualityTargetStatus={qualityTargetStatus}
           canChangeQualityStatus={canChangeQualityStatus}
           readOnly={isQualityReadOnly}
+          canEditAttachments={canEditQualityAttachments}
           locked={qualityLocked}
           onCompanyWarrantyAttachmentKoChange={(value) =>
             patchAttachment('companyWarrantyAttachmentKo', value)

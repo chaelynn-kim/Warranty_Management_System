@@ -1,0 +1,9 @@
+# 로컬 PDF 변환 서버 (LibreOffice)
+# 사용: docker compose up --build
+services:
+  pptx-to-pdf:
+    build: ./server/pptx-to-pdf-converter
+    ports:
+      - '8080:8080'
+    environment:
+      ALLOWED_ORIGINS: http://localhost:5174

@@ -7,7 +7,8 @@
     "dev": "vite --host localhost --port 5174",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview --host localhost --port 5174"
+    "preview": "vite preview --host localhost --port 5174",
+    "pdf-server": "docker compose up --build"
   },
   "dependencies": {
     "@emailjs/browser": "^4.4.1",

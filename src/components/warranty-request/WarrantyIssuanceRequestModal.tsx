@@ -4,7 +4,6 @@ import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../
 import { toWarrantyIssuanceRequest } from '../../utils/warrantyRequestStorage'
 import {
   QUALITY_MANAGEMENT_ONLY_MESSAGE,
-  RECEIPT_ASSIGNEE_ONLY_MESSAGE,
   TEAM_LEADER_APPROVE_ONLY_MESSAGE,
 } from '../../utils/authValidation'
 import {
@@ -33,7 +32,6 @@ interface WarrantyIssuanceRequestModalProps {
   onClose: () => void
   canManageQuality?: boolean
   canTeamLeaderApprove?: boolean
-  canReceiveRequest?: boolean
   canEditRequestContent?: boolean
   onSubmit?: (request: WarrantyIssuanceRequest) => void
   onUpdate?: (
@@ -51,7 +49,6 @@ export function WarrantyIssuanceRequestModal({
   onClose,
   canManageQuality = false,
   canTeamLeaderApprove = false,
-  canReceiveRequest = false,
   canEditRequestContent = false,
   onSubmit,
   onUpdate,
@@ -133,8 +130,9 @@ export function WarrantyIssuanceRequestModal({
   const canChangeQualityStatus =
     isEditing &&
     editScope === 'quality' &&
-    ((status === WARRANTY_REQUEST_STATUS_RECEIVED && canReceiveRequest) ||
-      (status === WARRANTY_REQUEST_STATUS_COMPLETED && canManageQuality))
+    canManageQuality &&
+    (status === WARRANTY_REQUEST_STATUS_RECEIVED ||
+      status === WARRANTY_REQUEST_STATUS_COMPLETED)
 
   const handleSubmit = () => {
     if (!formRef.current) {
@@ -179,12 +177,7 @@ export function WarrantyIssuanceRequestModal({
     }
 
     if (editScope === 'quality') {
-      if (status === WARRANTY_REQUEST_STATUS_RECEIVED) {
-        if (!canReceiveRequest) {
-          window.alert(RECEIPT_ASSIGNEE_ONLY_MESSAGE)
-          return
-        }
-      } else if (!canManageQuality) {
+      if (!canManageQuality) {
         setError(QUALITY_MANAGEMENT_ONLY_MESSAGE)
         return
       }
@@ -235,12 +228,7 @@ export function WarrantyIssuanceRequestModal({
   }
 
   const handleStartQualityEdit = () => {
-    if (status === WARRANTY_REQUEST_STATUS_RECEIVED) {
-      if (!canReceiveRequest) {
-        window.alert(RECEIPT_ASSIGNEE_ONLY_MESSAGE)
-        return
-      }
-    } else if (!canManageQuality) {
+    if (!canManageQuality) {
       setError(QUALITY_MANAGEMENT_ONLY_MESSAGE)
       return
     }
@@ -338,16 +326,15 @@ export function WarrantyIssuanceRequestModal({
             }
             readOnly={readOnly && !isEditing}
             requestReadOnly={requestReadOnly}
-            qualityReadOnly={
-              qualityReadOnly ||
-              (status === WARRANTY_REQUEST_STATUS_RECEIVED ? !canReceiveRequest : !canManageQuality)
+            qualityReadOnly={qualityReadOnly || !canManageQuality}
+            canEditQualityAttachments={
+              isEditing && editScope === 'quality' && canManageQuality
             }
             showQualitySection={isViewMode}
             qualityLocked={
               isViewMode &&
               !isEditing &&
-              (status === WARRANTY_REQUEST_STATUS_PENDING ||
-                (status === WARRANTY_REQUEST_STATUS_RECEIVED && !canReceiveRequest))
+              status === WARRANTY_REQUEST_STATUS_PENDING
             }
           />
         </div>
@@ -440,7 +427,7 @@ export function WarrantyIssuanceRequestModal({
                     팀장 승인
                   </button>
                 )}
-                {canStartQualityEdit(status) && (
+                {canStartQualityEdit(status) && canManageQuality && (
                   <button
                     type="button"
                     onClick={handleStartQualityEdit}

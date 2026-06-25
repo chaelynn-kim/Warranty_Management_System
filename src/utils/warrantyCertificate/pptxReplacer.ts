@@ -11,10 +11,6 @@ function escapeXml(text: string): string {
     .replace(/"/g, '&quot;')
 }
 
-function stripRunBold(runXml: string): string {
-  return runXml.replace(/\s*b="1"/g, '').replace(/\s*b="true"/g, '')
-}
-
 function stripRunRedFill(runXml: string): string {
   return runXml.replace(/<a:solidFill><a:srgbClr val="FF0000"\/?><\/a:solidFill>/g, '')
 }
@@ -24,18 +20,18 @@ function stripParagraphRedColors(paragraphXml: string): string {
 }
 
 function applyCoverYearStyle(runXml: string): string {
-  let next = stripRunBold(runXml)
+  let next = runXml
 
   if (next.includes('FF0000')) {
-    return next.replace(/<a:srgbClr val="FF0000"\/?>/g, `<a:srgbClr val="${WARRANTY_COVER_YEAR_COLOR}"/>`)
+    next = next.replace(/<a:srgbClr val="FF0000"\/?>/g, `<a:srgbClr val="${WARRANTY_COVER_YEAR_COLOR}"/>`)
+  } else if (/<a:solidFill>[\s\S]*?<\/a:solidFill>/.test(next)) {
+    next = next.replace(/<a:solidFill>[\s\S]*?<\/a:solidFill>/, WARRANTY_COVER_YEAR_FILL)
+  } else if (/<a:rPr[^>]*>/.test(next)) {
+    next = next.replace(/<a:rPr([^>]*)>/, `<a:rPr$1>${WARRANTY_COVER_YEAR_FILL}`)
   }
 
-  if (/<a:solidFill>[\s\S]*?<\/a:solidFill>/.test(next)) {
-    return next.replace(/<a:solidFill>[\s\S]*?<\/a:solidFill>/, WARRANTY_COVER_YEAR_FILL)
-  }
-
-  if (/<a:rPr[^>]*>/.test(next)) {
-    return next.replace(/<a:rPr([^>]*)>/, `<a:rPr$1>${WARRANTY_COVER_YEAR_FILL}`)
+  if (/<a:rPr[^>]*>/.test(next) && !/\sb="1"/.test(next) && !/\sb="true"/.test(next)) {
+    next = next.replace(/<a:rPr([^>]*)>/, '<a:rPr$1 b="1">')
   }
 
   return next

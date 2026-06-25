@@ -1,5 +1,8 @@
 import { parseMultiValue } from '../constants/warrantyOptions'
-import { WARRANTY_REQUEST_RESIN_ALL } from '../constants/warrantyRequestOptions'
+import {
+  WARRANTY_REQUEST_COATING_STRUCTURES,
+  WARRANTY_REQUEST_RESIN_ALL,
+} from '../constants/warrantyRequestOptions'
 import type { ProductLine, ProductWarranty, WarrantyPeriodData } from '../types'
 import { resolveProductLine } from './productWarrantyHelpers'
 
@@ -36,6 +39,52 @@ export function coatingStructureToCode(structure: string): '2C2B' | '3C3B' | nul
   if (key.includes('2 COAT') && key.includes('2 BAKE')) return '2C2B'
   if (key.includes('3 COAT') && key.includes('3 BAKE')) return '3C3B'
   return null
+}
+
+/** `3COAT, 3BAKE`처럼 옵션 내부 쉼표가 있는 값을 올바르게 분리 */
+export function parseCoatingStructures(value: string): string[] {
+  if (!value.trim()) return []
+
+  const known = [...WARRANTY_REQUEST_COATING_STRUCTURES]
+  const matched = known.filter((option) =>
+    value.toUpperCase().includes(option.toUpperCase())
+  )
+  if (matched.length > 0) return [...new Set(matched)]
+
+  const legacyMap: Record<string, string> = {
+    '2 COAT / 2 BAKE': '2COAT, 2BAKE',
+    '3 COAT / 3 BAKE': '3COAT, 3BAKE',
+  }
+  for (const [legacy, canonical] of Object.entries(legacyMap)) {
+    if (normalizeKey(value).includes(normalizeKey(legacy))) {
+      return [canonical]
+    }
+  }
+
+  const tokens = value
+    .split(/[,，]/)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  const paired: string[] = []
+
+  for (let index = 0; index < tokens.length; index += 1) {
+    const coatMatch = tokens[index].match(/^(\d)\s*COAT$/i)
+    if (!coatMatch) continue
+
+    const bakeMatch = tokens[index + 1]?.match(/^(\d)\s*BAKE$/i)
+    if (bakeMatch && coatMatch[1] === bakeMatch[1]) {
+      paired.push(`${coatMatch[1]}COAT, ${bakeMatch[1]}BAKE`)
+      index += 1
+      continue
+    }
+
+    const code = coatingStructureToCode(tokens[index])
+    if (code) {
+      paired.push(tokens[index])
+    }
+  }
+
+  return [...new Set(paired)]
 }
 
 function paintResinMatchesProduct(resin: string, product: ProductWarranty): boolean {
@@ -142,7 +191,7 @@ export function findCompanyWarrantyProducts(
   const lineProducts = products.filter((product) => resolveProductLine(product) === line)
 
   if (line === 'print') {
-    const coatingStructures = parseMultiValue(options.coatingStructure ?? '')
+    const coatingStructures = parseCoatingStructures(options.coatingStructure ?? '')
     if (coatingStructures.length === 0) return []
 
     if (selectedResins.includes(WARRANTY_REQUEST_RESIN_ALL)) {

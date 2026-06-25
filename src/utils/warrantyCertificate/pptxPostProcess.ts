@@ -1,0 +1,1428 @@
+function escapeXml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/"/g, '&quot;')
+}
+
+/** PAINT 보증 내용 표 — 패널 용도·변색/백화 열 확대 */
+const PAINT_WARRANTY_TABLE_COL_WIDTHS = [
+  895350, 1080000, 840000, 840000, 960000, 960000,
+]
+
+const SLIDE2_TABLE_Y_DELTA_KO = 278824
+const SLIDE2_TABLE_Y_DELTA_EN = 110000
+/** PRINT 국문 — 보증 내용 제목과 표 사이 간격 (템플릿 y 5462858 → 5270500) */
+const SLIDE2_TABLE_Y_DELTA_PRINT_KO = 192358
+const SLIDE2_PRINT_OBJECT2_TARGET_CY = 1041054
+const PRINT_WARRANTY_TABLE_FIRST_COL = '993775'
+/** Post-process row heights: header×2 + data×2 (template sum 2220595) */
+const PAINT_WARRANTY_TABLE_FRAME_CY = 2220595
+const PAINT_WARRANTY_TABLE_DATA_ROW_H = 719455
+const PAINT_WARRANTY_TABLE_DATA_ROW_H_ALT = 709930
+const SLIDE2_OBJECT2_HEIGHT_SHRINK = 60000
+const SLIDE2_OBJECT3_HEIGHT_SHRINK_KO = 200000
+const SLIDE2_OBJECT3_HEIGHT_SHRINK_EN = 280000
+/** 1페이지 수지 TOP 색상명 — OOXML sz는 1/100 pt (2500 = 25pt) */
+const SLIDE1_COVER_TITLE_FONT_SZ = 2500
+const SLIDE4_FOOTER_SHAPE_Y_KO = 4985000
+const SLIDE4_FOOTER_SHAPE_Y_EN = 5335076
+const SLIDE4_FOOTER_ORIGINAL_Y_KO = 5159374
+const SLIDE4_FOOTER_ORIGINAL_Y_EN = 5505450
+/** 4페이지 KO 15)번과 하단 효력 문구 사이 간격 */
+const SLIDE4_KO_FOOTER_GAP_PTS = 500
+/** PRINT 국문 4페이지 5)~13) 항목 간격 */
+const SLIDE4_KO_PRINT_ITEM_GAP_PTS = 215
+/** PRINT 국문 4페이지 5)~11) 목록 들여쓰기 — 6)번 기준 */
+const SLIDE4_KO_PRINT_LIST_MAR_L = 414020
+const SLIDE4_KO_PRINT_LIST_INDENT = -132715
+/** PRINT 국문 4페이지 16)번과 하단 효력 문구 사이 추가 간격 */
+const SLIDE4_KO_PRINT_FOOTER_PRE_GAP_PTS = 990
+/** 4페이지 EN 5)~11) 항목 간 세로 간격 통일 */
+const SLIDE4_EN_ITEM_GAP_PTS = 265
+/** 4페이지 EN 15)번과 하단 효력 문구 사이 간격 */
+const SLIDE4_EN_FOOTER_GAP_PTS = 800
+const SLIDE4_EN_ITEM_MAR_L = 401320
+const SLIDE4_EN_ITEM_INDENT = -132715
+/** 이어지는 줄 — 번호 아래가 아니라 본문 시작 위치에 정렬 */
+const SLIDE4_EN_CONTINUATION_MAR_L = 401320
+/** 4페이지 EN 하단 효력 문구 텍스트 박스 너비 (본문과 동일) */
+const SLIDE4_EN_FOOTER_SHAPE_CX = 7600000
+
+function decodeXmlEntities(text: string): string {
+  return text
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+}
+
+export function extractParagraphText(paragraphXml: string): string {
+  const texts = [...paragraphXml.matchAll(/<a:t>([\s\S]*?)<\/a:t>/g)].map((match) => match[1])
+  return decodeXmlEntities(texts.join(''))
+}
+
+export function isParagraphEmpty(paragraphXml: string): boolean {
+  return extractParagraphText(paragraphXml).trim() === ''
+}
+
+export function normalizeKoreanTypography(text: string): string {
+  return normalizeCertificateTypography(text)
+}
+
+function normalizeCertificateTypography(text: string): string {
+  return text
+    .replace(/\t/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+([,.;:!?)\]}])/g, '$1')
+    .replace(/([(\[{])\s+/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+const NBSP = '\u00a0'
+/** 줄바꿈 전용 — `\t`와 달리 목록 번호 뒤 tabLst를 지우지 않음 */
+const EN_HARD_LINE_BREAK = '\u000e'
+
+/** 탭 없는 짧은 문단 — LibreOffice에서 한 줄로 유지 */
+const EN_SINGLE_LINE_PARAGRAPH_MAX = 145
+
+const SLIDE3_EN_BODY_CX = 6100000
+const SLIDE4_EN_BODY_CX = 7600000
+
+/** LibreOffice가 단어 경계에서 잘못 줄바꿈하지 않도록 고정할 영문 구문 (긴 문단용) */
+const EN_BODY_LINE_BREAK_PROTECTED_PHRASES = [
+  'regular 6 monthly',
+  'washed down on a regular 6 monthly',
+  'not applied to fundamental',
+  'to fundamental',
+  'incompatible material',
+  'invalidate this warranty',
+  'installed with HDP',
+  'installed with PVDF',
+  'Coated Metal',
+  'SeAH Coated',
+  'or immersed',
+  'including, without',
+  'tropical areas,',
+  'lead or copper and',
+  'green or wet',
+  'acts of',
+  'at any time',
+  'discovering the',
+  'master coil number for each',
+  'run-off falling',
+  'including internal',
+  'come into contact with an',
+]
+
+function normalizeEnBodyTypography(text: string): string {
+  return text
+    .replace(/\t/g, ' ')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+([,.;:!?)\]}])/g, '$1')
+    .replace(/([(\[{])\s+/g, '$1')
+    .trim()
+}
+
+function joinSpacesWithNbsp(text: string): string {
+  return text.replace(/ /g, NBSP)
+}
+
+function protectPhrasesFromLineBreaks(text: string): string {
+  let next = text
+  for (const phrase of [...EN_BODY_LINE_BREAK_PROTECTED_PHRASES].sort(
+    (a, b) => b.length - a.length
+  )) {
+    next = next.split(phrase).join(phrase.replace(/ /g, NBSP))
+  }
+  return next
+}
+
+function prepareEnCertificateSegment(text: string, forceSingleLine: boolean): string {
+  const normalized = normalizeEnBodyTypography(text)
+  if (forceSingleLine || normalized.length <= EN_SINGLE_LINE_PARAGRAPH_MAX) {
+    return joinSpacesWithNbsp(normalized)
+  }
+  return protectPhrasesFromLineBreaks(normalized)
+}
+
+function splitEnCertificateLineSegments(text: string): string[] {
+  return decodeXmlEntities(text)
+    .split(/\t|\u000e/)
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0)
+}
+
+function buildEnCertificateRunXml(firstRunBase: string, text: string): string {
+  const decoded = decodeXmlEntities(text)
+
+  if (!decoded.includes('\t') && !decoded.includes(EN_HARD_LINE_BREAK)) {
+    const prepared = prepareEnCertificateSegment(decoded, false)
+    return buildAmpersandSafeRunXml(firstRunBase, prepared)
+  }
+
+  const parts = splitEnCertificateLineSegments(text)
+
+  if (parts.length <= 1) {
+    return buildAmpersandSafeRunXml(
+      firstRunBase,
+      prepareEnCertificateSegment(parts[0] ?? '', false)
+    )
+  }
+
+  return parts
+    .map((part, index) => {
+      const prepared = joinSpacesWithNbsp(normalizeEnBodyTypography(part))
+      const runXml = buildAmpersandSafeRunXml(firstRunBase, prepared)
+      return index === 0 ? runXml : `<a:br/>${runXml}`
+    })
+    .join('')
+}
+
+function stripTabListFromParagraphProperties(pPr: string): string {
+  return pPr.replace(/<a:tabLst>[\s\S]*?<\/a:tabLst>/, '')
+}
+
+function ensureBuAutoNumTabLst(paragraphXml: string): string {
+  if (!paragraphXml.includes('buAutoNum') || paragraphXml.includes('tabLst')) {
+    return paragraphXml
+  }
+  return paragraphXml.replace(
+    /(<a:buAutoNum[^/]*\/>)/,
+    `$1<a:tabLst><a:tab pos="401320" algn="l"/></a:tabLst>`
+  )
+}
+
+function buildConsolidatedRunXml(firstRunBase: string, text: string): string {
+  const decoded = decodeXmlEntities(text)
+
+  if (!decoded.includes('\t')) {
+    const normalized = normalizeCertificateTypography(decoded)
+    return buildAmpersandSafeRunXml(firstRunBase, normalized)
+  }
+
+  const parts = decoded
+    .split('\t')
+    .map((part) => normalizeCertificateTypography(part))
+    .filter((part) => part.length > 0)
+
+  if (parts.length <= 1) {
+    return buildAmpersandSafeRunXml(firstRunBase, parts[0] ?? '')
+  }
+
+  return parts
+    .map((part, index) => {
+      const runXml = buildAmpersandSafeRunXml(firstRunBase, part)
+      return index === 0 ? runXml : `<a:br/>${runXml}`
+    })
+    .join('')
+}
+
+function mapOutsideTables(slideXml: string, mapper: (xml: string) => string): string {
+  const parts = slideXml.split(/(<a:tbl>[\s\S]*?<\/a:tbl>)/g)
+  return parts
+    .map((part, index) => (index % 2 === 1 ? part : mapper(part)))
+    .join('')
+}
+
+function buildAmpersandSafeRunXml(firstRunBase: string, text: string): string {
+  if (!text.includes('&')) {
+    return firstRunBase.replace(
+      /<a:t>[\s\S]*?<\/a:t>/,
+      `<a:t>${escapeXml(text)}</a:t>`
+    )
+  }
+
+  const parts = text.split('&')
+  return parts
+    .map((part, index) => {
+      const chunk = index === 0 ? part : `&${part}`
+      const run = firstRunBase.replace(
+        /<a:t>[\s\S]*?<\/a:t>/,
+        `<a:t>${escapeXml(chunk)}</a:t>`
+      )
+      return run
+    })
+    .join('')
+}
+
+function setRunFontSz(runXml: string, sz: number): string {
+  if (/<a:rPr[^>]*\ssz="\d+"/.test(runXml)) {
+    return runXml.replace(/\ssz="\d+"/, ` sz="${sz}"`)
+  }
+  if (/<a:rPr[^>]*>/.test(runXml)) {
+    return runXml.replace(/<a:rPr([^>]*)>/, `<a:rPr$1 sz="${sz}">`)
+  }
+  if (/<a:rPr[^>]*\/>/.test(runXml)) {
+    return runXml.replace(/<a:rPr([^>]*)\/>/, `<a:rPr$1 sz="${sz}"/>`)
+  }
+  return runXml.replace('<a:r>', `<a:r><a:rPr sz="${sz}"/>`)
+}
+
+function setParagraphMergedText(paragraphXml: string, text: string): string {
+  const firstRunIndex = paragraphXml.indexOf('<a:r>')
+  if (firstRunIndex < 0) return paragraphXml
+
+  const pPr = paragraphXml.slice('<a:p>'.length, firstRunIndex)
+  const lastRunEndIndex = paragraphXml.lastIndexOf('</a:r>')
+  const closeIndex = paragraphXml.lastIndexOf('</a:p>')
+  const tail =
+    lastRunEndIndex >= 0 && closeIndex > lastRunEndIndex
+      ? paragraphXml.slice(lastRunEndIndex + '</a:r>'.length, closeIndex)
+      : ''
+
+  const firstRunBase = paragraphXml.match(/<a:r>[\s\S]*?<\/a:r>/)?.[0]
+  if (!firstRunBase) return paragraphXml
+
+  const normalized = normalizeCertificateTypography(decodeXmlEntities(text))
+  const runXml = buildAmpersandSafeRunXml(firstRunBase, normalized)
+
+  return `<a:p>${pPr}${runXml}${tail}</a:p>`
+}
+
+function ensureNumberedItemSpacing(text: string): string {
+  return text.replace(/^(\d+)\)([A-Za-z])/g, '$1) $2')
+}
+
+function setParagraphEnCertificateText(
+  paragraphXml: string,
+  text: string,
+  options?: { singleLine?: boolean }
+): string {
+  const firstRunIndex = paragraphXml.indexOf('<a:r>')
+  if (firstRunIndex < 0) return paragraphXml
+
+  let pPr = paragraphXml.slice('<a:p>'.length, firstRunIndex)
+  const lastRunEndIndex = paragraphXml.lastIndexOf('</a:r>')
+  const closeIndex = paragraphXml.lastIndexOf('</a:p>')
+  const tail =
+    lastRunEndIndex >= 0 && closeIndex > lastRunEndIndex
+      ? paragraphXml.slice(lastRunEndIndex + '</a:r>'.length, closeIndex)
+      : ''
+
+  const firstRunBase = paragraphXml.match(/<a:r>[\s\S]*?<\/a:r>/)?.[0]
+  if (!firstRunBase) return paragraphXml
+
+  const decoded = decodeXmlEntities(text)
+  const joined = normalizeMarineDistanceText(decoded)
+  const hasTabBreak = joined.includes('\t')
+  const hasHardBreak = joined.includes(EN_HARD_LINE_BREAK)
+  const hasMultiline = hasTabBreak || hasHardBreak
+  const normalized = hasMultiline ? joined : normalizeEnBodyTypography(joined)
+
+  let runXml: string
+  if (
+    options?.singleLine ||
+    (!hasMultiline && normalized.length <= EN_SINGLE_LINE_PARAGRAPH_MAX)
+  ) {
+    runXml = buildAmpersandSafeRunXml(firstRunBase, joinSpacesWithNbsp(normalized))
+  } else {
+    if (hasTabBreak) {
+      pPr = stripTabListFromParagraphProperties(pPr)
+    }
+    runXml = buildEnCertificateRunXml(firstRunBase, normalized)
+  }
+
+  return `<a:p>${pPr}${runXml}${tail}</a:p>`
+}
+
+function consolidateParagraph(paragraphXml: string, enCertificateBody = false): string {
+  const firstRunIndex = paragraphXml.indexOf('<a:r>')
+  if (firstRunIndex < 0) return paragraphXml
+
+  let pPr = paragraphXml.slice('<a:p>'.length, firstRunIndex)
+  const lastRunEndIndex = paragraphXml.lastIndexOf('</a:r>')
+  const closeIndex = paragraphXml.lastIndexOf('</a:p>')
+  const tail =
+    lastRunEndIndex >= 0 && closeIndex > lastRunEndIndex
+      ? paragraphXml.slice(lastRunEndIndex + '</a:r>'.length, closeIndex)
+      : ''
+
+  const runs = paragraphXml.match(/<a:r>[\s\S]*?<\/a:r>/g) ?? []
+  const firstRunBase = runs[0]
+  if (!firstRunBase) return paragraphXml
+
+  let joined = runs
+    .map((run) => decodeXmlEntities(run.match(/<a:t>([\s\S]*?)<\/a:t>/)?.[1] ?? ''))
+    .join('')
+
+  if (enCertificateBody) {
+    joined = normalizeMarineDistanceText(joined)
+  }
+
+  if (joined.includes('\t')) {
+    pPr = stripTabListFromParagraphProperties(pPr)
+  }
+
+  if (enCertificateBody) {
+    pPr = pPr.replace(/\s*marR="\d+"/g, '')
+  }
+
+  const runXml = enCertificateBody
+    ? buildEnCertificateRunXml(firstRunBase, joined)
+    : buildConsolidatedRunXml(firstRunBase, joined)
+
+  return `<a:p>${pPr}${runXml}${tail}</a:p>`
+}
+
+function setParagraphSpaceBefore(paragraphXml: string, pts: number): string {
+  const spacingXml = `<a:spcBef><a:spcPts val="${pts}"/></a:spcBef>`
+
+  if (paragraphXml.includes('<a:spcBef>')) {
+    return paragraphXml.replace(/<a:spcBef>[\s\S]*?<\/a:spcBef>/, spacingXml)
+  }
+
+  return paragraphXml.replace(/<a:pPr([^>]*)>/, `<a:pPr$1>${spacingXml}`)
+}
+
+function normalizeMatchText(text: string): string {
+  return text.replace(/\u00a0/g, ' ')
+}
+
+function setParagraphMarLIndent(
+  paragraphXml: string,
+  marL: number,
+  indent?: number
+): string {
+  const indentAttr = indent !== undefined ? ` indent="${indent}"` : ''
+
+  if (!paragraphXml.includes('<a:pPr')) {
+    return paragraphXml.replace(
+      '<a:p>',
+      `<a:p><a:pPr marL="${marL}"${indentAttr}/>`
+    )
+  }
+
+  return paragraphXml.replace(/<a:pPr([^>]*)>/, (_match, attrs: string) => {
+    const cleaned = attrs
+      .replace(/\s*marL="\d+"/g, '')
+      .replace(/\s*indent="-?\d+"/g, '')
+    return `<a:pPr marL="${marL}"${indentAttr}${cleaned}>`
+  })
+}
+
+const TABLE_CELL_BODY_PR =
+  '<a:bodyPr wrap="square" lIns="28575" tIns="9144" rIns="28575" bIns="9144" anchor="ctr" anchorCtr="1"/>'
+
+const TABLE_CELL_CENTER_PPR =
+  '<a:pPr algn="ctr"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc></a:pPr>'
+
+function rewriteTableParagraphProperties(paragraphXml: string): string {
+  if (!paragraphXml.includes('<a:pPr')) {
+    return paragraphXml.replace('<a:p>', `<a:p>${TABLE_CELL_CENTER_PPR}`)
+  }
+  if (/<a:pPr[^>]*\/>/.test(paragraphXml)) {
+    return paragraphXml.replace(/<a:pPr[^>]*\/>/, TABLE_CELL_CENTER_PPR)
+  }
+  return paragraphXml.replace(/<a:pPr[\s\S]*?<\/a:pPr>/, TABLE_CELL_CENTER_PPR)
+}
+
+function normalizeTableParagraph(paragraphXml: string, text?: string): string {
+  let next = text ? setParagraphMergedText(paragraphXml, text) : consolidateParagraph(paragraphXml)
+  next = rewriteTableParagraphProperties(next)
+  return next
+}
+
+function removeEmptyParagraphs(slideXml: string): string {
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    return isParagraphEmpty(paragraph) ? '' : paragraph
+  })
+}
+
+function normalizeBodyTextAlignment(slideXml: string): string {
+  return slideXml
+    .replace(/algn="just"/g, 'algn="l"')
+    .replace(/algn="ctr"/g, 'algn="l"')
+}
+
+function consolidateBodyParagraphs(slideXml: string, enCertificateBody = false): string {
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    if (isParagraphEmpty(paragraph)) return paragraph
+    return consolidateParagraph(paragraph, enCertificateBody)
+  })
+}
+
+function setCellBodyAnchorCenter(cellXml: string): string {
+  if (!cellXml.includes('<a:bodyPr')) {
+    return cellXml.replace('<a:txBody>', `<a:txBody>${TABLE_CELL_BODY_PR}`)
+  }
+  return cellXml.replace(/<a:bodyPr[\s\S]*?(?:\/>|<\/a:bodyPr>)/, TABLE_CELL_BODY_PR)
+}
+
+function normalizeTableCellTcPr(cellXml: string): string {
+  if (!cellXml.includes('<a:tcPr')) return cellXml
+  return cellXml.replace(
+    /<a:tcPr[^>]*>/,
+    '<a:tcPr marL="0" marR="0" marT="0" marB="0" anchor="ctr" anchorCtr="1">'
+  )
+}
+
+function finalizeTableCell(cellXml: string): string {
+  return normalizeTableCellTcPr(setCellBodyAnchorCenter(cellXml))
+}
+
+function buildMultiParagraphCell(cellXml: string, lines: string[]): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const template = paragraphs.find((paragraph) => !isParagraphEmpty(paragraph)) ?? paragraphs[0]
+  if (!template) return cellXml
+
+  const newParagraphs = lines.map((line) => normalizeTableParagraph(template, line))
+
+  const next = cellXml.replace(/<a:txBody>([\s\S]*?)<\/a:txBody>/, () => {
+    return `<a:txBody>${TABLE_CELL_BODY_PR}<a:lstStyle/>${newParagraphs.join('')}</a:txBody>`
+  })
+
+  return finalizeTableCell(next)
+}
+
+function formatRegionCell(cellXml: string): string {
+  const fullText = normalizeCertificateTypography(
+    (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+      .map((paragraph) => extractParagraphText(paragraph))
+      .join(' ')
+  )
+  const items = fullText.split(',').map((item) => item.trim()).filter(Boolean)
+  if (items.length < 2) return processTableCell(cellXml)
+
+  const lines = items.map((item, index) => (index < items.length - 1 ? `${item},` : item))
+  return buildMultiParagraphCell(cellXml, lines)
+}
+
+function formatWarrantyMetricCell(cellXml: string): string {
+  const fullText = normalizeCertificateTypography(
+    (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+      .map((paragraph) => extractParagraphText(paragraph))
+      .join(' ')
+  )
+  const match = fullText.match(/^(≤ΔE\d+|≥#\d+)\s*(\([^)]+\))$/)
+  if (!match) return processTableCell(cellXml)
+  return buildMultiParagraphCell(cellXml, [match[1], match[2]])
+}
+
+function isWarrantyMetricText(text: string): boolean {
+  return /^(≤ΔE\d+|≥#\d+)\s*\([^)]+\)$/.test(text)
+}
+
+function isRegionAreaText(text: string): boolean {
+  return (
+    (text.includes('주거지역') && text.includes('경공업지역')) ||
+    (text.includes('Residential') && text.includes('Light industrial'))
+  )
+}
+
+function isPanelUseText(text: string): boolean {
+  return /^(Roof|Wall)\s*\(.+\)$/.test(text.trim())
+}
+
+function normalizeMarineDistanceText(text: string): string {
+  return text
+    .replace(/>\s*500\s*m\b/gi, '>1km')
+    .replace(/500\s*m\b/gi, '1km')
+    .replace(/500m\b/gi, '1km')
+}
+
+function formatPanelUseCell(cellXml: string): string {
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+        .map((paragraph) => extractParagraphText(paragraph))
+        .join(' ')
+    )
+  )
+  const match = fullText.match(/^(Roof|Wall)\s*(\(.+\))$/)
+  if (!match) return processTableCell(cellXml)
+
+  const label = match[1]
+  const inner = match[2].slice(1, -1)
+  const ampIndex = inner.indexOf('&')
+  if (ampIndex < 0) return buildMultiParagraphCell(cellXml, [label, match[2]])
+
+  const before = inner.slice(0, ampIndex).trim()
+  const after = inner.slice(ampIndex + 1).trim()
+  const envMatch = after.match(/^(Industrial)\s+(environment)$/i)
+  if (envMatch) {
+    return buildMultiParagraphCell(cellXml, [
+      label,
+      `(${before.trim()}`,
+      `& ${envMatch[1]}`,
+      `${envMatch[2]})`,
+    ])
+  }
+  return buildMultiParagraphCell(cellXml, [label, `(${before}`, '&', `${after})`])
+}
+
+const PRINT_KO_PANEL_LOCATION_LINES = [
+  '(해안 및 공업지대에서 1km 이상',
+  '떨어진 곳)',
+]
+
+function isPrintKoPanelUseText(text: string): boolean {
+  const compact = text.replace(/\s+/g, '')
+  return /^(지붕재|벽체)/.test(compact) && compact.includes('해안')
+}
+
+function formatPrintKoPanelUseCell(cellXml: string): string {
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+        .map((paragraph) => extractParagraphText(paragraph))
+        .join(' ')
+    )
+  )
+  const label = fullText.match(/^(지붕재|벽체)/)?.[1]
+  if (!label) return processTableCell(cellXml)
+
+  return buildMultiParagraphCell(cellXml, [label, ...PRINT_KO_PANEL_LOCATION_LINES])
+}
+
+function processTableCell(cellXml: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      paragraphs.map((paragraph) => extractParagraphText(paragraph)).join(' ')
+    )
+  )
+
+  if (isRegionAreaText(fullText)) return formatRegionCell(cellXml)
+  if (isWarrantyMetricText(fullText)) return formatWarrantyMetricCell(cellXml)
+  if (isPanelUseText(fullText)) return formatPanelUseCell(cellXml)
+
+  const nonEmpty = paragraphs.filter((paragraph) => !isParagraphEmpty(paragraph))
+
+  if (nonEmpty.length === 0) {
+    return cellXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, '')
+  }
+
+  const formatParagraph = (paragraph: string, text?: string) =>
+    normalizeTableParagraph(paragraph, text)
+
+  if (nonEmpty.length === 1) {
+    const mergedText = normalizeCertificateTypography(extractParagraphText(nonEmpty[0]))
+    let kept = false
+    const next = cellXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+      if (isParagraphEmpty(paragraph)) return ''
+      if (!kept) {
+        kept = true
+        return formatParagraph(nonEmpty[0], mergedText)
+      }
+      return ''
+    })
+    return finalizeTableCell(next)
+  }
+
+  const next = cellXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    if (isParagraphEmpty(paragraph)) return ''
+    return formatParagraph(paragraph)
+  })
+  return finalizeTableCell(next)
+}
+
+function isPrintWarrantyTable(tableXml: string): boolean {
+  const firstCol = tableXml.match(/<a:gridCol w="(\d+)"/)?.[1]
+  return firstCol === PRINT_WARRANTY_TABLE_FIRST_COL
+}
+
+function formatPrintKoTableCell(cellXml: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      paragraphs.map((paragraph) => extractParagraphText(paragraph)).join(' ')
+    )
+  )
+
+  if (isRegionAreaText(fullText)) return formatRegionCell(cellXml)
+  if (isWarrantyMetricText(fullText)) return formatWarrantyMetricCell(cellXml)
+  if (isPrintKoPanelUseText(fullText)) return formatPrintKoPanelUseCell(cellXml)
+
+  if (fullText.includes('측정불가') || /^<ΔE/i.test(fullText)) {
+    return buildMultiParagraphCell(cellXml, ['측정불가'])
+  }
+
+  if (/^\d+\s*년$/.test(fullText.trim())) {
+    return buildMultiParagraphCell(cellXml, [fullText.trim()])
+  }
+
+  return processTableCell(cellXml)
+}
+
+function processTable(tableXml: string, productItem?: 'PAINT' | 'PRINT'): string {
+  const currentCols = [...tableXml.matchAll(/<a:gridCol w="(\d+)"/g)].map((match) => match[1])
+  const isPaintWarrantyTable =
+    currentCols.length === PAINT_WARRANTY_TABLE_COL_WIDTHS.length &&
+    currentCols[0] === '895350'
+
+  let next = tableXml
+
+  if (isPaintWarrantyTable) {
+    let columnIndex = 0
+    next = next.replace(/<a:gridCol w="\d+"/g, (columnTag) => {
+      const width = PAINT_WARRANTY_TABLE_COL_WIDTHS[columnIndex]
+      columnIndex += 1
+      if (width === undefined) return columnTag
+      return `<a:gridCol w="${width}"`
+    })
+
+    next = next.replace(/<a:tr h="880000"/g, `<a:tr h="${PAINT_WARRANTY_TABLE_DATA_ROW_H}"`)
+    next = next.replace(/<a:tr h="820000"/g, `<a:tr h="${PAINT_WARRANTY_TABLE_DATA_ROW_H}"`)
+    next = next.replace(/<a:tr h="719455"/g, `<a:tr h="${PAINT_WARRANTY_TABLE_DATA_ROW_H}"`)
+    next = next.replace(/<a:tr h="709930"/g, `<a:tr h="${PAINT_WARRANTY_TABLE_DATA_ROW_H_ALT}"`)
+  }
+
+  next = next.replace(/<a:tc([^>]*)>([\s\S]*?)<\/a:tc>/g, (match, attrs, content) => {
+    if (/\bhMerge="1"/.test(attrs) || /\bvMerge="1"/.test(attrs)) return match
+    const cellXml = `<a:tc${attrs}>${content}</a:tc>`
+    if (productItem === 'PRINT' && isPrintWarrantyTable(tableXml)) {
+      return formatPrintKoTableCell(cellXml)
+    }
+    return processTableCell(cellXml)
+  })
+
+  next = next.replace(/<a:t>([^<]*)<\/a:t>/g, (match, text: string) => {
+    if (!/500\s*m|500m/i.test(text)) return match
+    const normalized = escapeXml(normalizeMarineDistanceText(decodeXmlEntities(text)))
+    return `<a:t>${normalized}</a:t>`
+  })
+
+  return next
+}
+
+function applySlide2EnSectionSpacing(slideXml: string): string {
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph).trim()
+    if (text === 'Warranty terms') {
+      return setParagraphSpaceBefore(paragraph, 470)
+    }
+    return paragraph
+  })
+}
+
+function shrinkShapeExtent(slideXml: string, objectName: string, shrinkBy: number): string {
+  if (shrinkBy <= 0) return slideXml
+  return slideXml.replace(
+    new RegExp(`(name="${objectName}"[\\s\\S]*?<a:ext cx="\\d+" cy=")(\\d+)(")`),
+    (_match, prefix: string, cy: string, suffix: string) => {
+      const nextCy = Math.max(0, Number(cy) - shrinkBy)
+      return `${prefix}${nextCy}${suffix}`
+    }
+  )
+}
+
+function setShapeCy(slideXml: string, objectName: string, targetCy: number): string {
+  return slideXml.replace(
+    new RegExp(`(name="${objectName}"[\\s\\S]*?<a:ext cx="\\d+" cy=")(\\d+)(")`),
+    `$1${targetCy}$3`
+  )
+}
+
+function applySlide2TableLayoutFix(
+  slideXml: string,
+  language: 'ko' | 'en',
+  productItem?: 'PAINT' | 'PRINT'
+): string {
+  if (productItem === 'PRINT' && language === 'ko') {
+    let next = setShapeCy(slideXml, 'object 2', SLIDE2_PRINT_OBJECT2_TARGET_CY)
+    next = shrinkShapeExtent(next, 'object 3', SLIDE2_OBJECT3_HEIGHT_SHRINK_KO)
+
+    next = next.replace(
+      /(<p:graphicFrame[\s\S]*?<a:off x="\d+" y=")(\d+)(")/,
+      (_match, prefix: string, y: string, suffix: string) => {
+        const nextY = Math.max(0, Number(y) - SLIDE2_TABLE_Y_DELTA_PRINT_KO)
+        return `${prefix}${nextY}${suffix}`
+      }
+    )
+
+    return next
+  }
+
+  const delta = language === 'en' ? SLIDE2_TABLE_Y_DELTA_EN : SLIDE2_TABLE_Y_DELTA_KO
+  const object3Shrink =
+    language === 'en' ? SLIDE2_OBJECT3_HEIGHT_SHRINK_EN : SLIDE2_OBJECT3_HEIGHT_SHRINK_KO
+
+  let next = shrinkShapeExtent(slideXml, 'object 2', SLIDE2_OBJECT2_HEIGHT_SHRINK)
+  next = shrinkShapeExtent(next, 'object 3', object3Shrink)
+
+  next = next.replace(
+    /(<p:graphicFrame[\s\S]*?<a:off x="1258662" y=")(\d+)(")/,
+    (_match, prefix: string, y: string, suffix: string) => {
+      const nextY = Math.max(0, Number(y) - delta)
+      return `${prefix}${nextY}${suffix}`
+    }
+  )
+
+  next = next.replace(
+    /(<p:graphicFrame[\s\S]*?<a:ext cx="\d+" cy=")(\d+)(")/,
+    `$1${PAINT_WARRANTY_TABLE_FRAME_CY}$3`
+  )
+
+  return next
+}
+
+function applySlide1CoverTitleFix(slideXml: string): string {
+  return slideXml.replace(
+    /<p:sp>(?:(?!<\/p:sp>)[\s\S])*?(?:descr="\$PPTXTitle"|<p:ph type="title"\/>)(?:(?!<\/p:sp>)[\s\S])*?<\/p:sp>/g,
+    (shapeXml) => {
+      let next = shapeXml
+
+      if (!next.includes('<a:xfrm>')) {
+        next = next.replace(
+          /<p:spPr>/,
+          `<p:spPr><a:xfrm><a:off x="1115372" y="4619929"/><a:ext cx="6200000" cy="406400"/></a:xfrm>`
+        )
+      } else {
+        next = next.replace(
+          /(<p:spPr><a:xfrm><a:off x="\d+" y="\d+"\/><a:ext cx=")\d+(" cy=")\d+("\/>)/,
+          `$16200000$2406400$3`
+        )
+      }
+
+      next = next.replace(
+        /(<p:sp>[\s\S]*?(?:descr="\$PPTXTitle"|<p:ph type="title"\/>)[\s\S]*?<a:bodyPr)[^>]*(>)[\s\S]*?<\/a:bodyPr>/,
+        `$1 vert="horz" wrap="none" lIns="0" tIns="12700" rIns="0" bIns="0" rtlCol="0"$2<a:normAutofit/></a:bodyPr>`
+      )
+
+      next = next.replace(
+        /(<p:sp>[\s\S]*?(?:descr="\$PPTXTitle"|<p:ph type="title"\/>)[\s\S]*?<a:pPr)([^>]*)(>)/,
+        `$1 algn="ctr"$2$3`
+      )
+
+      next = next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+        const text = extractParagraphText(paragraph).replace(/\u00a0/g, ' ').trim()
+        if (!text || !/TOP/i.test(text)) return paragraph
+
+        const firstRun = paragraph.match(/<a:r>[\s\S]*?<\/a:r>/)?.[0]
+        if (!firstRun) return paragraph
+
+        const singleLine = text.replace(/ /g, NBSP)
+        const runXml = setRunFontSz(
+          buildAmpersandSafeRunXml(firstRun, singleLine),
+          SLIDE1_COVER_TITLE_FONT_SZ
+        )
+        const pPr = paragraph.match(/<a:p>[\s\S]*?<a:pPr[^>]*>[\s\S]*?<\/a:pPr>/)?.[0]?.replace('<a:p>', '') ?? ''
+        const tail = paragraph.match(/<a:endParaRPr[\s\S]*<\/a:p>$/)?.[0] ?? '</a:p>'
+        return `<a:p>${pPr}${runXml}${tail}`
+      })
+
+      return next
+    }
+  )
+}
+
+function reorderParagraphBlock(
+  slideXml: string,
+  predicates: ((text: string) => boolean)[]
+): string {
+  const paragraphs: string[] = []
+  slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    paragraphs.push(paragraph)
+    return paragraph
+  })
+
+  const indices = predicates.map((predicate) =>
+    paragraphs.findIndex((paragraph) => predicate(extractParagraphText(paragraph)))
+  )
+  if (indices.some((index) => index < 0)) return slideXml
+
+  const orderedParagraphs = indices.map((index) => paragraphs[index])
+  const sortedIndices = [...indices].sort((a, b) => a - b)
+  sortedIndices.forEach((slot, position) => {
+    paragraphs[slot] = orderedParagraphs[position]
+  })
+
+  let paragraphIndex = 0
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, () => {
+    const next = paragraphs[paragraphIndex] ?? ''
+    paragraphIndex += 1
+    return next
+  })
+}
+
+function applySlide34EnBodyLayoutFix(slideXml: string, slideNumber: number): string {
+  const tIns = slideNumber === 3 ? '12700' : '27305'
+  const targetCx = slideNumber === 3 ? String(SLIDE3_EN_BODY_CX) : String(SLIDE4_EN_BODY_CX)
+
+  let next = slideXml.replace(
+    /<a:bodyPr vert="horz" wrap="square" lIns="0" tIns="\d+" rIns="0" bIns="0" rtlCol="0"><a:spAutoFit\/><\/a:bodyPr>/,
+    `<a:bodyPr vert="horz" wrap="square" lIns="0" tIns="${tIns}" rIns="0" bIns="0" rtlCol="0"/>`
+  )
+
+  next = next.replace(
+    /(<p:spPr><a:xfrm><a:off x="\d+" y="\d+"\/><a:ext cx=")\d+(" cy="\d+"\/>)/,
+    `$1${targetCx}$2`
+  )
+
+  next = next.replace(/<a:pPr([^>]*)>/g, (_match, attrs: string) => {
+    const cleaned = attrs.replace(/\s*marR="\d+"/g, '')
+    return `<a:pPr${cleaned}>`
+  })
+
+  return next
+}
+
+function applySlide3EnFixes(slideXml: string): string {
+  let next = reorderParagraphBlock(slideXml, [
+    (text) => text.includes('pitch of the roof'),
+    (text) => text.includes('walling must not be protected'),
+    (text) => text.includes('roof is fully lined'),
+    (text) => text.includes('Wall sheeting must not be used'),
+  ])
+
+  next = next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph)
+    if (text.includes('Contact with concrete, mortar, soil')) {
+      return setParagraphSpaceBefore(paragraph, 905)
+    }
+    return paragraph
+  })
+
+  return next
+}
+
+function applySlide3KoSpacingFix(slideXml: string): string {
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph)
+    if (text.includes('콘크리트, 몰타르') && text.includes('구리 파이프')) {
+      return setParagraphSpaceBefore(paragraph, 785)
+    }
+    return paragraph
+  })
+}
+
+function removeParagraphByPredicate(
+  slideXml: string,
+  predicate: (paragraphXml: string, paragraphIndex: number) => boolean
+): string {
+  let paragraphIndex = 0
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const current = paragraphIndex
+    paragraphIndex += 1
+    return predicate(paragraph, current) ? '' : paragraph
+  })
+}
+
+function mergeParagraphPair(slideXml: string, firstIndex: number, secondIndex: number): string {
+  const paragraphs: string[] = []
+  slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    paragraphs.push(paragraph)
+    return paragraph
+  })
+
+  if (secondIndex >= paragraphs.length) return slideXml
+
+  const mergedText = normalizeCertificateTypography(
+    `${extractParagraphText(paragraphs[firstIndex])} ${extractParagraphText(paragraphs[secondIndex])}`
+  )
+  paragraphs[firstIndex] = setParagraphMergedText(paragraphs[firstIndex], mergedText)
+  paragraphs[secondIndex] = ''
+
+  let paragraphIndex = 0
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, () => {
+    const next = paragraphs[paragraphIndex] ?? ''
+    paragraphIndex += 1
+    return next
+  })
+}
+
+function shapeContainsParagraphText(shapeXml: string, marker: string): boolean {
+  return [...shapeXml.matchAll(/<a:p>[\s\S]*?<\/a:p>/g)].some((match) =>
+    normalizeMatchText(extractParagraphText(match[0])).includes(marker)
+  )
+}
+
+function formatSlide4EnItem11(slideXml: string): string {
+  const paragraphs: string[] = []
+  slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    paragraphs.push(paragraph)
+    return paragraph
+  })
+
+  const itemIndex = paragraphs.findIndex((paragraph) => {
+    const text = normalizeMatchText(extractParagraphText(paragraph))
+    return (
+      text.includes('Damage or failure which is occurring from natural disaster') &&
+      text.includes('acts of')
+    )
+  })
+  if (itemIndex < 0) return slideXml
+
+  const continuationIndex = paragraphs.findIndex((paragraph, index) => {
+    if (index <= itemIndex) return false
+    const text = normalizeMatchText(extractParagraphText(paragraph))
+    return /^war\b/i.test(text)
+  })
+
+  const original = paragraphs[itemIndex]
+  let text = ensureNumberedItemSpacing(
+    normalizeMatchText(extractParagraphText(original))
+  )
+
+  if (continuationIndex === itemIndex + 1) {
+    const continuation = normalizeMatchText(
+      extractParagraphText(paragraphs[continuationIndex])
+    ).trim()
+    text = `${text.replace(/\s*$/, '')} ${continuation}`
+    paragraphs[continuationIndex] = ''
+  }
+
+  const match = text.match(/^(.*?acts)\s+of\s*war([\s\S]*)$/i)
+  if (!match) return slideXml
+
+  let line2 = `of war${match[2]}`.trim()
+  if (!line2.endsWith('.')) {
+    line2 = `${line2}.`
+  }
+  const itemText = `${match[1].trimEnd()}${EN_HARD_LINE_BREAK}${line2}`
+
+  paragraphs[itemIndex] = ensureBuAutoNumTabLst(
+    setParagraphSpaceBefore(
+      setParagraphMarLIndent(
+        setParagraphEnCertificateText(original, itemText),
+        SLIDE4_EN_ITEM_MAR_L,
+        SLIDE4_EN_ITEM_INDENT
+      ),
+      SLIDE4_EN_ITEM_GAP_PTS
+    )
+  )
+
+  let paragraphIndex = 0
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, () => {
+    const next = paragraphs[paragraphIndex] ?? ''
+    paragraphIndex += 1
+    return next
+  })
+}
+
+function applySlide4EnFooterShapeFix(slideXml: string): string {
+  return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
+    if (
+      !shapeContainsParagraphText(
+        shapeXml,
+        'This warranty becomes effective when all of above conditions'
+      )
+    ) {
+      return shapeXml
+    }
+
+    let next = shapeXml.replace(
+      /<a:bodyPr[^>]*>[\s\S]*?<\/a:bodyPr>/,
+      '<a:bodyPr vert="horz" wrap="none" lIns="0" tIns="12700" rIns="0" bIns="0" rtlCol="0"/>'
+    )
+
+    next = next.replace(
+      /(<a:ext cx=")(\d+)(" cy=")(\d+)("\/>)/,
+      `$1${SLIDE4_EN_FOOTER_SHAPE_CX}$3$4$5`
+    )
+
+    return next
+  })
+}
+
+function ensureKoListAutoNumber(paragraphXml: string, marL: number): string {
+  if (paragraphXml.includes('buAutoNum')) return paragraphXml
+
+  const listMarkup = `<a:buAutoNum type="arabicParenR"/><a:tabLst><a:tab pos="${marL}" algn="l"/></a:tabLst>`
+
+  if (!paragraphXml.includes('<a:pPr')) {
+    return paragraphXml.replace('<a:p>', `<a:p><a:pPr marL="${marL}">${listMarkup}`)
+  }
+
+  return paragraphXml.replace(/<a:pPr([^>]*)>/, (_match, attrs: string) => {
+    const cleaned = attrs.replace(/\s*marL="\d+"/g, '')
+    return `<a:pPr marL="${marL}"${cleaned}>${listMarkup}`
+  })
+}
+
+function isPrintKoSlide4ParenListItem(paragraphXml: string): boolean {
+  const text = extractParagraphText(paragraphXml)
+  if (!text.trim()) return false
+  if (!paragraphXml.includes('buAutoNum type="arabicParenR"')) {
+    return (
+      text.includes('지붕 위에') ||
+      (text.includes('다른 퇴적물') && text.includes('배수(응축 포함)'))
+    )
+  }
+  return true
+}
+
+function isPrintKoSlide4LastParenItem(text: string): boolean {
+  return text.includes('자연 재해') && text.includes('천재지변')
+}
+
+function formatPrintKoSlide4Item11(paragraphXml: string): string {
+  const text = normalizeCertificateTypography(extractParagraphText(paragraphXml))
+    .replace(/\t/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  const match = text.match(
+    /^(자연 재해,[\s\S]*?천재지변)\s*에\s*의하여\s*발생된\s*결함\.?$/
+  )
+  if (!match) return normalizePrintKoSlide4ParenItem(paragraphXml)
+
+  const itemText = `${match[1]}\t에 의하여 발생된 결함.`
+  return normalizePrintKoSlide4ParenItem(setParagraphMergedText(paragraphXml, itemText))
+}
+
+function normalizePrintKoSlide4BuAutoNum(paragraphXml: string): string {
+  const listMarkup = `<a:buAutoNum type="arabicParenR" startAt="5"/><a:tabLst><a:tab pos="${SLIDE4_KO_PRINT_LIST_MAR_L}" algn="l"/></a:tabLst>`
+  const pPrInner = `<a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:spcBef><a:spcPts val="${SLIDE4_KO_PRINT_ITEM_GAP_PTS}"/></a:spcBef>${listMarkup}`
+
+  if (!paragraphXml.includes('<a:pPr')) {
+    return paragraphXml.replace(
+      '<a:p>',
+      `<a:p><a:pPr marL="${SLIDE4_KO_PRINT_LIST_MAR_L}" indent="${SLIDE4_KO_PRINT_LIST_INDENT}">${pPrInner}</a:pPr>`
+    )
+  }
+
+  return paragraphXml.replace(/<a:pPr([^>]*)>[\s\S]*?<\/a:pPr>/, (_match, attrs: string) => {
+    const cleaned = attrs
+      .replace(/\s*marL="\d+"/g, '')
+      .replace(/\s*indent="-?\d+"/g, '')
+    return `<a:pPr marL="${SLIDE4_KO_PRINT_LIST_MAR_L}" indent="${SLIDE4_KO_PRINT_LIST_INDENT}"${cleaned}>${pPrInner}</a:pPr>`
+  })
+}
+
+function normalizePrintKoSlide4ParenItem(paragraphXml: string): string {
+  let next = paragraphXml
+  if (!next.includes('buAutoNum type="arabicParenR"')) {
+    next = ensureKoListAutoNumber(next, SLIDE4_KO_PRINT_LIST_MAR_L)
+  }
+  next = normalizePrintKoSlide4BuAutoNum(next)
+  return next
+}
+
+function buildPrintKoSlide4ParenSpacer(endParaRPr: string): string {
+  const pPr = `<a:pPr marL="${SLIDE4_KO_PRINT_LIST_MAR_L}" indent="${SLIDE4_KO_PRINT_LIST_INDENT}"><a:lnSpc><a:spcPct val="100000"/></a:lnSpc><a:spcBef><a:spcPts val="${SLIDE4_KO_PRINT_ITEM_GAP_PTS}"/></a:spcBef><a:buAutoNum type="arabicParenR" startAt="5"/><a:tabLst><a:tab pos="${SLIDE4_KO_PRINT_LIST_MAR_L}" algn="l"/></a:tabLst></a:pPr>`
+  return `<a:p>${pPr}${endParaRPr}</a:p>`
+}
+
+function buildPrintKoSlide4FooterSpacer(endParaRPr: string): string {
+  const pPr = `<a:pPr marL="223520" marR="30480" indent="-186055"><a:lnSpc><a:spcPct val="110800"/></a:lnSpc><a:spcBef><a:spcPts val="${SLIDE4_KO_PRINT_FOOTER_PRE_GAP_PTS}"/></a:spcBef><a:buAutoNum type="arabicPeriod" startAt="14"/></a:pPr>`
+  return `<a:p>${pPr}${endParaRPr}</a:p>`
+}
+
+function applyPrintKoSlide4Layout(slideXml: string): string {
+  return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
+    if (!shapeXml.includes('지붕 위에') && !shapeXml.includes('상기 조건이')) {
+      return shapeXml
+    }
+
+    const paragraphs: string[] = []
+    shapeXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+      paragraphs.push(paragraph)
+      return paragraph
+    })
+    if (paragraphs.length === 0) return shapeXml
+
+    const defaultEndRPr =
+      '<a:endParaRPr lang="en-US" sz="900" dirty="0"><a:latin typeface="Malgun Gothic"/><a:cs typeface="Malgun Gothic"/></a:endParaRPr>'
+    const listEndRPr =
+      paragraphs
+        .find((paragraph) => isPrintKoSlide4ParenListItem(paragraph))
+        ?.match(/<a:endParaRPr[\s\S]*?<\/a:endParaRPr>/)?.[0] ?? defaultEndRPr
+    const periodEndRPr =
+      paragraphs
+        .find((paragraph) => paragraph.includes('buAutoNum type="arabicPeriod"'))
+        ?.match(/<a:endParaRPr[\s\S]*?<\/a:endParaRPr>/)?.[0] ?? defaultEndRPr
+
+    const rebuilt: string[] = []
+
+    for (const paragraph of paragraphs) {
+      const text = extractParagraphText(paragraph).trim()
+
+      if (isPrintKoSlide4ParenListItem(paragraph)) {
+        let processed = normalizePrintKoSlide4ParenItem(paragraph)
+        if (isPrintKoSlide4LastParenItem(text)) {
+          processed = formatPrintKoSlide4Item11(paragraph)
+        }
+        rebuilt.push(processed)
+        if (!isPrintKoSlide4LastParenItem(text)) {
+          rebuilt.push(buildPrintKoSlide4ParenSpacer(listEndRPr))
+        }
+        continue
+      }
+
+      if (text.includes('상기 조건이 행하여지는')) {
+        rebuilt.push(buildPrintKoSlide4FooterSpacer(periodEndRPr))
+        rebuilt.push(setParagraphSpaceBefore(paragraph, SLIDE4_KO_FOOTER_GAP_PTS))
+        continue
+      }
+
+      rebuilt.push(paragraph)
+    }
+
+    return shapeXml.replace(
+      /(<p:txBody>[\s\S]*?<a:lstStyle\/>)([\s\S]*)(<\/p:txBody>)/,
+      (_match, head: string, _body: string, foot: string) => `${head}${rebuilt.join('')}${foot}`
+    )
+  })
+}
+
+function applySlide4KoFixes(slideXml: string, productItem?: 'PAINT' | 'PRINT'): string {
+  let next = slideXml
+
+  const paragraphs: string[] = []
+  next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    paragraphs.push(paragraph)
+    return paragraph
+  })
+
+  const gosangIndex = paragraphs.findIndex((paragraph) =>
+    extractParagraphText(paragraph).includes('고상으로부터의')
+  )
+  if (gosangIndex > 0) {
+    next = mergeParagraphPair(next, gosangIndex - 1, gosangIndex)
+  }
+
+  next = removeParagraphByPredicate(next, (paragraph) => {
+    const text = extractParagraphText(paragraph)
+    return text.includes('다습한 지대') && text.includes('해안으로부터')
+  })
+
+  next = removeEmptyParagraphs(next)
+
+  next = next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph)
+
+    if (productItem === 'PRINT') {
+      if (text.includes('본 보증 조건은 실제 고객사에 공급되는')) {
+        return setParagraphSpaceBefore(paragraph, 1025)
+      }
+      if (text.includes('결함이 발견된 후 30일 이내에')) {
+        return setParagraphSpaceBefore(paragraph, 1000)
+      }
+      if (text.includes('최종 사용자는 세아씨엠의 요구')) {
+        return setParagraphSpaceBefore(paragraph, 990)
+      }
+      return paragraph
+    }
+
+    if (text.includes('다른 퇴적물 제거의 실패') && text.includes('배수(응축 포함)')) {
+      return setParagraphSpaceBefore(paragraph, 905)
+    }
+    if (text.includes('상기 조건이 행하여지는')) {
+      return setParagraphSpaceBefore(paragraph, 100)
+    }
+    return paragraph
+  })
+
+  if (productItem === 'PRINT') {
+    next = applyPrintKoSlide4Layout(next)
+  }
+
+  if (productItem !== 'PRINT') {
+    next = next.replace(
+      new RegExp(`<a:off x="903098" y="${SLIDE4_FOOTER_ORIGINAL_Y_KO}"`),
+      `<a:off x="903098" y="${SLIDE4_FOOTER_SHAPE_Y_KO}"`
+    )
+  }
+
+  return next
+}
+
+function mergeSlide4EnDebrisItem(slideXml: string): string {
+  const paragraphs: string[] = []
+  slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    paragraphs.push(paragraph)
+    return paragraph
+  })
+
+  const debrisIndex = paragraphs.findIndex((paragraph) => {
+    const text = normalizeMatchText(extractParagraphText(paragraph))
+    return text.includes('Failure to remove debris') && text.includes('free drainage')
+  })
+  const condensationIndex = paragraphs.findIndex((paragraph) =>
+    normalizeMatchText(extractParagraphText(paragraph)).startsWith(
+      'condensation from all surfaces'
+    )
+  )
+  if (debrisIndex < 0 || condensationIndex !== debrisIndex + 1) return slideXml
+
+  const line1 = normalizeMatchText(extractParagraphText(paragraphs[debrisIndex])).trimEnd()
+  let line2 = normalizeMatchText(
+    extractParagraphText(paragraphs[condensationIndex])
+  ).trim()
+  if (!line2.endsWith('.')) {
+    line2 = `${line2}.`
+  }
+
+  paragraphs[debrisIndex] = setParagraphEnCertificateText(
+    paragraphs[debrisIndex],
+    `${line1}\t${line2}`
+  )
+  paragraphs[condensationIndex] = ''
+
+  let paragraphIndex = 0
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, () => {
+    const next = paragraphs[paragraphIndex] ?? ''
+    paragraphIndex += 1
+    return next
+  })
+}
+
+function applySlide4EnFixes(slideXml: string): string {
+  let next = slideXml
+
+  next = removeParagraphByPredicate(next, (paragraph) => {
+    const text = normalizeMatchText(extractParagraphText(paragraph))
+    return text.includes(
+      'Damage resulting from exposure to extreme or abnormal environments'
+    )
+  })
+
+  next = removeParagraphByPredicate(next, (paragraph) => {
+    const text = normalizeMatchText(extractParagraphText(paragraph)).trim()
+    return text === '.' || text === ' .'
+  })
+
+  next = removeEmptyParagraphs(next)
+
+  next = mergeSlide4EnDebrisItem(next)
+  next = removeEmptyParagraphs(next)
+  next = formatSlide4EnItem11(next)
+  next = removeEmptyParagraphs(next)
+
+  next = next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = normalizeMatchText(extractParagraphText(paragraph))
+
+    if (text.startsWith('onto the product')) {
+      return setParagraphMarLIndent(paragraph, SLIDE4_EN_CONTINUATION_MAR_L)
+    }
+
+    if (text.includes('Attack from chemical') && text.includes('run-off')) {
+      return setParagraphMarLIndent(
+        paragraph,
+        SLIDE4_EN_ITEM_MAR_L,
+        SLIDE4_EN_ITEM_INDENT
+      )
+    }
+
+    if (text.includes('Failure to remove debris') && text.includes('free drainage')) {
+      return setParagraphSpaceBefore(
+        setParagraphMarLIndent(paragraph, SLIDE4_EN_ITEM_MAR_L, SLIDE4_EN_ITEM_INDENT),
+        SLIDE4_EN_ITEM_GAP_PTS
+      )
+    }
+
+    if (text.includes('Installations subject to salt marine')) {
+      return setParagraphSpaceBefore(
+        setParagraphMarLIndent(paragraph, SLIDE4_EN_ITEM_MAR_L, SLIDE4_EN_ITEM_INDENT),
+        SLIDE4_EN_ITEM_GAP_PTS
+      )
+    }
+
+    if (text.includes('Corrosion arising within lapped areas')) {
+      const itemText = ensureNumberedItemSpacing(text)
+      return setParagraphSpaceBefore(
+        setParagraphMarLIndent(
+          setParagraphEnCertificateText(paragraph, itemText, { singleLine: true }),
+          SLIDE4_EN_ITEM_MAR_L,
+          SLIDE4_EN_ITEM_INDENT
+        ),
+        SLIDE4_EN_ITEM_GAP_PTS
+      )
+    }
+
+    if (text.includes('Failure to replace corroded fasteners')) {
+      const itemText = ensureNumberedItemSpacing(text)
+      return setParagraphSpaceBefore(
+        setParagraphMarLIndent(
+          setParagraphEnCertificateText(paragraph, itemText, { singleLine: true }),
+          SLIDE4_EN_ITEM_MAR_L,
+          SLIDE4_EN_ITEM_INDENT
+        ),
+        SLIDE4_EN_ITEM_GAP_PTS
+      )
+    }
+
+    if (text.includes('With regard to paint delamination')) {
+      const itemText = ensureNumberedItemSpacing(text)
+      return setParagraphSpaceBefore(
+        setParagraphMarLIndent(
+          setParagraphEnCertificateText(paragraph, itemText, { singleLine: true }),
+          SLIDE4_EN_ITEM_MAR_L,
+          SLIDE4_EN_ITEM_INDENT
+        ),
+        SLIDE4_EN_ITEM_GAP_PTS
+      )
+    }
+
+    if (text.includes('This warranty becomes effective when all of above conditions')) {
+      let footerText = ensureNumberedItemSpacing(text).trimEnd()
+      if (!footerText.endsWith('.')) {
+        footerText = `${footerText}.`
+      }
+      footerText = footerText.replace(/done\.\s*$/, `done${NBSP}.`)
+      let footer = setParagraphEnCertificateText(paragraph, footerText, {
+        singleLine: true,
+      })
+      return setParagraphSpaceBefore(footer, SLIDE4_EN_FOOTER_GAP_PTS)
+    }
+
+    return paragraph
+  })
+
+  next = next.replace(
+    new RegExp(`<a:off x="915798" y="${SLIDE4_FOOTER_ORIGINAL_Y_EN}"`),
+    `<a:off x="915798" y="${SLIDE4_FOOTER_SHAPE_Y_EN}"`
+  )
+
+  next = applySlide4EnFooterShapeFix(next)
+
+  return next
+}
+
+export function postProcessSlideXml(
+  slideXml: string,
+  slideNumber: number,
+  language: 'ko' | 'en',
+  options?: { productItem?: 'PAINT' | 'PRINT' }
+): string {
+  const productItem = options?.productItem
+  let next = slideXml
+
+  if (slideNumber === 1) {
+    next = applySlide1CoverTitleFix(next)
+  }
+
+  next = mapOutsideTables(next, (outsideXml) => {
+    let body = normalizeBodyTextAlignment(outsideXml)
+    const enCertificateBody =
+      (slideNumber === 3 || slideNumber === 4) && language === 'en'
+    body = consolidateBodyParagraphs(body, enCertificateBody)
+    return body
+  })
+
+  next = next.replace(/<a:tbl>[\s\S]*?<\/a:tbl>/g, (tableXml) =>
+    processTable(tableXml, productItem)
+  )
+
+  if (slideNumber === 2) {
+    next = applySlide2TableLayoutFix(next, language, productItem)
+    if (language === 'en') {
+      next = applySlide2EnSectionSpacing(next)
+    }
+  }
+
+  if (slideNumber === 3 && language === 'ko') {
+    next = applySlide3KoSpacingFix(next)
+  }
+
+  if (slideNumber === 3 && language === 'en') {
+    next = applySlide3EnFixes(next)
+  }
+
+  if (slideNumber === 4 && language === 'ko') {
+    next = applySlide4KoFixes(next, productItem)
+  }
+
+  if (slideNumber === 4 && language === 'en') {
+    next = applySlide4EnFixes(next)
+  }
+
+  if ((slideNumber === 3 || slideNumber === 4) && language === 'en') {
+    next = applySlide34EnBodyLayoutFix(next, slideNumber)
+  }
+
+  return next
+}

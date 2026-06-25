@@ -5,6 +5,7 @@ import { resolveChalkMode, resolveColorFadingMode } from '../../utils/productWar
 import type { CompanyWarrantyEditableField } from '../../utils/companyWarrantyTerms'
 import {
   findCompanyWarrantyProducts,
+  parseCoatingStructures,
   regionToRiskSection,
 } from '../../utils/warrantyPeriodLookup'
 import { loadWarrantyPeriod } from '../../utils/warrantyPeriodStorage'
@@ -70,12 +71,12 @@ function PreviewTable({
             {groupHeader}
           </th>
           <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-            <span className="block break-all">PEEL/FLAKE</span>
-            <span className="block">(도막박리)</span>
-          </th>
-          <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
             <span className="block break-all">PERFORATION</span>
             <span className="block">(천공)</span>
+          </th>
+          <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
+            <span className="block break-all">PEEL/FLAKE</span>
+            <span className="block">(도막박리)</span>
           </th>
           <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
             COLOR FADING (변색/탈색)
@@ -113,16 +114,16 @@ function PreviewTable({
               </td>
               <td className={periodTdClass}>
                 <GuideCell
-                  value={product.peelFlake}
+                  value={product.perforation}
                   editing={editing}
-                  onChange={(value) => onFieldChange?.(product.productGroup, 'peelFlake', value)}
+                  onChange={(value) => onFieldChange?.(product.productGroup, 'perforation', value)}
                 />
               </td>
               <td className={periodTdClass}>
                 <GuideCell
-                  value={product.perforation}
+                  value={product.peelFlake}
                   editing={editing}
-                  onChange={(value) => onFieldChange?.(product.productGroup, 'perforation', value)}
+                  onChange={(value) => onFieldChange?.(product.productGroup, 'peelFlake', value)}
                 />
               </td>
               {isColorFadingMerged ? (
@@ -237,7 +238,7 @@ export function CompanyWarrantyPreview({
     !productItem ||
     !region ||
     !parseMultiValue(resin).length ||
-    (isPrint && !parseMultiValue(coatingStructure).length)
+    (isPrint && !parseCoatingStructures(coatingStructure).length)
 
   if (missingFields) {
     return (

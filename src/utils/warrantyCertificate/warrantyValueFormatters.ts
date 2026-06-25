@@ -91,7 +91,7 @@ export function formatYearsEnUpper(years: number): string {
 }
 
 export function formatYearsEnLower(years: number): string {
-  return `${years}years`
+  return `${years}years `
 }
 
 export function formatYearsEnShort(years: number): string {

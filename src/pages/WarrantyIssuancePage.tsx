@@ -11,7 +11,6 @@ import { useAuth } from '../contexts/AuthContext'
 import type { WarrantyIssuanceRequest, WarrantyIssuanceRequestRecord } from '../types'
 import {
   canManageWarrantyIssuanceQuality,
-  canReceiveWarrantyRequest,
   canTeamLeaderApproveWarrantyRequest,
   canEditWarrantyIssuanceLog,
   canEditWarrantyRequestContent,
@@ -52,7 +51,6 @@ export function WarrantyIssuancePage({
   const { user } = useAuth()
   const canManageQuality = canManageWarrantyIssuanceQuality(user?.email)
   const canTeamLeaderApprove = canTeamLeaderApproveWarrantyRequest(user?.email)
-  const canReceiveRequest = canReceiveWarrantyRequest(user?.email)
   const canEditLog = canEditWarrantyIssuanceLog(user?.email)
   const canEditRequestContent = canEditWarrantyRequestContent(user?.email)
   const [requestRecords, setRequestRecords] = useState(() => getWarrantyRequestRecords())
@@ -186,12 +184,7 @@ export function WarrantyIssuancePage({
     if (options.editScope === 'request') {
       if (!canEditRequestContent) return
     } else if (options.editScope === 'quality') {
-      const normalizedStatus = normalizeRequestStatus(current.status)
-      if (normalizedStatus === WARRANTY_REQUEST_STATUS_RECEIVED) {
-        if (!canReceiveRequest) return
-      } else if (!canManageQuality) {
-        return
-      }
+      if (!canManageQuality) return
     }
 
     const nextStatus = resolveStatusAfterSave(
@@ -438,7 +431,6 @@ export function WarrantyIssuancePage({
         open={requestModalOpen}
         canManageQuality={canManageQuality}
         canTeamLeaderApprove={canTeamLeaderApprove}
-        canReceiveRequest={canReceiveRequest}
         canEditRequestContent={canEditRequestContent}
         onClose={() => {
           setRequestModalOpen(false)
