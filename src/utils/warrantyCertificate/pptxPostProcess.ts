@@ -940,8 +940,8 @@ function applySlide2EnPrintHeaderBoldFix(slideXml: string): string {
       if (paragraphIndex !== 1) return paragraph
 
       return paragraph
-        .replace(/<a:rPr([^>]*)\s+b="1"/g, '<a:rPr$1')
-        .replace(/\s+b="1"([^>]*)\/>/g, '$1/>')
+        .replace(/<a:rPr([^>]*)\s+b="1"\/>/g, '<a:rPr$1/>')
+        .replace(/<a:rPr([^>]*)\s+b="1">/g, '<a:rPr$1>')
     })
   })
 }
