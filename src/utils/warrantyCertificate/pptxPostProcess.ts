@@ -932,16 +932,21 @@ function applySlide2EnSectionSpacing(slideXml: string): string {
 
 function applySlide2EnPrintHeaderBoldFix(slideXml: string): string {
   return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
-    if (!shapeXml.includes('VALIDATED FOR STEEL')) return shapeXml
+    if (
+      !shapeXml.includes('VALIDATED') ||
+      !shapeXml.includes('WARRANTY') ||
+      !shapeXml.includes('ITEMS')
+    ) {
+      return shapeXml
+    }
 
-    let paragraphIndex = 0
     return shapeXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
-      paragraphIndex += 1
-      if (paragraphIndex !== 1) return paragraph
+      if (!extractParagraphText(paragraph).includes('VALIDATED FOR STEEL')) return paragraph
 
-      return paragraph
-        .replace(/<a:rPr([^>]*)\s+b="1"\/>/g, '<a:rPr$1/>')
-        .replace(/<a:rPr([^>]*)\s+b="1">/g, '<a:rPr$1>')
+      return paragraph.replace(/<a:rPr([^>]*)(\/?)>/g, (_match, attrs: string, selfClose: string) => {
+        const cleaned = attrs.replace(/\s*b="1"/g, '')
+        return `<a:rPr${cleaned}${selfClose}>`
+      })
     })
   })
 }
