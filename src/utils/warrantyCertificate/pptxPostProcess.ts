@@ -16,6 +16,8 @@ const SLIDE2_TABLE_Y_DELTA_EN = 110000
 const SLIDE2_TABLE_Y_DELTA_PRINT_KO = 192358
 const SLIDE2_PRINT_OBJECT2_TARGET_CY = 1041054
 const PRINT_WARRANTY_TABLE_FIRST_COL = '993775'
+/** PRINT 국문 2페이지 — 보증 항목과 첫 줄 사이 간격 (템플릿 910 + 1줄) */
+const SLIDE2_KO_PRINT_INTRO_GAP_PTS = 1030
 /** Post-process row heights: header×2 + data×2 (template sum 2220595) */
 const PAINT_WARRANTY_TABLE_FRAME_CY = 2220595
 const PAINT_WARRANTY_TABLE_DATA_ROW_H = 719455
@@ -553,9 +555,178 @@ function formatPanelUseCell(cellXml: string): string {
 }
 
 const PRINT_KO_PANEL_LOCATION_LINES = [
-  '(해안 및 공업지대에서 1km 이상',
+  '(해안 및 공업지대에서',
+  '1km 이상',
   '떨어진 곳)',
 ]
+
+const PRINT_EN_PANEL_LOCATION_LINE = '(>1km from marine & Industrial environment)'
+
+function extractCellText(cellInner: string): string {
+  const paragraphs = cellInner.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  return normalizeCertificateTypography(
+    paragraphs.map((paragraph) => extractParagraphText(paragraph)).join(' ')
+  )
+}
+
+function setCellMergedText(cellInner: string, text: string): string {
+  return cellInner.replace(/<a:txBody>([\s\S]*?)<\/a:txBody>/, () => {
+    const paragraphs = cellInner.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+    const template = paragraphs.find((paragraph) => !isParagraphEmpty(paragraph)) ?? paragraphs[0]
+    if (!template) {
+      return `<a:txBody>${TABLE_CELL_BODY_PR}<a:lstStyle/><a:p>${TABLE_CELL_CENTER_PPR}<a:endParaRPr/></a:p></a:txBody>`
+    }
+    return `<a:txBody>${TABLE_CELL_BODY_PR}<a:lstStyle/>${normalizeTableParagraph(template, text)}</a:txBody>`
+  })
+}
+
+function getTableRows(tableXml: string): string[] {
+  return [...tableXml.matchAll(/<a:tr h="\d+">[\s\S]*?<\/a:tr>/g)].map((match) => match[0])
+}
+
+function getRowCells(rowXml: string): Array<{ attrs: string; inner: string }> {
+  return [...rowXml.matchAll(/<a:tc([^>]*)>([\s\S]*?)<\/a:tc>/g)].map((match) => ({
+    attrs: match[1],
+    inner: match[2],
+  }))
+}
+
+function buildTableRow(height: number, cells: Array<{ attrs: string; inner: string }>): string {
+  const cellXml = cells.map(({ attrs, inner }) => `<a:tc${attrs}>${inner}</a:tc>`).join('')
+  return `<a:tr h="${height}">${cellXml}</a:tr>`
+}
+
+function isBrokenPrintEnWarrantyTable(tableXml: string): boolean {
+  if (!isPrintWarrantyTable(tableXml)) return false
+  const heights = [...tableXml.matchAll(/<a:tr h="(\d+)"/g)].map((match) => match[1])
+  return heights.length === 6 && heights.includes('80645')
+}
+
+function buildPrintEnVmergeRegionCell(sourceInner: string): { attrs: string; inner: string } {
+  const tcPr = sourceInner.match(/<a:tcPr[\s\S]*?<\/a:tcPr>/)?.[0] ?? ''
+  return {
+    attrs: ' vMerge="1"',
+    inner: `<a:txBody><a:bodyPr/><a:lstStyle/><a:p><a:endParaRPr/></a:p></a:txBody>${tcPr}`,
+  }
+}
+
+function restructurePrintEnWarrantyTable(tableXml: string): string {
+  const rows = getTableRows(tableXml)
+  if (rows.length !== 6) return tableXml
+
+  const row2Cells = getRowCells(rows[2])
+  const row3Cells = getRowCells(rows[3])
+  const row5Cells = getRowCells(rows[5])
+
+  const regionText = [
+    extractCellText(row2Cells[0].inner),
+    extractCellText(row3Cells[0].inner),
+    extractCellText(row5Cells[0].inner),
+  ]
+    .map((part) => part.replace(/,\s*$/, '').trim())
+    .filter(Boolean)
+    .join(', ')
+
+  const regionAttrs = `${row2Cells[0].attrs.replace(/\s*rowSpan="\d+"/g, '')} rowSpan="2"`
+  const regionCell = {
+    attrs: regionAttrs,
+    inner: setCellMergedText(row2Cells[0].inner, regionText),
+  }
+
+  const dataRow1 = buildTableRow(PAINT_WARRANTY_TABLE_DATA_ROW_H, [
+    regionCell,
+    ...row2Cells.slice(1),
+  ])
+  const dataRow2 = buildTableRow(PAINT_WARRANTY_TABLE_DATA_ROW_H_ALT, [
+    buildPrintEnVmergeRegionCell(row2Cells[0].inner),
+    ...row5Cells.slice(1),
+  ])
+
+  const rebuilt = [...rows.slice(0, 2), dataRow1, dataRow2].join('')
+  return tableXml.replace(/<a:tbl>[\s\S]*?<\/a:tbl>/, `<a:tbl>${rebuilt}</a:tbl>`)
+}
+
+function buildPrintEnPanelUseCell(cellXml: string, label: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const template = paragraphs.find((paragraph) => !isParagraphEmpty(paragraph)) ?? paragraphs[0]
+  if (!template) return cellXml
+
+  const newParagraphs = [
+    normalizeTableParagraph(template, label),
+    normalizeTableParagraph(template, PRINT_EN_PANEL_LOCATION_LINE),
+  ]
+
+  const next = cellXml.replace(/<a:txBody>([\s\S]*?)<\/a:txBody>/, () => {
+    return `<a:txBody>${TABLE_CELL_BODY_PR}<a:lstStyle/>${newParagraphs.join('')}</a:txBody>`
+  })
+
+  return finalizeTableCell(next)
+}
+
+function isPrintEnPanelUseText(text: string): boolean {
+  const compact = text.replace(/\s+/g, ' ').trim()
+  return /^(Roof|Wall)\b/.test(compact) && /marine/i.test(compact)
+}
+
+function formatPrintEnPanelUseCell(cellXml: string): string {
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+        .map((paragraph) => extractParagraphText(paragraph))
+        .join(' ')
+    )
+  )
+  const label = fullText.match(/^(Roof|Wall)\b/)?.[1]
+  if (!label) return processTableCell(cellXml)
+
+  return buildPrintEnPanelUseCell(cellXml, label)
+}
+
+function isPrintEnUnmeasurableText(text: string): boolean {
+  return (
+    /^N\/A$/i.test(text.trim()) ||
+    /^<ΔE/i.test(text.trim()) ||
+    text.includes('측정불가')
+  )
+}
+
+function formatPrintEnTableCell(cellXml: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      paragraphs.map((paragraph) => extractParagraphText(paragraph)).join(' ')
+    )
+  )
+
+  if (isRegionAreaText(fullText)) return formatRegionCell(cellXml)
+  if (isWarrantyMetricText(fullText)) return formatWarrantyMetricCell(cellXml)
+  if (isPrintEnPanelUseText(fullText)) return formatPrintEnPanelUseCell(cellXml)
+  if (isPrintEnUnmeasurableText(fullText)) return buildMultiParagraphCell(cellXml, ['N/A'])
+
+  const yearMatch = fullText.trim().match(/^(\d+)\s*Y$/i)
+  if (yearMatch) {
+    return buildMultiParagraphCell(cellXml, [`${yearMatch[1]} Y`])
+  }
+
+  return processTableCell(cellXml)
+}
+
+function buildPrintKoPanelUseCell(cellXml: string, label: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const template = paragraphs.find((paragraph) => !isParagraphEmpty(paragraph)) ?? paragraphs[0]
+  if (!template) return cellXml
+
+  const newParagraphs = [
+    normalizeTableParagraph(template, label),
+    ...PRINT_KO_PANEL_LOCATION_LINES.map((line) => normalizeTableParagraph(template, line)),
+  ]
+
+  const next = cellXml.replace(/<a:txBody>([\s\S]*?)<\/a:txBody>/, () => {
+    return `<a:txBody>${TABLE_CELL_BODY_PR}<a:lstStyle/>${newParagraphs.join('')}</a:txBody>`
+  })
+
+  return finalizeTableCell(next)
+}
 
 function isPrintKoPanelUseText(text: string): boolean {
   const compact = text.replace(/\s+/g, '')
@@ -573,7 +744,7 @@ function formatPrintKoPanelUseCell(cellXml: string): string {
   const label = fullText.match(/^(지붕재|벽체)/)?.[1]
   if (!label) return processTableCell(cellXml)
 
-  return buildMultiParagraphCell(cellXml, [label, ...PRINT_KO_PANEL_LOCATION_LINES])
+  return buildPrintKoPanelUseCell(cellXml, label)
 }
 
 function processTableCell(cellXml: string): string {
@@ -646,13 +817,21 @@ function formatPrintKoTableCell(cellXml: string): string {
   return processTableCell(cellXml)
 }
 
-function processTable(tableXml: string, productItem?: 'PAINT' | 'PRINT'): string {
+function processTable(
+  tableXml: string,
+  productItem?: 'PAINT' | 'PRINT',
+  language?: 'ko' | 'en'
+): string {
   const currentCols = [...tableXml.matchAll(/<a:gridCol w="(\d+)"/g)].map((match) => match[1])
   const isPaintWarrantyTable =
     currentCols.length === PAINT_WARRANTY_TABLE_COL_WIDTHS.length &&
     currentCols[0] === '895350'
 
   let next = tableXml
+
+  if (productItem === 'PRINT' && language === 'en' && isBrokenPrintEnWarrantyTable(next)) {
+    next = restructurePrintEnWarrantyTable(next)
+  }
 
   if (isPaintWarrantyTable) {
     let columnIndex = 0
@@ -673,6 +852,7 @@ function processTable(tableXml: string, productItem?: 'PAINT' | 'PRINT'): string
     if (/\bhMerge="1"/.test(attrs) || /\bvMerge="1"/.test(attrs)) return match
     const cellXml = `<a:tc${attrs}>${content}</a:tc>`
     if (productItem === 'PRINT' && isPrintWarrantyTable(tableXml)) {
+      if (language === 'en') return formatPrintEnTableCell(cellXml)
       return formatPrintKoTableCell(cellXml)
     }
     return processTableCell(cellXml)
@@ -692,6 +872,16 @@ function applySlide2EnSectionSpacing(slideXml: string): string {
     const text = extractParagraphText(paragraph).trim()
     if (text === 'Warranty terms') {
       return setParagraphSpaceBefore(paragraph, 470)
+    }
+    return paragraph
+  })
+}
+
+function applySlide2KoPrintSpacingFix(slideXml: string): string {
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph).trim()
+    if (text.includes('본 보증서는 아래 제시된 조건하에')) {
+      return setParagraphSpaceBefore(paragraph, SLIDE2_KO_PRINT_INTRO_GAP_PTS)
     }
     return paragraph
   })
@@ -1057,10 +1247,23 @@ function formatPrintKoSlide4Item11(paragraphXml: string): string {
   const match = text.match(
     /^(자연 재해,[\s\S]*?천재지변)\s*에\s*의하여\s*발생된\s*결함\.?$/
   )
-  if (!match) return normalizePrintKoSlide4ParenItem(paragraphXml)
+  if (!match) return paragraphXml
 
-  const itemText = `${match[1]}\t에 의하여 발생된 결함.`
-  return normalizePrintKoSlide4ParenItem(setParagraphMergedText(paragraphXml, itemText))
+  const line1 = match[1].trimEnd()
+  const line2 = '에 의하여 발생된 결함.'
+
+  const firstRunIndex = paragraphXml.indexOf('<a:r>')
+  if (firstRunIndex < 0) return paragraphXml
+
+  const pPr = paragraphXml.slice('<a:p>'.length, firstRunIndex)
+  const tail =
+    paragraphXml.match(/<a:endParaRPr[\s\S]*<\/a:p>$/)?.[0] ?? '</a:p>'
+  const firstRun = paragraphXml.match(/<a:r>[\s\S]*?<\/a:r>/)?.[0]
+  if (!firstRun) return paragraphXml
+
+  const run1 = buildAmpersandSafeRunXml(firstRun, line1)
+  const run2 = buildAmpersandSafeRunXml(firstRun, line2)
+  return `<a:p>${pPr}${run1}<a:br/>${run2}${tail}`
 }
 
 function normalizePrintKoSlide4BuAutoNum(paragraphXml: string): string {
@@ -1133,7 +1336,7 @@ function applyPrintKoSlide4Layout(slideXml: string): string {
       if (isPrintKoSlide4ParenListItem(paragraph)) {
         let processed = normalizePrintKoSlide4ParenItem(paragraph)
         if (isPrintKoSlide4LastParenItem(text)) {
-          processed = formatPrintKoSlide4Item11(paragraph)
+          processed = formatPrintKoSlide4Item11(processed)
         }
         rebuilt.push(processed)
         if (!isPrintKoSlide4LastParenItem(text)) {
@@ -1394,13 +1597,16 @@ export function postProcessSlideXml(
   })
 
   next = next.replace(/<a:tbl>[\s\S]*?<\/a:tbl>/g, (tableXml) =>
-    processTable(tableXml, productItem)
+    processTable(tableXml, productItem, language)
   )
 
   if (slideNumber === 2) {
     next = applySlide2TableLayoutFix(next, language, productItem)
     if (language === 'en') {
       next = applySlide2EnSectionSpacing(next)
+    }
+    if (productItem === 'PRINT' && language === 'ko') {
+      next = applySlide2KoPrintSpacingFix(next)
     }
   }
 
