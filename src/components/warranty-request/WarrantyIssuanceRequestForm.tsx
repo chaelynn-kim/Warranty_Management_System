@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, 
 import { Check, ChevronDown, FileText, Globe, Package, RotateCcw, User, type LucideIcon } from 'lucide-react'
 import { DatePicker } from '../ui/DatePicker'
 import { CompanyWarrantyPreview } from './CompanyWarrantyPreview'
+import { FormFileAttachmentField } from './FormFileAttachmentField'
 import { FormSectionHeader, type FormSectionAccent } from './FormSectionHeader'
 import { RequestQualitySection } from './RequestQualitySection'
 import { joinMultiValue, parseMultiValue } from '../../constants/warrantyOptions'
@@ -12,6 +13,7 @@ import {
   WARRANTY_REQUEST_MATERIALS,
   WARRANTY_REQUEST_MATERIAL_OTHER,
   WARRANTY_REQUEST_PAINT_COMPANIES,
+  WARRANTY_REQUEST_PAINT_COMPANY_OTHER,
   WARRANTY_REQUEST_PRODUCT_ITEMS,
   WARRANTY_REQUEST_REGIONS,
   WARRANTY_REQUEST_RESIN_ALL,
@@ -171,6 +173,7 @@ function OptionDropdownMultiSelect({
   otherCustomValue = '',
   onOtherCustomChange,
   otherPlaceholder,
+  showAllLabels = false,
 }: {
   value: string
   onChange: (value: string) => void
@@ -183,6 +186,7 @@ function OptionDropdownMultiSelect({
   otherCustomValue?: string
   onOtherCustomChange?: (value: string) => void
   otherPlaceholder?: string
+  showAllLabels?: boolean
 }) {
   const { open, setOpen, ref } = useDropdownOpen()
   const selected = parseMultiValue(value)
@@ -197,9 +201,9 @@ function OptionDropdownMultiSelect({
       : [...selected]
     if (showOtherInput && otherOption) labels.push(otherOption)
     if (labels.length === 0) return placeholder
-    if (labels.length === 1) return labels[0]
+    if (showAllLabels || labels.length === 1) return labels.join(', ')
     return `${labels[0]} 외 ${labels.length - 1}건`
-  }, [disabled, disabledLabel, isEmpty, otherOption, placeholder, selected, showOtherInput])
+  }, [disabled, disabledLabel, isEmpty, otherOption, placeholder, selected, showAllLabels, showOtherInput])
 
   const toggleOption = (option: string) => {
     if (otherOption && option === otherOption) {
@@ -242,7 +246,7 @@ function OptionDropdownMultiSelect({
           aria-label={ariaLabel}
           aria-expanded={open}
         >
-          <span className="truncate">{buttonLabel}</span>
+          <span className={showAllLabels ? 'text-left leading-snug' : 'truncate'}>{buttonLabel}</span>
           <ChevronDown
             className={`h-4 w-4 shrink-0 text-text-muted transition-transform ${open ? 'rotate-180' : ''}`}
           />
@@ -306,6 +310,7 @@ export function createEmptyWarrantyIssuanceRequest(): WarrantyIssuanceRequest {
     resin: '',
     resinCustom: '',
     paintCompany: '',
+    paintCompanyCustom: '',
     material: '',
     materialCustom: '',
     coatingStructure: '',
@@ -318,7 +323,9 @@ export function createEmptyWarrantyIssuanceRequest(): WarrantyIssuanceRequest {
     language: '',
     warrantyTermMode: '',
     warrantyTermCustom: '',
+    warrantyTermAttachments: '',
     additionalRequest: '',
+    additionalRequestAttachments: '',
     companyWarrantyAttachmentKo: '',
     companyWarrantyAttachmentEn: '',
     supplierWarrantyAttachmentKo: '',
@@ -350,6 +357,12 @@ export function validateWarrantyIssuanceRequest(form: WarrantyIssuanceRequest): 
     return '수지를 입력해 주세요.'
   }
   if (!form.paintCompany.trim()) return '도료사를 선택해 주세요.'
+  if (
+    parseMultiValue(form.paintCompany).includes(WARRANTY_REQUEST_PAINT_COMPANY_OTHER) &&
+    !form.paintCompanyCustom.trim()
+  ) {
+    return '도료사를 입력해 주세요.'
+  }
   if (!form.material.trim()) return '소재를 선택해 주세요.'
   if (
     parseMultiValue(form.material).includes(WARRANTY_REQUEST_MATERIAL_OTHER) &&
@@ -796,6 +809,12 @@ export const WarrantyIssuanceRequestForm = forwardRef<
       ) {
         next.materialCustom = ''
       }
+      if (
+        field === 'paintCompany' &&
+        !parseMultiValue(String(value)).includes(WARRANTY_REQUEST_PAINT_COMPANY_OTHER)
+      ) {
+        next.paintCompanyCustom = ''
+      }
       return next
     })
   }
@@ -912,6 +931,10 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                     options={WARRANTY_REQUEST_PAINT_COMPANIES}
                     placeholder="도료사 선택"
                     ariaLabel="도료사 선택"
+                    otherOption={WARRANTY_REQUEST_PAINT_COMPANY_OTHER}
+                    otherCustomValue={form.paintCompanyCustom}
+                    otherPlaceholder="도료사 직접 입력"
+                    onOtherCustomChange={(value) => patch('paintCompanyCustom', value)}
                     onChange={(value) => patch('paintCompany', value)}
                   />
                 </FormField>
@@ -936,6 +959,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                     options={WARRANTY_REQUEST_COATING_STRUCTURES}
                     placeholder="도장구조 선택"
                     ariaLabel="도장구조 선택"
+                    showAllLabels
                     onChange={(value) => patch('coatingStructure', value)}
                   />
                 </FormField>
@@ -1001,27 +1025,28 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                 </FormField>
 
                 <FormField label="요청 보증 연한" required>
-                  <div className="space-y-3">
-                    <OptionDropdownSingleSelect
-                      value={form.warrantyTermMode}
-                      options={WARRANTY_TERM_OPTIONS}
-                      placeholder="요청 보증 연한 선택"
-                      ariaLabel="요청 보증 연한 선택"
-                      onChange={(value) => patch('warrantyTermMode', value)}
-                    />
-                    {showCustomWarrantyTerm && (
-                      <textarea
-                        rows={3}
-                        value={form.warrantyTermCustom}
-                        onChange={(e) => patch('warrantyTermCustom', e.target.value)}
-                        placeholder="요청 연한 직접 입력 (예 : 천공 및 박리 10년 보증 요청)"
-                        className={`${fieldInput} min-h-[80px] resize-y leading-relaxed`}
-                        aria-label="요청 연한 직접 입력"
-                      />
-                    )}
-                  </div>
+                  <OptionDropdownSingleSelect
+                    value={form.warrantyTermMode}
+                    options={WARRANTY_TERM_OPTIONS}
+                    placeholder="요청 보증 연한 선택"
+                    ariaLabel="요청 보증 연한 선택"
+                    onChange={(value) => patch('warrantyTermMode', value)}
+                  />
                 </FormField>
               </div>
+
+              {showCustomWarrantyTerm && (
+                <FormField label="요청 연한 직접 입력" required>
+                  <textarea
+                    rows={3}
+                    value={form.warrantyTermCustom}
+                    onChange={(e) => patch('warrantyTermCustom', e.target.value)}
+                    placeholder="요청 연한 직접 입력 (예 : 천공 및 박리 10년 보증 요청)"
+                    className={`${fieldInput} min-h-[80px] w-full resize-y leading-relaxed`}
+                    aria-label="요청 연한 직접 입력"
+                  />
+                </FormField>
+              )}
 
               {showCompanyWarrantyTerm && (
                 <CompanyWarrantyPreview
@@ -1033,14 +1058,23 @@ export const WarrantyIssuanceRequestForm = forwardRef<
               )}
 
               <FormField label="추가 요청 사항">
-                <textarea
-                  rows={3}
-                  value={form.additionalRequest}
-                  onChange={(e) => patch('additionalRequest', e.target.value)}
-                  placeholder="추가 요청 사항 직접 입력"
-                  className={`${fieldInput} min-h-[80px] resize-y leading-relaxed`}
-                  aria-label="추가 요청 사항 직접 입력"
-                />
+                <div className="space-y-3">
+                  <textarea
+                    rows={3}
+                    value={form.additionalRequest}
+                    onChange={(e) => patch('additionalRequest', e.target.value)}
+                    placeholder="추가 요청 사항 직접 입력"
+                    className={`${fieldInput} min-h-[80px] w-full resize-y leading-relaxed`}
+                    aria-label="추가 요청 사항 직접 입력"
+                  />
+                  <FormFileAttachmentField
+                    value={form.additionalRequestAttachments}
+                    onChange={(value) => patch('additionalRequestAttachments', value)}
+                    readOnly={isRequestReadOnly}
+                    recordId={recordId}
+                    slot="additional-request"
+                  />
+                </div>
               </FormField>
             </div>
           </FormSection>

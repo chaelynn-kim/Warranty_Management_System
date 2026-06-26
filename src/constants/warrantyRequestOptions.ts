@@ -29,6 +29,8 @@ export const WARRANTY_REQUEST_MATERIAL_OTHER = '기타'
 
 export const WARRANTY_REQUEST_PAINT_COMPANIES = ['NCC', 'KCC', 'AK', 'PPG', '삼화', '발스파'] as const
 
+export const WARRANTY_REQUEST_PAINT_COMPANY_OTHER = '기타'
+
 export const WARRANTY_REQUEST_REGIONS = ['고위험국가', '저위험국가'] as const
 
 export const HIGH_RISK_DETAIL_REGIONS = [

@@ -4,6 +4,7 @@ import { parseCoatingStructures } from './warrantyPeriodLookup'
 import {
   WARRANTY_REQUEST_DETAIL_REGION_CUSTOM,
   WARRANTY_REQUEST_MATERIAL_OTHER,
+  WARRANTY_REQUEST_PAINT_COMPANY_OTHER,
   WARRANTY_REQUEST_RESIN_ALL,
   WARRANTY_REQUEST_RESIN_OTHER,
   WARRANTY_REQUEST_TEAM_OTHER,
@@ -16,7 +17,7 @@ import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '12'
+const CURRENT_VERSION = '14'
 
 function normalizeDetailRegionValue(detailRegion: string): string {
   return joinMultiValue(
@@ -134,12 +135,17 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
     supplierWarrantyAttachmentKo: record.supplierWarrantyAttachmentKo ?? legacySupplier,
     supplierWarrantyAttachmentEn: record.supplierWarrantyAttachmentEn ?? '',
     resinCustom: record.resinCustom ?? '',
+    paintCompanyCustom: record.paintCompanyCustom ?? '',
     materialCustom: record.materialCustom ?? '',
     qualityAuthor: record.qualityAuthor ?? '',
     totalCoatingThickness: record.totalCoatingThickness ?? '',
     primerThickness: record.primerThickness ?? '',
     companyWarrantyTerms: record.companyWarrantyTerms ?? '',
     companyWarrantyTermsLookupKey: record.companyWarrantyTermsLookupKey ?? '',
+    warrantyTermAttachments: record.warrantyTermAttachments ?? '',
+    additionalRequestAttachments:
+      record.additionalRequestAttachments ??
+      (record.warrantyTermAttachments?.trim() ? record.warrantyTermAttachments : ''),
     reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
     status: normalizeRequestStatus(record.status),
     coatingStructure: normalizeCoatingStructure(record.coatingStructure ?? ''),
@@ -217,6 +223,17 @@ export function formatRequestMaterial(record: WarrantyIssuanceRequest): string {
 
   if (selected.includes(WARRANTY_REQUEST_MATERIAL_OTHER) && record.materialCustom.trim()) {
     labels.push(record.materialCustom.trim())
+  }
+
+  return labels.length > 0 ? labels.join(', ') : '-'
+}
+
+export function formatRequestPaintCompany(record: WarrantyIssuanceRequest): string {
+  const selected = parseMultiValue(record.paintCompany)
+  const labels = selected.filter((item) => item !== WARRANTY_REQUEST_PAINT_COMPANY_OTHER)
+
+  if (selected.includes(WARRANTY_REQUEST_PAINT_COMPANY_OTHER) && record.paintCompanyCustom.trim()) {
+    labels.push(record.paintCompanyCustom.trim())
   }
 
   return labels.length > 0 ? labels.join(', ') : '-'

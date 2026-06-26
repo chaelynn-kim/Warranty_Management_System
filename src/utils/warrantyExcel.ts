@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx'
 import type { WarrantyIssuanceRequestRecord, WarrantyRecord } from '../types'
 import { normalizeDate } from './helpers'
 import { formatAttachmentNames } from './warrantyAttachments'
-import { formatRequestDetailRegion, formatRequestResin } from './warrantyRequestStorage'
+import { formatRequestDetailRegion, formatRequestPaintCompany, formatRequestResin } from './warrantyRequestStorage'
 
 export function downloadWarrantyRequestExcel(records: WarrantyIssuanceRequestRecord[]) {
   const rows = records.map((record) => ({
@@ -10,7 +10,7 @@ export function downloadWarrantyRequestExcel(records: WarrantyIssuanceRequestRec
     발행일자: record.issueDate ? normalizeDate(record.issueDate) : '',
     요청자: record.requesterName,
     색상명: record.colorName,
-    도료사: record.paintCompany,
+    도료사: formatRequestPaintCompany(record),
     수지: formatRequestResin(record),
     세부국가명: formatRequestDetailRegion(record),
     수요가명: record.customer,

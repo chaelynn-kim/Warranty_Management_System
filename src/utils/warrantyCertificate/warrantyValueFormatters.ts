@@ -87,7 +87,7 @@ export function formatYearsKoSpacedTrailing(years: number): string {
 }
 
 export function formatYearsEnUpper(years: number): string {
-  return `${years}YEARS`
+  return `${years}YEARS `
 }
 
 export function formatYearsEnLower(years: number): string {

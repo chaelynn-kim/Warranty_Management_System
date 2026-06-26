@@ -19,6 +19,7 @@ import {
 import { resolveStatusAfterSave, normalizeRequestStatus } from '../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../constants/warrantyRequestStatus'
@@ -232,15 +233,22 @@ export function WarrantyIssuancePage({
       const revertedToReceived =
         options.editScope === 'quality' &&
         nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED &&
-        previousStatus === WARRANTY_REQUEST_STATUS_COMPLETED
+        (previousStatus === WARRANTY_REQUEST_STATUS_COMPLETED ||
+          previousStatus === WARRANTY_REQUEST_STATUS_DENIED)
+      const isNewlyDenied =
+        options.editScope === 'quality' &&
+        nextStatus === WARRANTY_REQUEST_STATUS_DENIED &&
+        previousStatus !== WARRANTY_REQUEST_STATUS_DENIED
       setRequestSaveMessage(
         revertedToPending
           ? '승인 대기 상태로 되돌렸습니다.'
           : revertedToReceived
             ? '접수 상태로 되돌렸습니다.'
-            : options.editScope === 'quality'
-              ? '검토 결과가 저장되었습니다.'
-              : '의뢰 내용이 수정되었습니다.'
+            : isNewlyDenied
+              ? '보증 불가로 처리되었습니다.'
+              : options.editScope === 'quality'
+                ? '검토 결과가 저장되었습니다.'
+                : '의뢰 내용이 수정되었습니다.'
       )
     }
 
@@ -337,7 +345,21 @@ export function WarrantyIssuancePage({
       <PageHeader
         subtitle="Warranty Management System"
         title="보증서 발행 관리"
-        description="등록된 보증서 발행 의뢰를 조회·관리합니다."
+        description={
+          <div className="space-y-1">
+            <p>등록된 보증서 발행 의뢰를 조회·관리합니다.</p>
+            <p>
+              영업사원이 보증서 발행을 의뢰하면 품질 팀장에게{' '}
+              <strong className="font-semibold text-text-primary">승인 요청 메일이 자동 발송</strong>
+              됩니다.
+            </p>
+            <p>
+              승인 후 담당자가 보증서를 작성하면, 의뢰한 영업사원에게{' '}
+              <strong className="font-semibold text-text-primary">발행 완료 알림 메일이 자동 발송</strong>
+              됩니다.
+            </p>
+          </div>
+        }
       />
 
       <WarrantyRequestStatusSummary records={requestRecords} />

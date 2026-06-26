@@ -2,10 +2,12 @@ import { useRef, useState, useEffect, type ReactNode } from 'react'
 import { Check, ChevronDown, CloudUpload, Loader2, Paperclip, ShieldCheck, X } from 'lucide-react'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
 import { getQualityStatusOptions, normalizeRequestStatus } from '../../utils/warrantyRequestStatus'
 import { RequestStatusBadge } from './RequestStatusBadge'
+import { LanguageAttachmentLabel } from './LanguageFlagIcon'
 import { CompanyWarrantyPreview } from './CompanyWarrantyPreview'
 import { WarrantyCertificateSection } from './WarrantyCertificateSection'
 import {
@@ -64,7 +66,7 @@ function FormField({
   optionalLabel = '선택',
   children,
 }: {
-  label: string
+  label: ReactNode
   required?: boolean
   optional?: boolean
   optionalLabel?: string
@@ -424,7 +426,7 @@ function WarrantyLanguageUploadGroup({
     <div className="space-y-3">
       <p className={fieldLabel}>{title}</p>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <FormField label="국문">
+        <FormField label={<LanguageAttachmentLabel language="ko" />}>
           <RequestFileAttachmentField
             value={koValue}
             recordId={recordId}
@@ -433,7 +435,7 @@ function WarrantyLanguageUploadGroup({
             onChange={onKoChange}
           />
         </FormField>
-        <FormField label="영문">
+        <FormField label={<LanguageAttachmentLabel language="en" />}>
           <RequestFileAttachmentField
             value={enValue}
             recordId={recordId}
@@ -489,7 +491,8 @@ export function RequestQualitySection({
   const statusOptions = getQualityStatusOptions(recordStatus)
   const showStatusChange =
     normalizedRecordStatus === WARRANTY_REQUEST_STATUS_RECEIVED ||
-    normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED
+    normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED ||
+    normalizedRecordStatus === WARRANTY_REQUEST_STATUS_DENIED
   const displayStatus = qualityTargetStatus || recordStatus
   const lookupKey = buildCompanyWarrantyLookupKey(productItem, resin, region, coatingStructure)
   const warrantyProducts = parseCompanyWarrantyTerms(companyWarrantyTerms)
@@ -609,7 +612,7 @@ export function RequestQualitySection({
           </FormField>
         </div>
 
-        <FormField label="보증 내용">
+        <FormField label="검토 결과">
           <div className="space-y-4">
             <CompanyWarrantyPreview
               productItem={productItem}
@@ -620,6 +623,22 @@ export function RequestQualitySection({
               editing={!readOnly}
               onProductFieldChange={handleWarrantyFieldChange}
             />
+            {readOnly ? (
+              <div
+                className={`min-h-[80px] whitespace-pre-wrap ${qualityReadOnlyBox} leading-relaxed text-text-primary`}
+              >
+                {reviewResult.trim() || '-'}
+              </div>
+            ) : (
+              <textarea
+                rows={4}
+                value={reviewResult}
+                onChange={(e) => onReviewResultChange(e.target.value)}
+                placeholder="검토 결과 입력"
+                className={`${fieldInput} min-h-[100px] resize-y leading-relaxed`}
+                aria-label="검토 결과"
+              />
+            )}
             <WarrantyCertificateSection
               productItem={productItem}
               resin={resin}
@@ -634,23 +653,6 @@ export function RequestQualitySection({
               companyWarrantyTerms={companyWarrantyTerms}
             />
           </div>
-        </FormField>
-
-        <FormField label="검토 결과">
-          {readOnly ? (
-            <div className={`min-h-[80px] whitespace-pre-wrap ${qualityReadOnlyBox} leading-relaxed text-text-primary`}>
-              {reviewResult.trim() || '-'}
-            </div>
-          ) : (
-            <textarea
-              rows={4}
-              value={reviewResult}
-              onChange={(e) => onReviewResultChange(e.target.value)}
-              placeholder="검토 결과 입력"
-              className={`${fieldInput} min-h-[100px] resize-y leading-relaxed`}
-              aria-label="검토 결과"
-            />
-          )}
         </FormField>
 
         <WarrantyLanguageUploadGroup
@@ -693,11 +695,13 @@ export function RequestQualitySection({
                 {normalizedRecordStatus === WARRANTY_REQUEST_STATUS_RECEIVED && (
                   <p className="text-xs text-text-muted">
                     <span className="text-text-secondary">접수</span> 상태에서{' '}
-                    <span className="text-text-secondary">발행 완료</span>로 변경 후 저장하면 요청자에게
-                    알림이 발송됩니다.
+                    <span className="text-text-secondary">발행 완료</span> 또는{' '}
+                    <span className="text-red-300">보증 불가</span>로 변경 후 저장할 수 있습니다.
+                    발행 완료로 변경 시 요청자에게 알림이 발송됩니다.
                   </p>
                 )}
-                {normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED && (
+                {(normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED ||
+                  normalizedRecordStatus === WARRANTY_REQUEST_STATUS_DENIED) && (
                   <p className="text-xs text-text-muted">
                     품질경영팀 담당자만 상태를 변경할 수 있습니다.{' '}
                     <span className="text-text-secondary">접수</span>·

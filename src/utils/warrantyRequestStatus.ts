@@ -1,5 +1,6 @@
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../constants/warrantyRequestStatus'
@@ -15,6 +16,7 @@ export function countRequestsByStatus(
     [WARRANTY_REQUEST_STATUS_PENDING]: 0,
     [WARRANTY_REQUEST_STATUS_RECEIVED]: 0,
     [WARRANTY_REQUEST_STATUS_COMPLETED]: 0,
+    [WARRANTY_REQUEST_STATUS_DENIED]: 0,
   }
 
   for (const record of records) {
@@ -39,7 +41,8 @@ export function canEditRequestFields(status: string): boolean {
   const normalized = normalizeRequestStatus(status)
   return (
     normalized === WARRANTY_REQUEST_STATUS_PENDING ||
-    normalized === WARRANTY_REQUEST_STATUS_COMPLETED
+    normalized === WARRANTY_REQUEST_STATUS_COMPLETED ||
+    normalized === WARRANTY_REQUEST_STATUS_DENIED
   )
 }
 
@@ -47,7 +50,8 @@ export function canEditQualityFields(status: string): boolean {
   const normalized = normalizeRequestStatus(status)
   return (
     normalized === WARRANTY_REQUEST_STATUS_RECEIVED ||
-    normalized === WARRANTY_REQUEST_STATUS_COMPLETED
+    normalized === WARRANTY_REQUEST_STATUS_COMPLETED ||
+    normalized === WARRANTY_REQUEST_STATUS_DENIED
   )
 }
 
@@ -63,6 +67,14 @@ export function isRequestCompleted(status: string): boolean {
   return normalizeRequestStatus(status) === WARRANTY_REQUEST_STATUS_COMPLETED
 }
 
+export function isRequestDenied(status: string): boolean {
+  return normalizeRequestStatus(status) === WARRANTY_REQUEST_STATUS_DENIED
+}
+
+export function isRequestQualityFinalized(status: string): boolean {
+  return isRequestCompleted(status) || isRequestDenied(status)
+}
+
 export function validateQualityCompletion(form: WarrantyIssuanceRequest): string | null {
   if (!form.issueDate.trim()) return '발행일자를 입력해 주세요.'
 
@@ -73,6 +85,7 @@ const QUALITY_STATUS_CHANGE_OPTIONS = [
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
 ] as const
 
 export function getQualityStatusOptions(_currentStatus: string): string[] {

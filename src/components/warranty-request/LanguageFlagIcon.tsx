@@ -1,17 +1,32 @@
 interface LanguageFlagIconProps {
   language: 'ko' | 'en'
+  className?: string
 }
 
-export function LanguageFlagIcon({ language }: LanguageFlagIconProps) {
+const iconClassName =
+  'h-7 w-7 shrink-0 object-contain brightness-0 invert transition-all duration-200'
+
+export function LanguageFlagIcon({ language, className = '' }: LanguageFlagIconProps) {
   const isKorean = language === 'ko'
   const label = isKorean ? '국문' : '영문'
 
   return (
     <img
-      src={isKorean ? '/icons/flag-kr.png' : '/icons/flag-us.png'}
+      src={isKorean ? '/icons/lang-ko.png' : '/icons/lang-en.png'}
       alt={label}
       draggable={false}
-      className="h-7 w-7 shrink-0 rounded-full object-cover transition-all duration-200 group-hover/flag:drop-shadow-[0_0_10px_rgba(59,130,246,0.85)] group-hover/flag:ring-2 group-hover/flag:ring-accent/60"
+      className={`${iconClassName} ${className}`.trim()}
     />
+  )
+}
+
+export function LanguageAttachmentLabel({ language }: { language: 'ko' | 'en' }) {
+  const label = language === 'ko' ? '국문' : '영문'
+
+  return (
+    <span className="inline-flex items-center gap-2">
+      <LanguageFlagIcon language={language} />
+      {label}
+    </span>
   )
 }

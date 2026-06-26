@@ -27,6 +27,9 @@ const SLIDE2_OBJECT3_HEIGHT_SHRINK_KO = 200000
 const SLIDE2_OBJECT3_HEIGHT_SHRINK_EN = 280000
 /** 1페이지 수지 TOP 색상명 — OOXML sz는 1/100 pt (2500 = 25pt) */
 const SLIDE1_COVER_TITLE_FONT_SZ = 2500
+/** 1페이지 천공 연수 — 템플릿 2자리 폭 기준 한 자리일 때 YEAR와 간격 맞춤 */
+const SLIDE1_COVER_YEAR_SHAPE_NAME = 'object 2'
+const SLIDE1_SINGLE_DIGIT_YEAR_CX = 150000
 const SLIDE4_FOOTER_SHAPE_Y_KO = 4985000
 const SLIDE4_FOOTER_ORIGINAL_Y_KO = 5159374
 /** 4페이지 KO 15)번과 하단 효력 문구 사이 간격 */
@@ -599,6 +602,13 @@ const PRINT_KO_PANEL_LOCATION_LINES = [
   '떨어진 곳)',
 ]
 
+/** PAINT 국문 2페이지 — 패널 용도(지붕재/벽체) 줄바꿈 */
+const PAINT_KO_PANEL_LOCATION_LINES = [
+  '(해안 및',
+  '공업지대에서 1km',
+  '이상 떨어진 곳)',
+]
+
 const PRINT_EN_PANEL_LOCATION_LINE = '(>1km from marine & Industrial environment)'
 
 function extractCellText(cellInner: string): string {
@@ -760,14 +770,18 @@ function formatPrintEnTableCell(cellXml: string): string {
   return processTableCell(cellXml)
 }
 
-function buildPrintKoPanelUseCell(cellXml: string, label: string): string {
+function buildKoPanelUseCell(
+  cellXml: string,
+  label: string,
+  locationLines: readonly string[]
+): string {
   const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
   const template = paragraphs.find((paragraph) => !isParagraphEmpty(paragraph)) ?? paragraphs[0]
   if (!template) return cellXml
 
   const newParagraphs = [
     normalizeTableParagraph(template, label),
-    ...PRINT_KO_PANEL_LOCATION_LINES.map((line) => normalizeTableParagraph(template, line)),
+    ...locationLines.map((line) => normalizeTableParagraph(template, line)),
   ]
 
   const next = cellXml.replace(/<a:txBody>([\s\S]*?)<\/a:txBody>/, () => {
@@ -777,9 +791,17 @@ function buildPrintKoPanelUseCell(cellXml: string, label: string): string {
   return finalizeTableCell(next)
 }
 
-function isPrintKoPanelUseText(text: string): boolean {
+function buildPrintKoPanelUseCell(cellXml: string, label: string): string {
+  return buildKoPanelUseCell(cellXml, label, PRINT_KO_PANEL_LOCATION_LINES)
+}
+
+function isKoPanelUseText(text: string): boolean {
   const compact = text.replace(/\s+/g, '')
   return /^(지붕재|벽체)/.test(compact) && compact.includes('해안')
+}
+
+function isPrintKoPanelUseText(text: string): boolean {
+  return isKoPanelUseText(text)
 }
 
 function formatPrintKoPanelUseCell(cellXml: string): string {
@@ -794,6 +816,20 @@ function formatPrintKoPanelUseCell(cellXml: string): string {
   if (!label) return processTableCell(cellXml)
 
   return buildPrintKoPanelUseCell(cellXml, label)
+}
+
+function formatPaintKoPanelUseCell(cellXml: string): string {
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      (cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? [])
+        .map((paragraph) => extractParagraphText(paragraph))
+        .join(' ')
+    )
+  )
+  const label = fullText.match(/^(지붕재|벽체)/)?.[1]
+  if (!label) return processTableCell(cellXml)
+
+  return buildKoPanelUseCell(cellXml, label, PAINT_KO_PANEL_LOCATION_LINES)
 }
 
 function processTableCell(cellXml: string): string {
@@ -866,6 +902,29 @@ function formatPrintKoTableCell(cellXml: string): string {
   return processTableCell(cellXml)
 }
 
+function formatPaintKoTableCell(cellXml: string): string {
+  const paragraphs = cellXml.match(/<a:p>[\s\S]*?<\/a:p>/g) ?? []
+  const fullText = normalizeMarineDistanceText(
+    normalizeCertificateTypography(
+      paragraphs.map((paragraph) => extractParagraphText(paragraph)).join(' ')
+    )
+  )
+
+  if (isRegionAreaText(fullText)) return formatRegionCell(cellXml)
+  if (isWarrantyMetricText(fullText)) return formatWarrantyMetricCell(cellXml)
+  if (isKoPanelUseText(fullText)) return formatPaintKoPanelUseCell(cellXml)
+
+  if (fullText.includes('측정불가') || /^<ΔE/i.test(fullText)) {
+    return buildMultiParagraphCell(cellXml, ['측정불가'])
+  }
+
+  if (/^\d+\s*년$/.test(fullText.trim())) {
+    return buildMultiParagraphCell(cellXml, [fullText.trim()])
+  }
+
+  return processTableCell(cellXml)
+}
+
 function processTable(
   tableXml: string,
   productItem?: 'PAINT' | 'PRINT',
@@ -903,6 +962,9 @@ function processTable(
     if (productItem === 'PRINT' && isPrintWarrantyTable(tableXml)) {
       if (language === 'en') return formatPrintEnTableCell(cellXml)
       return formatPrintKoTableCell(cellXml)
+    }
+    if (isPaintWarrantyTable && language === 'ko') {
+      return formatPaintKoTableCell(cellXml)
     }
     return processTableCell(cellXml)
   })
@@ -1074,6 +1136,35 @@ function applySlide1CoverTitleFix(slideXml: string): string {
       return next
     }
   )
+}
+
+/** 1페이지 — 천공 연수가 한 자리일 때 YEAR(년) 문구와 간격이 벌어지지 않도록 박스 폭·위치 보정 */
+function applySlide1CoverYearSingleDigitFix(slideXml: string): string {
+  return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
+    if (!shapeXml.includes(`name="${SLIDE1_COVER_YEAR_SHAPE_NAME}"`)) return shapeXml
+
+    const paragraphXml = shapeXml.match(/<a:p>[\s\S]*?<\/a:p>/)?.[0] ?? ''
+    const yearText = extractParagraphText(paragraphXml).replace(/\u00a0/g, '').trim()
+    if (!/^\d$/.test(yearText)) return shapeXml
+
+    let next = shapeXml.replace(
+      /(<a:xfrm><a:off x=")(\d+)(" y=")(\d+)("\/><a:ext cx=")(\d+)(" cy=")(\d+)("\/>)/,
+      (_match, p1: string, x: string, p3: string, y: string, p4: string, cx: string, p5: string, cy: string, p6: string) => {
+        const originalX = Number(x)
+        const originalCx = Number(cx)
+        const nextCx = Math.min(SLIDE1_SINGLE_DIGIT_YEAR_CX, originalCx)
+        const nextX = originalX + (originalCx - nextCx)
+        return `${p1}${nextX}${p3}${y}${p4}${nextCx}${p5}${cy}${p6}`
+      }
+    )
+
+    next = next.replace(/<a:pPr([^>]*)>/, (_match, attrs: string) => {
+      const cleaned = attrs.replace(/\s*algn="[^"]*"/g, '').replace(/\s*marL="[^"]*"/g, '')
+      return `<a:pPr marL="0"${cleaned}>`
+    })
+
+    return next
+  })
 }
 
 function reorderParagraphBlock(
@@ -2189,6 +2280,7 @@ export function postProcessSlideXml(
 
   if (slideNumber === 1) {
     next = applySlide1CoverTitleFix(next)
+    next = applySlide1CoverYearSingleDigitFix(next)
   }
 
   next = mapOutsideTables(next, (outsideXml) => {

@@ -10,6 +10,7 @@ import {
 import {
   displayRequestValue,
   formatRequestDetailRegion,
+  formatRequestPaintCompany,
   formatRequestResin,
   sortWarrantyRequestRecordsBySequenceDesc,
 } from '../../utils/warrantyRequestStorage'
@@ -57,7 +58,35 @@ function ReadOnlyCell({
 }
 
 const attachmentButtonClass =
-  'group/flag inline-flex items-center justify-center rounded-lg p-0.5 transition-all hover:shadow-[0_0_14px_rgba(59,130,246,0.55)] hover:ring-2 hover:ring-accent/45 active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45'
+  'group/flag inline-flex h-8 w-8 items-center justify-center rounded-lg transition-all hover:shadow-[0_0_14px_rgba(59,130,246,0.55)] hover:ring-2 hover:ring-accent/45 active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45'
+
+const attachmentSlotClass = 'flex w-8 flex-col items-center gap-1'
+
+function AttachmentIconButton({
+  language,
+  file,
+}: {
+  language: 'ko' | 'en'
+  file: ReturnType<typeof parseFileAttachments>[number]
+}) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation()
+        void downloadFileAttachment(file)
+      }}
+      aria-label={`당사 Warranty ${language === 'ko' ? '국문' : '영문'} 다운로드: ${file.name}`}
+      title={`${language === 'ko' ? '국문' : '영문'} · ${file.name}`}
+      className={attachmentButtonClass}
+    >
+      <LanguageFlagIcon
+        language={language}
+        className="group-hover/flag:drop-shadow-[0_0_8px_rgba(59,130,246,0.85)]"
+      />
+    </button>
+  )
+}
 
 function CompanyWarrantyAttachmentCell({
   koValue,
@@ -66,39 +95,33 @@ function CompanyWarrantyAttachmentCell({
   koValue: string
   enValue: string
 }) {
-  const attachments: {
-    language: 'ko' | 'en'
-    file: ReturnType<typeof parseFileAttachments>[number]
-  }[] = []
+  const koAttachments = parseFileAttachments(koValue).map((file) => ({
+    language: 'ko' as const,
+    file,
+  }))
+  const enAttachments = parseFileAttachments(enValue).map((file) => ({
+    language: 'en' as const,
+    file,
+  }))
 
-  for (const file of parseFileAttachments(koValue)) {
-    attachments.push({ language: 'ko', file })
-  }
-  for (const file of parseFileAttachments(enValue)) {
-    attachments.push({ language: 'en', file })
-  }
-
-  if (attachments.length === 0) {
+  if (koAttachments.length === 0 && enAttachments.length === 0) {
     return <div className={`${cellClass} text-center text-text-muted`}>-</div>
   }
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-1.5 px-1 py-1.5">
-      {attachments.map(({ language, file }) => (
-        <button
-          key={file.id}
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation()
-            void downloadFileAttachment(file)
-          }}
-          aria-label={`당사 Warranty ${language === 'ko' ? '국문' : '영문'} 다운로드: ${file.name}`}
-          title={`${language === 'ko' ? '국문' : '영문'} · ${file.name}`}
-          className={attachmentButtonClass}
-        >
-          <LanguageFlagIcon language={language} />
-        </button>
-      ))}
+    <div className="flex justify-center px-1 py-1.5">
+      <div className="inline-flex items-start gap-1.5">
+        <div className={attachmentSlotClass}>
+          {koAttachments.map(({ file }) => (
+            <AttachmentIconButton key={file.id} language="ko" file={file} />
+          ))}
+        </div>
+        <div className={attachmentSlotClass}>
+          {enAttachments.map(({ file }) => (
+            <AttachmentIconButton key={file.id} language="en" file={file} />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -308,7 +331,7 @@ export function WarrantyRequestTable({
                     />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <ReadOnlyCell value={displayRequestValue(record.paintCompany)} align="center" />
+                    <ReadOnlyCell value={formatRequestPaintCompany(record)} align="center" />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
                     <ReadOnlyCell value={formatRequestResin(record)} align="center" />

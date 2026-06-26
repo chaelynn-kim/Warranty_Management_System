@@ -1,5 +1,5 @@
 import type { WarrantyIssuanceRequest, WarrantyRecord } from '../types'
-import { formatRequestResin } from './warrantyRequestStorage'
+import { formatRequestPaintCompany, formatRequestResin } from './warrantyRequestStorage'
 
 function displayOrDash(value: string): string {
   const trimmed = value.trim()
@@ -22,7 +22,7 @@ export function warrantyRequestToRecord(request: WarrantyIssuanceRequest): Warra
     detailRegion: displayOrDash(formatDetailRegionFromRequest(request)),
     customer: displayOrDash(request.customer),
     colorName: displayOrDash(request.colorName),
-    paintCompany: displayOrDash(request.paintCompany),
+    paintCompany: displayOrDash(formatRequestPaintCompany(request)),
     resin: displayOrDash(formatRequestResin(request)),
     additionalRequest: displayOrDash(request.additionalRequest),
     fileAttachment: '',

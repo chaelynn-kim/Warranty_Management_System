@@ -11,11 +11,12 @@ import {
   canPromoteToReceived,
   canSetQualityTargetStatus,
   canStartQualityEdit,
-  isRequestCompleted,
+  isRequestQualityFinalized,
   normalizeRequestStatus,
 } from '../../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
@@ -132,7 +133,8 @@ export function WarrantyIssuanceRequestModal({
     editScope === 'quality' &&
     canManageQuality &&
     (status === WARRANTY_REQUEST_STATUS_RECEIVED ||
-      status === WARRANTY_REQUEST_STATUS_COMPLETED)
+      status === WARRANTY_REQUEST_STATUS_COMPLETED ||
+      status === WARRANTY_REQUEST_STATUS_DENIED)
 
   const handleSubmit = () => {
     if (!formRef.current) {
@@ -269,10 +271,12 @@ export function WarrantyIssuanceRequestModal({
     status === WARRANTY_REQUEST_STATUS_PENDING
       ? '품질경영팀 팀장 승인 시 접수 처리됩니다.'
       : status === WARRANTY_REQUEST_STATUS_RECEIVED
-        ? '검토 결과 작성 후 상태를 발행 완료로 변경하고 저장하면 요청자에게 알림이 발송됩니다.'
+        ? '검토 결과 작성 후 상태를 발행 완료 또는 보증 불가로 변경하고 저장할 수 있습니다. 발행 완료 시 요청자에게 알림이 발송됩니다.'
         : status === WARRANTY_REQUEST_STATUS_COMPLETED
           ? '품질경영팀 담당자가 검토 결과·상태를 수정할 수 있습니다.'
-          : ''
+          : status === WARRANTY_REQUEST_STATUS_DENIED
+            ? '보증 불가로 처리되었습니다. 품질경영팀 담당자가 검토 결과·상태를 수정할 수 있습니다.'
+            : ''
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
@@ -433,7 +437,7 @@ export function WarrantyIssuanceRequestModal({
                     onClick={handleStartQualityEdit}
                     className="inline-flex h-11 items-center gap-2 rounded-lg border border-border bg-bg-tertiary px-5 text-sm font-semibold text-text-primary transition-colors hover:border-fuchsia-400 hover:text-fuchsia-300"
                   >
-                    {isRequestCompleted(status) ? '품질 영역 수정' : '작성하기'}
+                    {isRequestQualityFinalized(status) ? '품질 영역 수정' : '작성하기'}
                   </button>
                 )}
                 {canEditRequestFields(status) && canEditRequestContent && (

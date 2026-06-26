@@ -19,6 +19,8 @@ const REQUEST_ATTACHMENT_FIELDS: {
   { field: 'companyWarrantyAttachmentEn', slot: 'company-en' },
   { field: 'supplierWarrantyAttachmentKo', slot: 'supplier-ko' },
   { field: 'supplierWarrantyAttachmentEn', slot: 'supplier-en' },
+  { field: 'warrantyTermAttachments', slot: 'warranty-term' },
+  { field: 'additionalRequestAttachments', slot: 'additional-request' },
 ]
 
 async function migrateAttachmentField(

@@ -138,6 +138,7 @@ export interface WarrantyIssuanceRequest {
   resin: string
   resinCustom: string
   paintCompany: string
+  paintCompanyCustom: string
   material: string
   materialCustom: string
   coatingStructure: string
@@ -150,7 +151,11 @@ export interface WarrantyIssuanceRequest {
   language: string
   warrantyTermMode: string
   warrantyTermCustom: string
+  /** @deprecated migrated to additionalRequestAttachments */
+  warrantyTermAttachments: string
   additionalRequest: string
+  /** JSON-serialized WarrantyFileAttachment[] — 추가 요청 사항 첨부 */
+  additionalRequestAttachments: string
   /** JSON-serialized WarrantyFileAttachment[] — 당사 Warranty (국문) */
   companyWarrantyAttachmentKo: string
   /** JSON-serialized WarrantyFileAttachment[] — 당사 Warranty (영문) */

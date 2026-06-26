@@ -7,6 +7,8 @@ export type RequestAttachmentSlot =
   | 'company-en'
   | 'supplier-ko'
   | 'supplier-en'
+  | 'warranty-term'
+  | 'additional-request'
 
 export const REQUEST_MAX_ATTACHMENT_BYTES = 100 * 1024 * 1024
 

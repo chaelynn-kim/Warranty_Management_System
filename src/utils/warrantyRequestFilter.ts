@@ -1,5 +1,5 @@
 import type { WarrantyIssuanceRequestRecord } from '../types'
-import { formatRequestDetailRegion, formatRequestResin } from './warrantyRequestStorage'
+import { formatRequestDetailRegion, formatRequestPaintCompany, formatRequestResin } from './warrantyRequestStorage'
 import { isValidDateStr, normalizeDate } from './helpers'
 
 export function filterRecordsByKeyword(
@@ -14,6 +14,7 @@ export function filterRecordsByKeyword(
       record.requesterName,
       record.colorName,
       formatRequestResin(record),
+      formatRequestPaintCompany(record),
       record.resinCustom,
       record.materialCustom,
       formatRequestDetailRegion(record),

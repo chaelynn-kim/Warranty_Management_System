@@ -3,14 +3,26 @@ import {
   LOW_RISK_DETAIL_REGIONS,
 } from '../../constants/warrantyRequestOptions'
 
+/** 영문 보증서 3페이지 — 세부 국가명 고정 번역 (의뢰서 세부 국가명 기준) */
 const COUNTRY_EN: Record<string, string> = {
+  // 저위험국가
+  미국: 'U.S.A',
+  캐나다: 'Canada',
+  러시아: 'Russia',
+  일본: 'Japan',
+  중국: 'China',
+  한국: 'Korea',
+  유럽: 'Europe',
+  포르투갈: 'Portugal',
+  // 고위험국가
   에콰도르: 'Ecuador',
   파나마: 'Panama',
   과테말라: 'Guatemala',
   콜롬비아: 'Colombia',
   페루: 'Peru',
   브라질: 'Brazil',
-  '칠레(일부)': 'Chile (partial)',
+  '칠레(일부)': 'Chile',
+  칠레: 'Chile',
   멕시코: 'Mexico',
   사우디: 'Saudi Arabia',
   쿠웨이트: 'Kuwait',
@@ -27,14 +39,6 @@ const COUNTRY_EN: Record<string, string> = {
   태국: 'Thailand',
   필리핀: 'Philippines',
   베트남: 'Vietnam',
-  미국: 'United States',
-  캐나다: 'Canada',
-  러시아: 'Russia',
-  일본: 'Japan',
-  중국: 'China',
-  한국: 'Korea',
-  유럽: 'Europe',
-  포르투갈: 'Portugal',
 }
 
 for (const country of [...HIGH_RISK_DETAIL_REGIONS, ...LOW_RISK_DETAIL_REGIONS]) {
@@ -43,18 +47,28 @@ for (const country of [...HIGH_RISK_DETAIL_REGIONS, ...LOW_RISK_DETAIL_REGIONS])
   }
 }
 
+function ensureTrailingPeriod(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return ''
+  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
+}
+
 export function translateCountryToEnglish(countryKo: string): string {
   const trimmed = countryKo.trim()
   if (!trimmed) return ''
   return COUNTRY_EN[trimmed] ?? trimmed
 }
 
+/** PAINT/PRINT 영문 보증서 3페이지 item 1 — 국가명 고정 번역 + 마침표 */
 export function translateDetailRegionToEnglish(detailRegionKo: string): string {
   const parts = detailRegionKo
     .split(/[,，]/)
     .map((part) => part.trim())
     .filter(Boolean)
+    .filter((part) => part !== '-')
 
   if (parts.length === 0) return ''
-  return parts.map((part) => translateCountryToEnglish(part)).join(', ')
+  return parts
+    .map((part) => ensureTrailingPeriod(translateCountryToEnglish(part)))
+    .join(', ')
 }

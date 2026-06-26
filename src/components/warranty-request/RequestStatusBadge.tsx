@@ -1,6 +1,7 @@
 import { normalizeRequestStatus } from '../../utils/warrantyRequestStatus'
 import {
   WARRANTY_REQUEST_STATUS_COMPLETED,
+  WARRANTY_REQUEST_STATUS_DENIED,
   WARRANTY_REQUEST_STATUS_PENDING,
   WARRANTY_REQUEST_STATUS_RECEIVED,
 } from '../../constants/warrantyRequestStatus'
@@ -9,6 +10,7 @@ const STATUS_STYLES: Record<string, string> = {
   [WARRANTY_REQUEST_STATUS_PENDING]: 'border-amber-500/40 bg-amber-500/15 text-amber-300',
   [WARRANTY_REQUEST_STATUS_RECEIVED]: 'border-sky-500/40 bg-sky-500/15 text-sky-300',
   [WARRANTY_REQUEST_STATUS_COMPLETED]: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-300',
+  [WARRANTY_REQUEST_STATUS_DENIED]: 'border-red-500/40 bg-red-500/15 text-red-300',
 }
 
 interface RequestStatusBadgeProps {
