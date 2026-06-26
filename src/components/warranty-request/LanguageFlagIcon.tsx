@@ -21,12 +21,5 @@ export function LanguageFlagIcon({ language, className = '' }: LanguageFlagIconP
 }
 
 export function LanguageAttachmentLabel({ language }: { language: 'ko' | 'en' }) {
-  const label = language === 'ko' ? '국문' : '영문'
-
-  return (
-    <span className="inline-flex items-center gap-2">
-      <LanguageFlagIcon language={language} />
-      {label}
-    </span>
-  )
+  return <>{language === 'ko' ? '국문' : '영문'}</>
 }

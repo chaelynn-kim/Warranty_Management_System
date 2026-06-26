@@ -89,11 +89,17 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
         subtitle="WARRANTY REQUEST"
         title="보증서 발행 의뢰"
         description={
-          <p>
-            보증서 발행을 위해 아래 양식 작성 후{' '}
-            <strong className="font-semibold text-text-primary">[의뢰하기]</strong> 버튼을 클릭해
-            주세요.
-          </p>
+          <>
+            <p>
+              보증서 발행을 위해 아래 양식 작성 후{' '}
+              <strong className="font-semibold text-accent">[의뢰하기]</strong> 버튼을 클릭해
+              주세요.
+            </p>
+            <p>
+              의뢰 시 품질 팀장에게 <strong className="font-semibold text-text-primary"> 승인 요청 메일이 자동 발송</strong>
+              됩니다.
+            </p>
+          </>
         }
       />
 

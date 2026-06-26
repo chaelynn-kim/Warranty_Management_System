@@ -87,6 +87,16 @@ export function parseCoatingStructures(value: string): string[] {
   return [...new Set(paired)]
 }
 
+export function joinCoatingStructures(values: string[]): string {
+  const selected = new Set<string>()
+  for (const value of values) {
+    for (const structure of parseCoatingStructures(value)) {
+      selected.add(structure)
+    }
+  }
+  return WARRANTY_REQUEST_COATING_STRUCTURES.filter((option) => selected.has(option)).join(', ')
+}
+
 function paintResinMatchesProduct(resin: string, product: ProductWarranty): boolean {
   if (resolveProductLine(product) !== 'paint') return false
 

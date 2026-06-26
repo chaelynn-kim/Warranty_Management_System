@@ -28,6 +28,7 @@ import {
 } from '../../constants/warrantyRequestOptions'
 import type { WarrantyIssuanceRequest } from '../../types'
 import { defaultRequestDate } from '../../utils/helpers'
+import { joinCoatingStructures, parseCoatingStructures } from '../../utils/warrantyPeriodLookup'
 import { formatRequestDetailRegion } from '../../utils/warrantyRequestStorage'
 import { validateQualityCompletion } from '../../utils/warrantyRequestStatus'
 import { periodCardHeaderClass } from '../warranty-period/periodTheme'
@@ -174,6 +175,8 @@ function OptionDropdownMultiSelect({
   onOtherCustomChange,
   otherPlaceholder,
   showAllLabels = false,
+  parseValue = parseMultiValue,
+  joinValue = joinMultiValue,
 }: {
   value: string
   onChange: (value: string) => void
@@ -187,9 +190,11 @@ function OptionDropdownMultiSelect({
   onOtherCustomChange?: (value: string) => void
   otherPlaceholder?: string
   showAllLabels?: boolean
+  parseValue?: (value: string) => string[]
+  joinValue?: (values: string[]) => string
 }) {
   const { open, setOpen, ref } = useDropdownOpen()
-  const selected = parseMultiValue(value)
+  const selected = parseValue(value)
   const isEmpty = selected.length === 0
   const showOtherInput = Boolean(otherOption && selected.includes(otherOption))
 
@@ -208,10 +213,10 @@ function OptionDropdownMultiSelect({
   const toggleOption = (option: string) => {
     if (otherOption && option === otherOption) {
       if (selected.includes(option)) {
-        onChange(joinMultiValue(selected.filter((item) => item !== option)))
+        onChange(joinValue(selected.filter((item) => item !== option)))
         onOtherCustomChange?.('')
       } else {
-        onChange(joinMultiValue([otherOption]))
+        onChange(joinValue([otherOption]))
       }
       setOpen(false)
       return
@@ -225,7 +230,7 @@ function OptionDropdownMultiSelect({
     }
 
     onChange(
-      joinMultiValue(
+      joinValue(
         withoutOther.includes(option)
           ? withoutOther.filter((item) => item !== option)
           : [...withoutOther, option]
@@ -960,6 +965,8 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                     placeholder="도장구조 선택"
                     ariaLabel="도장구조 선택"
                     showAllLabels
+                    parseValue={parseCoatingStructures}
+                    joinValue={joinCoatingStructures}
                     onChange={(value) => patch('coatingStructure', value)}
                   />
                 </FormField>
