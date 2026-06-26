@@ -121,7 +121,9 @@ export function FormFileAttachmentField({
   }
 
   return (
-    <div className="space-y-3">
+    <div
+      className={`space-y-3 ${readOnly && files.length > 0 ? 'pointer-events-auto' : ''}`}
+    >
       {!readOnly && (
         <>
           <input

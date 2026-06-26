@@ -193,9 +193,14 @@ export function WarrantyIssuancePage({
       options.editScope,
       options.targetStatus
     )
+    const previousStatus = normalizeRequestStatus(current.status)
     const isNewlyCompleted =
       nextStatus === WARRANTY_REQUEST_STATUS_COMPLETED &&
-      normalizeRequestStatus(current.status) !== WARRANTY_REQUEST_STATUS_COMPLETED
+      previousStatus !== WARRANTY_REQUEST_STATUS_COMPLETED
+    const isNewlyDenied =
+      nextStatus === WARRANTY_REQUEST_STATUS_DENIED &&
+      previousStatus !== WARRANTY_REQUEST_STATUS_DENIED
+    const shouldNotifyRequester = isNewlyCompleted || isNewlyDenied
     const nextRecords = requestRecords.map((record) =>
       record.id === id ? { ...record, ...request, status: nextStatus } : record
     )
@@ -211,21 +216,24 @@ export function WarrantyIssuancePage({
     setRequestRecords(nextRecords)
     setHighlightedRequestId(id)
 
-    if (isNewlyCompleted) {
+    if (shouldNotifyRequester) {
       const updatedRecord = nextRecords.find((record) => record.id === id)
       try {
         await sendWarrantyRequestCompletedEmail(request, {
           requesterEmail: updatedRecord?.requesterEmail ?? current.requesterEmail,
         })
-        setRequestSaveMessage('발행 완료 처리되었습니다.')
-      } catch (mailError) {
-        console.error('[EmailJS] 발행 완료 알림 메일 발송 실패', mailError)
         setRequestSaveMessage(
-          '발행 완료되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
+          isNewlyDenied ? '보증 불가로 처리되었습니다.' : '발행 완료 처리되었습니다.'
+        )
+      } catch (mailError) {
+        console.error('[EmailJS] 요청자 알림 메일 발송 실패', mailError)
+        setRequestSaveMessage(
+          isNewlyDenied
+            ? '보증 불가 처리되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
+            : '발행 완료되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
         )
       }
     } else {
-      const previousStatus = normalizeRequestStatus(current.status)
       const revertedToPending =
         options.editScope === 'quality' &&
         nextStatus === WARRANTY_REQUEST_STATUS_PENDING &&
@@ -235,20 +243,14 @@ export function WarrantyIssuancePage({
         nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED &&
         (previousStatus === WARRANTY_REQUEST_STATUS_COMPLETED ||
           previousStatus === WARRANTY_REQUEST_STATUS_DENIED)
-      const isNewlyDenied =
-        options.editScope === 'quality' &&
-        nextStatus === WARRANTY_REQUEST_STATUS_DENIED &&
-        previousStatus !== WARRANTY_REQUEST_STATUS_DENIED
       setRequestSaveMessage(
         revertedToPending
           ? '승인 대기 상태로 되돌렸습니다.'
           : revertedToReceived
             ? '접수 상태로 되돌렸습니다.'
-            : isNewlyDenied
-              ? '보증 불가로 처리되었습니다.'
-              : options.editScope === 'quality'
-                ? '검토 결과가 저장되었습니다.'
-                : '의뢰 내용이 수정되었습니다.'
+            : options.editScope === 'quality'
+              ? '검토 결과가 저장되었습니다.'
+              : '의뢰 내용이 수정되었습니다.'
       )
     }
 
@@ -354,8 +356,10 @@ export function WarrantyIssuancePage({
               됩니다.
             </p>
             <p>
-              승인 후 담당자가 보증서를 작성하면, 의뢰한 영업사원에게{' '}
-              <strong className="font-semibold text-text-primary">발행 완료 알림 메일이 자동 발송</strong>
+              승인 후 담당자가 검토를 마치면, 의뢰한 영업사원에게{' '}
+              <strong className="font-semibold text-text-primary">
+                발행 완료·보증 불가 알림 메일이 자동 발송
+              </strong>
               됩니다.
             </p>
           </div>

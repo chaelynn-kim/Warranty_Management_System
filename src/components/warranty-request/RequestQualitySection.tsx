@@ -697,7 +697,7 @@ export function RequestQualitySection({
                     <span className="text-text-secondary">접수</span> 상태에서{' '}
                     <span className="text-text-secondary">발행 완료</span> 또는{' '}
                     <span className="text-red-300">보증 불가</span>로 변경 후 저장할 수 있습니다.
-                    발행 완료로 변경 시 요청자에게 알림이 발송됩니다.
+                    발행 완료·보증 불가로 최초 저장 시 요청자에게 알림이 발송됩니다.
                   </p>
                 )}
                 {(normalizedRecordStatus === WARRANTY_REQUEST_STATUS_COMPLETED ||

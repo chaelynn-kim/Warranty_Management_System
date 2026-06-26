@@ -1071,16 +1071,19 @@ export const WarrantyIssuanceRequestForm = forwardRef<
                     value={form.additionalRequest}
                     onChange={(e) => patch('additionalRequest', e.target.value)}
                     placeholder="추가 요청 사항 직접 입력"
+                    readOnly={isRequestReadOnly}
                     className={`${fieldInput} min-h-[80px] w-full resize-y leading-relaxed`}
                     aria-label="추가 요청 사항 직접 입력"
                   />
-                  <FormFileAttachmentField
-                    value={form.additionalRequestAttachments}
-                    onChange={(value) => patch('additionalRequestAttachments', value)}
-                    readOnly={isRequestReadOnly}
-                    recordId={recordId}
-                    slot="additional-request"
-                  />
+                  <div className={isRequestReadOnly ? 'pointer-events-auto' : undefined}>
+                    <FormFileAttachmentField
+                      value={form.additionalRequestAttachments}
+                      onChange={(value) => patch('additionalRequestAttachments', value)}
+                      readOnly={isRequestReadOnly}
+                      recordId={recordId}
+                      slot="additional-request"
+                    />
+                  </div>
                 </div>
               </FormField>
             </div>

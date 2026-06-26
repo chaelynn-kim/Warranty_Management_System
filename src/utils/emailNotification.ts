@@ -125,7 +125,7 @@ export async function sendWarrantyRequestPendingEmail(
   await emailjs.send(SERVICE_ID, PENDING_TEMPLATE_ID, templateParams, { publicKey: PUBLIC_KEY })
 }
 
-/** 품질 작성 후 발행 완료 시 요청자 알림 메일 */
+/** 품질 작성 후 발행 완료·보증 불가 최초 저장 시 요청자 알림 메일 */
 export async function sendWarrantyRequestCompletedEmail(
   request: WarrantyIssuanceRequest,
   options?: { requesterEmail?: string }
