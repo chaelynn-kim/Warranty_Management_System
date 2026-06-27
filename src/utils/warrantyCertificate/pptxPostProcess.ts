@@ -1,3 +1,8 @@
+import {
+  formatYearsPlusOneEn,
+  formatYearsPlusOneKo,
+} from './warrantyValueFormatters'
+
 function escapeXml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -1848,7 +1853,25 @@ function applyPrintKoSlide4Layout(slideXml: string): string {
   })
 }
 
-function applySlide4KoFixes(slideXml: string, productItem?: 'PAINT' | 'PRINT'): string {
+function applySlide4KoItem15YearFix(slideXml: string, perforationYears: number): string {
+  const targetYears = formatYearsPlusOneKo(perforationYears)
+
+  return slideXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
+    const text = extractParagraphText(paragraph)
+    if (!text.includes('최종 사용자는 세아씨엠의 요구')) return paragraph
+
+    const updated = text.replace(/\d+년/, targetYears)
+    if (updated === text) return paragraph
+
+    return setParagraphMergedText(paragraph, updated)
+  })
+}
+
+function applySlide4KoFixes(
+  slideXml: string,
+  productItem?: 'PAINT' | 'PRINT',
+  perforationYears?: number
+): string {
   let next = slideXml
 
   const paragraphs: string[] = []
@@ -1905,6 +1928,10 @@ function applySlide4KoFixes(slideXml: string, productItem?: 'PAINT' | 'PRINT'): 
       new RegExp(`<a:off x="903098" y="${SLIDE4_FOOTER_ORIGINAL_Y_KO}"`),
       `<a:off x="903098" y="${SLIDE4_FOOTER_SHAPE_Y_KO}"`
     )
+  }
+
+  if (perforationYears && perforationYears > 0) {
+    next = applySlide4KoItem15YearFix(next, perforationYears)
   }
 
   return next
@@ -1982,13 +2009,32 @@ const SLIDE4_EN_PERIOD_ITEMS: Array<{
     text:
       'Claims must be submitted within the guarantee period and within thirty (30) days after discovering the \tdefect. Purchaser must notify the defect contents to SeAH Coated Metal in writing and give Union a \treasonable opportunity to inspect the material. And If possible, Purchaser must provide SeAH Coated \tMetal 3 samples of defect mentioning coil No., product name and lot No., shipping date and end user. \tIf not, It has to be investigated by SeAH Coated Metal or third parties.',
   },
-  {
+]
+
+function buildSlide4EnPeriodItem15(perforationYears: number): {
+  startAt: number
+  match: (text: string) => boolean
+  text: string
+} {
+  const yearsLabel = formatYearsPlusOneEn(perforationYears)
+  return {
     startAt: 15,
     match: (text) => text.includes('End user must also maintain records for'),
     text:
-      'End user must also maintain records for 21years that will identify the master coil number for each \tbuilding erected in the field, which shall be available to SeAH Coated Metal on request.',
-  },
-]
+      `End user must also maintain records for ${yearsLabel} that will identify the master coil number for each \tbuilding erected in the field, which shall be available to SeAH Coated Metal on request.`,
+  }
+}
+
+function getSlide4EnPeriodItems(perforationYears: number) {
+  return [...SLIDE4_EN_PERIOD_ITEMS, buildSlide4EnPeriodItem15(perforationYears)]
+}
+
+function isSlide4EnPeriodItemText(text: string): boolean {
+  return (
+    text.includes('Claims must be submitted within the guarantee period') ||
+    text.includes('End user must also maintain records for')
+  )
+}
 
 function normalizeEnSlide4ListItem(paragraphXml: string, startAt: number): string {
   const indent = startAt >= 10 ? SLIDE4_EN_ITEM_INDENT_WIDE : SLIDE4_EN_ITEM_INDENT
@@ -2039,7 +2085,7 @@ function isPrintEnSlide4LastParenItem(text: string): boolean {
 function isPrintEnSlide4PeriodItem(paragraphXml: string): boolean {
   const text = normalizeMatchText(extractParagraphText(paragraphXml))
   if (!text.trim()) return false
-  return SLIDE4_EN_PERIOD_ITEMS.some((item) => item.match(text))
+  return isSlide4EnPeriodItemText(text)
 }
 
 function normalizeEnSlide4PeriodItem(
@@ -2089,7 +2135,9 @@ function buildPrintEnSlide4ParenSpacer(endParaRPr: string): string {
   return `<a:p>${pPr}${endParaRPr}</a:p>`
 }
 
-function applyPrintEnSlide4Layout(slideXml: string): string {
+function applyPrintEnSlide4Layout(slideXml: string, perforationYears: number): string {
+  const slide4EnPeriodItems = getSlide4EnPeriodItems(perforationYears)
+
   return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
     if (!shapeContainsParagraphText(shapeXml, 'Attack from chemical')) {
       return shapeXml
@@ -2128,7 +2176,7 @@ function applyPrintEnSlide4Layout(slideXml: string): string {
         continue
       }
 
-      const periodItem = SLIDE4_EN_PERIOD_ITEMS.find((entry) => entry.match(text))
+      const periodItem = slide4EnPeriodItems.find((entry) => entry.match(text))
       if (periodItem) {
         rebuilt.push(
           normalizeEnSlide4PeriodItem(paragraph, periodItem.startAt, periodItem.text)
@@ -2220,7 +2268,7 @@ function ensureEnSlide4FooterBold(paragraphXml: string): string {
     })
 }
 
-function applySlide4EnFixes(slideXml: string): string {
+function applySlide4EnFixes(slideXml: string, perforationYears: number): string {
   let next = slideXml
 
   next = removeParagraphByPredicate(next, (paragraph) => {
@@ -2241,7 +2289,7 @@ function applySlide4EnFixes(slideXml: string): string {
   next = mergeSlide4EnDebrisItem(next)
   next = removeEmptyParagraphs(next)
   next = applyEnSlide4ListLayout(next)
-  next = applyPrintEnSlide4Layout(next)
+  next = applyPrintEnSlide4Layout(next, perforationYears)
 
   next = next.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
     const text = normalizeMatchText(extractParagraphText(paragraph))
@@ -2273,9 +2321,10 @@ export function postProcessSlideXml(
   slideXml: string,
   slideNumber: number,
   language: 'ko' | 'en',
-  options?: { productItem?: 'PAINT' | 'PRINT' }
+  options?: { productItem?: 'PAINT' | 'PRINT'; perforationYears?: number }
 ): string {
   const productItem = options?.productItem
+  const perforationYears = options?.perforationYears
   let next = slideXml
 
   if (slideNumber === 1) {
@@ -2321,11 +2370,11 @@ export function postProcessSlideXml(
   }
 
   if (slideNumber === 4 && language === 'ko') {
-    next = applySlide4KoFixes(next, productItem)
+    next = applySlide4KoFixes(next, productItem, perforationYears)
   }
 
-  if (slideNumber === 4 && language === 'en') {
-    next = applySlide4EnFixes(next)
+  if (slideNumber === 4 && language === 'en' && perforationYears && perforationYears > 0) {
+    next = applySlide4EnFixes(next, perforationYears)
   }
 
   if ((slideNumber === 3 || slideNumber === 4) && language === 'en') {

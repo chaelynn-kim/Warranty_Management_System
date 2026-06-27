@@ -348,6 +348,7 @@ export async function generateWarrantyCertificate(
         input.productItem === 'PRINT' || input.productItem === 'PAINT'
           ? input.productItem
           : undefined,
+      perforationYears: ctx.perforationYears,
     }))
   }
 
