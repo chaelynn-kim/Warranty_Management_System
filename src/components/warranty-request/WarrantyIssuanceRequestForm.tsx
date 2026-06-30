@@ -54,7 +54,7 @@ export function warrantyRequestToolbarSubmitButtonClass(isComplete: boolean): st
 }
 
 const toolbarStickyClass =
-  'sticky top-[4.25rem] z-40 -mx-4 mb-8 space-y-2 rounded-xl border border-border bg-bg-secondary/95 px-4 py-4 shadow-sm backdrop-blur-sm sm:-mx-6 sm:px-6'
+  'sticky top-[5.75rem] z-40 -mx-3 mb-8 space-y-2 rounded-xl border border-border bg-bg-secondary/95 px-3 py-4 shadow-sm backdrop-blur-sm sm:-mx-6 sm:px-6 md:top-[4.25rem]'
 const dropdownOptionClass = (active: boolean) =>
   `flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-bg-tertiary ${
     active ? 'font-medium text-accent' : 'text-text-primary'

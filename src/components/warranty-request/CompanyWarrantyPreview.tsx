@@ -71,11 +71,11 @@ function PreviewTable({
             {groupHeader}
           </th>
           <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-            <span className="block break-all">PERFORATION</span>
+            <span className="block break-words">PERFORATION</span>
             <span className="block">(천공)</span>
           </th>
           <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-            <span className="block break-all">PEEL/FLAKE</span>
+            <span className="block break-words">PEEL/FLAKE</span>
             <span className="block">(도막박리)</span>
           </th>
           <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>

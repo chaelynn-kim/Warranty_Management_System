@@ -11,16 +11,17 @@ export const filterResetButtonClass = `${filterActionButtonClass} border-border 
 interface FilterActionsProps {
   onSearch: () => void
   onReset: () => void
+  className?: string
 }
 
-export function FilterActions({ onSearch, onReset }: FilterActionsProps) {
+export function FilterActions({ onSearch, onReset, className = '' }: FilterActionsProps) {
   return (
-    <div className="flex shrink-0 items-center gap-2">
-      <button type="button" onClick={onSearch} className={filterSearchButtonClass}>
+    <div className={`flex shrink-0 items-center gap-2 ${className}`}>
+      <button type="button" onClick={onSearch} className={`${filterSearchButtonClass} flex-1 sm:flex-none`}>
         <Search className="h-4 w-4 shrink-0" />
         조회
       </button>
-      <button type="button" onClick={onReset} className={filterResetButtonClass}>
+      <button type="button" onClick={onReset} className={`${filterResetButtonClass} flex-1 sm:flex-none`}>
         <RotateCcw className="h-4 w-4 shrink-0" />
         초기화
       </button>

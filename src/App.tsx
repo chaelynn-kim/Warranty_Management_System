@@ -21,9 +21,9 @@ function App() {
   }, [activeTab, canAccessExternalTest])
 
   return (
-    <div className="min-h-screen bg-bg-primary">
+    <div className="min-h-screen overflow-x-hidden bg-bg-primary">
       <Header activeTab={activeTab} onTabChange={setActiveTab} />
-      <main className="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 sm:py-8">
+      <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-8">
         <div className={activeTab === 'issuanceRequest' ? undefined : 'hidden'}>
           <WarrantyIssuanceRequestPage
             onRequestSubmitted={(recordId) => {

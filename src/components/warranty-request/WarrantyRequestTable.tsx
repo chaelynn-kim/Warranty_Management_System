@@ -192,7 +192,11 @@ export function WarrantyRequestTable({
           </p>
         )
       )}
-      <div ref={scrollContainerRef} className="max-h-[420px] overflow-auto rounded-lg border border-border">
+      <p className="mb-2 text-xs text-text-muted md:hidden">표는 좌우로 스크롤하여 전체 내용을 확인할 수 있습니다.</p>
+      <div
+        ref={scrollContainerRef}
+        className="max-h-[420px] overflow-auto overscroll-x-contain rounded-lg border border-border [-webkit-overflow-scrolling:touch]"
+      >
         <table className="w-full min-w-[1080px] table-fixed border-separate border-spacing-0">
           <thead>
             <tr className="sticky top-0 z-10 bg-bg-tertiary">
