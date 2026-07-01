@@ -13,12 +13,24 @@
   --color-required: #5c9dff;
 }
 
+:root {
+  /* 모바일 2줄 헤더 높이 — sticky 툴바/탭 offset */
+  --app-header-offset: 5.75rem;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-header-offset: 4.25rem;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
 
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
 }
 
 body {

@@ -590,7 +590,7 @@ export function WarrantyPeriodPage() {
         }
       />
 
-      <nav className="sticky top-[5.75rem] z-40 mb-6 flex flex-wrap gap-1 rounded-lg border border-border bg-bg-tertiary/95 p-1 shadow-sm backdrop-blur-sm md:top-[4.25rem]">
+      <nav className="sticky top-[var(--app-header-offset)] z-40 mb-6 flex flex-wrap gap-1 rounded-lg border border-border bg-bg-tertiary/95 p-1 shadow-sm backdrop-blur-sm">
         {tabs.map((tab) => (
           <button
             key={tab.id}
