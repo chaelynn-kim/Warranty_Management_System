@@ -49,6 +49,42 @@ export interface ProductWarranty {
   chalkRoof: string
   chalkWall: string
   notes: string
+  customColumnValues?: Record<string, string | Record<string, string>>
+  customColumnModes?: Record<string, 'detail' | 'merged'>
+}
+
+export interface ProductCustomColumn {
+  id: string
+  kind: 'simple' | 'grouped'
+  titleEn: string
+  titleKo: string
+  subColumns?: string[]
+}
+
+export interface BuiltinColumnLabel {
+  titleEn: string
+  titleKo: string
+  subColumns?: string[]
+}
+
+export interface ProductTableLayout {
+  columnOrder: string[]
+  customColumns: ProductCustomColumn[]
+  builtinLabels?: Partial<Record<'perforation' | 'peelFlake' | 'colorFading' | 'chalk', BuiltinColumnLabel>>
+}
+
+export interface ProductTableLayouts {
+  paint?: ProductTableLayout
+  print?: ProductTableLayout
+}
+
+export interface ProductRiskSection {
+  title: string
+  countries: CountryEntry[]
+  products: ProductWarranty[]
+  productTableLayouts?: ProductTableLayouts
+  /** @deprecated Use productTableLayouts */
+  productTableLayout?: ProductTableLayout
 }
 
 export interface CoastalDistanceRow {
@@ -95,16 +131,9 @@ export interface CoastalWarranty {
 }
 
 export interface WarrantyPeriodData {
-  highRisk: {
-    title: string
-    countries: CountryEntry[]
-    products: ProductWarranty[]
-  }
-  lowRisk: {
-    title: string
-    countries: CountryEntry[]
+  highRisk: ProductRiskSection
+  lowRisk: ProductRiskSection & {
     note: string
-    products: ProductWarranty[]
   }
   coastalAl: CoastalAlSection
   notCovered: NotCoveredSection

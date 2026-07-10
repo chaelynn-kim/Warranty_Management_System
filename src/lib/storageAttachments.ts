@@ -26,6 +26,10 @@ export function buildRequestAttachmentPath(
   return `warranty-attachments/requests/${recordId}/${slot}/${fileId}-${sanitizeFileName(fileName)}`
 }
 
+export function buildWarrantyGuideStoragePath(fileId: string, fileName: string): string {
+  return `warranty-guide/global/${fileId}-${sanitizeFileName(fileName)}`
+}
+
 function assertStorageReady(): void {
   if (!isStorageEnabled || !storage) {
     throw new Error('Firebase Storage가 설정되지 않았습니다.')
@@ -127,4 +131,24 @@ export async function uploadRequestAttachmentFiles(
   }
 
   return { attachments, errors }
+}
+
+export async function uploadWarrantyGuideFile(file: File): Promise<WarrantyFileAttachment> {
+  assertStorageReady()
+
+  const id = crypto.randomUUID()
+  const storagePath = buildWarrantyGuideStoragePath(id, file.name)
+  const storageRef = ref(storage!, storagePath)
+
+  await uploadBytes(storageRef, file, {
+    contentType: file.type || 'application/octet-stream',
+  })
+
+  return {
+    id,
+    name: file.name,
+    size: file.size,
+    type: file.type || 'application/octet-stream',
+    storagePath,
+  }
 }

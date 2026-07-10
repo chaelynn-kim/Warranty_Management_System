@@ -25,6 +25,7 @@ import {
   type WarrantyIssuanceRequestFormHandle,
 } from './WarrantyIssuanceRequestForm'
 import { RequestStatusBadge } from './RequestStatusBadge'
+import { WarrantyRequestPdfDownloadButton } from './WarrantyRequestPdfDownloadButton'
 
 type EditScope = 'request' | 'quality'
 
@@ -307,14 +308,24 @@ export function WarrantyIssuanceRequestModal({
               </span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-primary hover:text-text-primary"
-            aria-label="닫기"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {isViewMode && viewRequest && (
+              <WarrantyRequestPdfDownloadButton
+                getRequest={() =>
+                  formRef.current?.getValue() ?? toWarrantyIssuanceRequest(viewRequest)
+                }
+                sequenceNo={viewRequest.sequenceNo}
+              />
+            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-text-muted transition-colors hover:bg-bg-primary hover:text-text-primary"
+              aria-label="닫기"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6 sm:px-6">

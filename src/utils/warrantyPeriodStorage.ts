@@ -1,11 +1,12 @@
 import defaultData from '../data/warrantyPeriod.json'
-import type { CoastalAlSection, ProductLine, ProductWarranty, WarrantyPeriodData } from '../types'
+import type { CoastalAlSection, ProductLine, ProductRiskSection, ProductWarranty, WarrantyPeriodData } from '../types'
 import { queueFirestorePush } from './firestoreSync'
 import { normalizeProductWarranty } from './productWarrantyHelpers'
+import { resolveProductTableLayouts } from './productTableLayoutHelpers'
 
 const STORAGE_KEY = 'warranty-period-data'
 const STORAGE_VERSION_KEY = 'warranty-period-version'
-const CURRENT_VERSION = '8'
+const CURRENT_VERSION = '10'
 
 const DEFAULT_COASTAL_COLOR_FADING = '≤ΔE5'
 const DEFAULT_COASTAL_CHALK = '≥#8'
@@ -124,13 +125,17 @@ function normalizeProducts(products: ProductWarranty[]): ProductWarranty[] {
   return products.map(normalizeProductWarranty)
 }
 
-function normalizeRiskSection<T extends { products: ProductWarranty[] }>(
-  defaults: T,
-  parsed: Partial<T> | undefined
-): T {
+function normalizeRiskSection(defaults: ProductRiskSection, parsed: Partial<ProductRiskSection> | undefined): ProductRiskSection {
   const merged = { ...defaults, ...parsed }
   merged.products = normalizeProducts(parsed?.products ?? defaults.products)
-  return merged
+  const { productTableLayout: legacyLayout, ...rest } = merged
+  return {
+    ...rest,
+    productTableLayouts: resolveProductTableLayouts(
+      parsed?.productTableLayouts ?? merged.productTableLayouts,
+      parsed?.productTableLayout ?? legacyLayout ?? defaults.productTableLayout
+    ),
+  }
 }
 
 function normalizeWarrantyPeriod(parsed: Partial<WarrantyPeriodData>): WarrantyPeriodData {
@@ -156,12 +161,14 @@ export function loadWarrantyPeriod(): WarrantyPeriodData {
   try {
     const version = localStorage.getItem(STORAGE_VERSION_KEY)
     const saved = localStorage.getItem(STORAGE_KEY)
-    if (version === CURRENT_VERSION && saved) {
+    if (saved) {
       const parsed = JSON.parse(saved) as Partial<WarrantyPeriodData>
-      return normalizeWarrantyPeriod(parsed)
-    }
-    if (saved && version !== CURRENT_VERSION) {
-      localStorage.removeItem(STORAGE_KEY)
+      const data = normalizeWarrantyPeriod(parsed)
+      if (version !== CURRENT_VERSION) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+        localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+      }
+      return data
     }
   } catch {
     // fall through

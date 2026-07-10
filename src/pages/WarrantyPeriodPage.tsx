@@ -11,6 +11,7 @@ import {
   type PeriodSectionId,
 } from '../components/warranty-period/PeriodSection'
 import { ProductGuideTable } from '../components/warranty-period/ProductGuideTable'
+import { WarrantyGuideDownloadButton } from '../components/warranty-period/WarrantyGuideDownloadButton'
 import { periodCardTitleClass, periodCautionNoticeClass, periodCautionRowClass } from '../components/warranty-period/periodTheme'
 import { RiskBadge } from '../components/warranty-period/RiskBadge'
 import { useAuth } from '../contexts/AuthContext'
@@ -29,6 +30,27 @@ import {
   productLineFromSection,
   riskTabFromProductSection,
 } from '../utils/warrantyPeriodSectionHelpers'
+import {
+  addCustomSubColumn,
+  addCustomSubColumnOnProducts,
+  changeCustomColumnKind,
+  createCustomColumnEntry,
+  getCustomColumnDef,
+  getProductTableLayoutForLine,
+  mapProductsForLine,
+  migrateProductCustomColumnKind,
+  initCustomColumnOnProductsForLine,
+  removeCustomColumnFromLayout,
+  removeCustomColumnFromProduct,
+  removeCustomSubColumn,
+  removeCustomSubColumnOnProducts,
+  setCustomColumnMode,
+  setCustomColumnValue,
+  updateBuiltinColumnLabel,
+  withProductTableLayoutForLine,
+  isBuiltinColumnId,
+  type ColumnHeaderUpdateField,
+} from '../utils/productTableLayoutHelpers'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
 
 type PeriodTab = 'highRisk' | 'lowRisk' | 'coastalAl' | 'notCovered'
@@ -67,6 +89,11 @@ type ProductHighlight = {
   index: number
 }
 type ProductInsertAnchor = ProductHighlight
+type ProductColumnInsertAnchor = {
+  risk: 'highRisk' | 'lowRisk'
+  productLine: ProductLine
+  columnId: string
+}
 type CoastalInsertAnchor = { side: 'highRisk' | 'lowRisk'; index: number }
 
 const PRODUCT_SECTIONS = new Set<PeriodSectionId>([
@@ -92,6 +119,8 @@ export function WarrantyPeriodPage() {
   const [productHighlightSeq, setProductHighlightSeq] = useState(0)
   const [productAddTick, setProductAddTick] = useState(0)
   const [productInsertAnchor, setProductInsertAnchor] = useState<ProductInsertAnchor | null>(null)
+  const [productColumnInsertAnchor, setProductColumnInsertAnchor] =
+    useState<ProductColumnInsertAnchor | null>(null)
   const [notCoveredInsertAnchor, setNotCoveredInsertAnchor] = useState<number | null>(null)
   const [coastalInsertAnchor, setCoastalInsertAnchor] = useState<CoastalInsertAnchor | null>(null)
 
@@ -134,6 +163,7 @@ export function WarrantyPeriodPage() {
     setEditingSections((prev) => new Set(prev).add(sectionId))
     if (PRODUCT_SECTIONS.has(sectionId)) {
       setProductInsertAnchor(null)
+      setProductColumnInsertAnchor(null)
     }
     if (sectionId === 'notCovered') {
       setNotCoveredInsertAnchor(null)
@@ -154,6 +184,7 @@ export function WarrantyPeriodPage() {
     if (PRODUCT_SECTIONS.has(sectionId)) {
       setHighlightedProduct(null)
       setProductInsertAnchor(null)
+      setProductColumnInsertAnchor(null)
     }
     if (sectionId === 'notCovered') {
       setHighlightedNotCoveredIndex(null)
@@ -172,6 +203,7 @@ export function WarrantyPeriodPage() {
     if (PRODUCT_SECTIONS.has(sectionId)) {
       setHighlightedProduct(null)
       setProductInsertAnchor(null)
+      setProductColumnInsertAnchor(null)
     }
     if (sectionId === 'notCovered') {
       setHighlightedNotCoveredIndex(null)
@@ -209,6 +241,42 @@ export function WarrantyPeriodPage() {
     }
     if (sectionId === 'coastalAl:lowRisk' && coastalInsertAnchor?.side === 'lowRisk') {
       addCoastalRow('lowRisk', coastalInsertAnchor.index)
+    }
+  }
+
+  const handleSectionAddGroupedColumn = (sectionId: PeriodSectionId) => {
+    if (
+      sectionId === 'highRisk:paint' ||
+      sectionId === 'highRisk:print' ||
+      sectionId === 'lowRisk:paint' ||
+      sectionId === 'lowRisk:print'
+    ) {
+      const risk = riskTabFromProductSection(sectionId)
+      const productLine = productLineFromSection(sectionId)
+      const atColumnId =
+        productColumnInsertAnchor?.risk === risk &&
+        productColumnInsertAnchor.productLine === productLine
+          ? productColumnInsertAnchor.columnId
+          : undefined
+      addProductColumn(sectionId, 'grouped', atColumnId)
+    }
+  }
+
+  const handleSectionAddSimpleColumn = (sectionId: PeriodSectionId) => {
+    if (
+      sectionId === 'highRisk:paint' ||
+      sectionId === 'highRisk:print' ||
+      sectionId === 'lowRisk:paint' ||
+      sectionId === 'lowRisk:print'
+    ) {
+      const risk = riskTabFromProductSection(sectionId)
+      const productLine = productLineFromSection(sectionId)
+      const atColumnId =
+        productColumnInsertAnchor?.risk === risk &&
+        productColumnInsertAnchor.productLine === productLine
+          ? productColumnInsertAnchor.columnId
+          : undefined
+      addProductColumn(sectionId, 'simple', atColumnId)
     }
   }
 
@@ -412,6 +480,246 @@ export function WarrantyPeriodPage() {
     setSectionMessages({})
   }
 
+  const updateCustomColumn = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string,
+    field: 'titleEn' | 'titleKo' | `sub:${number}`,
+    value: string
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const customId = columnId.replace('custom:', '')
+      const customColumns = layout.customColumns.map((column) => {
+        if (column.id !== customId) return column
+        if (field === 'titleEn') return { ...column, titleEn: value }
+        if (field === 'titleKo') return { ...column, titleKo: value }
+        if (field.startsWith('sub:')) {
+          const index = Number(field.slice(4))
+          const subColumns = [...(column.subColumns ?? [])]
+          subColumns[index] = value
+          return { ...column, subColumns }
+        }
+        return column
+      })
+      return {
+        ...prev,
+        [risk]: withProductTableLayoutForLine(section, productLine, { ...layout, customColumns }),
+      }
+    })
+    setSectionMessages({})
+  }
+
+  const updateBuiltinColumn = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: 'perforation' | 'peelFlake' | 'colorFading' | 'chalk',
+    field: ColumnHeaderUpdateField,
+    value: string
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      return {
+        ...prev,
+        [risk]: withProductTableLayoutForLine(
+          section,
+          productLine,
+          updateBuiltinColumnLabel(layout, columnId, field, value)
+        ),
+      }
+    })
+    setSectionMessages({})
+  }
+
+  const updateColumnHeader = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string,
+    field: ColumnHeaderUpdateField,
+    value: string
+  ) => {
+    if (isBuiltinColumnId(columnId)) {
+      updateBuiltinColumn(risk, productLine, columnId, field, value)
+      return
+    }
+    updateCustomColumn(risk, productLine, columnId, field, value)
+  }
+
+  const updateProductCustomColumnValue = (
+    risk: 'highRisk' | 'lowRisk',
+    index: number,
+    columnId: string,
+    value: string,
+    subKey?: string
+  ) => {
+    setData((prev) => {
+      const products = [...prev[risk].products]
+      products[index] = setCustomColumnValue(products[index], columnId, value, subKey)
+      return { ...prev, [risk]: { ...prev[risk], products } }
+    })
+    setSectionMessages({})
+  }
+
+  const updateProductCustomColumnMode = (
+    risk: 'highRisk' | 'lowRisk',
+    index: number,
+    columnId: string,
+    mode: 'detail' | 'merged'
+  ) => {
+    setData((prev) => {
+      const products = [...prev[risk].products]
+      products[index] = setCustomColumnMode(products[index], columnId, mode)
+      return { ...prev, [risk]: { ...prev[risk], products } }
+    })
+    setSectionMessages({})
+  }
+
+  const addProductColumn = (
+    sectionId: ProductHighlight['section'],
+    kind: 'simple' | 'grouped',
+    atColumnId?: string
+  ) => {
+    const risk = riskTabFromProductSection(sectionId)
+    const productLine = productLineFromSection(sectionId)
+    const { columnId, def } = createCustomColumnEntry(kind)
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const order = [...layout.columnOrder]
+      const insertAt =
+        atColumnId && order.includes(atColumnId)
+          ? order.indexOf(atColumnId) + 1
+          : order.length
+      order.splice(insertAt, 0, columnId)
+      const newLayout = {
+        ...layout,
+        columnOrder: order,
+        customColumns: [...layout.customColumns, def],
+      }
+      const products = initCustomColumnOnProductsForLine(
+        section.products,
+        productLine,
+        columnId,
+        kind,
+        def.subColumns
+      )
+      return {
+        ...prev,
+        [risk]: {
+          ...withProductTableLayoutForLine(section, productLine, newLayout),
+          products,
+        },
+      }
+    })
+    setProductColumnInsertAnchor({ risk, productLine, columnId })
+    setSectionMessages({})
+  }
+
+  const changeProductCustomColumnKind = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string,
+    kind: 'simple' | 'grouped'
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const nextLayout = changeCustomColumnKind(layout, columnId, kind)
+      const def = nextLayout.customColumns.find((column) => column.id === columnId.replace('custom:', ''))
+      const products = mapProductsForLine(section.products, productLine, (product) =>
+        migrateProductCustomColumnKind(product, columnId, kind, def?.subColumns)
+      )
+      return {
+        ...prev,
+        [risk]: {
+          ...withProductTableLayoutForLine(section, productLine, nextLayout),
+          products,
+        },
+      }
+    })
+    setSectionMessages({})
+  }
+
+  const deleteProductCustomColumn = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const nextLayout = removeCustomColumnFromLayout(layout, columnId)
+      const products = mapProductsForLine(section.products, productLine, (product) =>
+        removeCustomColumnFromProduct(product, columnId)
+      )
+      return {
+        ...prev,
+        [risk]: {
+          ...withProductTableLayoutForLine(section, productLine, nextLayout),
+          products,
+        },
+      }
+    })
+    setProductColumnInsertAnchor((prev) =>
+      prev?.risk === risk && prev.productLine === productLine && prev.columnId === columnId
+        ? null
+        : prev
+    )
+    setSectionMessages({})
+  }
+
+  const addProductCustomSubColumn = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const nextLayout = addCustomSubColumn(layout, columnId)
+      const def = getCustomColumnDef(nextLayout, columnId)
+      const newLabel = def?.subColumns?.[def.subColumns.length - 1] ?? '열'
+      const products = mapProductsForLine(section.products, productLine, (product) =>
+        addCustomSubColumnOnProducts([product], columnId, newLabel)[0]
+      )
+      return {
+        ...prev,
+        [risk]: {
+          ...withProductTableLayoutForLine(section, productLine, nextLayout),
+          products,
+        },
+      }
+    })
+    setSectionMessages({})
+  }
+
+  const removeProductCustomSubColumn = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    columnId: string,
+    subIndex: number
+  ) => {
+    setData((prev) => {
+      const section = prev[risk]
+      const layout = getProductTableLayoutForLine(section, productLine)
+      const result = removeCustomSubColumn(layout, columnId, subIndex)
+      if (!result) return prev
+      const products = mapProductsForLine(section.products, productLine, (product) =>
+        removeCustomSubColumnOnProducts([product], columnId, result.removedKey)[0]
+      )
+      return {
+        ...prev,
+        [risk]: {
+          ...withProductTableLayoutForLine(section, productLine, result.layout),
+          products,
+        },
+      }
+    })
+    setSectionMessages({})
+  }
+
   const deleteProduct = (
     productSection: ProductHighlight['section'],
     index: number
@@ -529,6 +837,48 @@ export function WarrantyPeriodPage() {
     [lowRiskProducts]
   )
 
+  const buildProductColumnProps = (
+    risk: 'highRisk' | 'lowRisk',
+    productLine: ProductLine,
+    editing: boolean
+  ) => ({
+    columnLayout: getProductTableLayoutForLine(data[risk], productLine),
+    columnInsertAnchorId:
+      productColumnInsertAnchor?.risk === risk &&
+      productColumnInsertAnchor.productLine === productLine
+        ? productColumnInsertAnchor.columnId
+        : null,
+    onSelectColumnInsertAnchor: editing
+      ? (columnId: string) => setProductColumnInsertAnchor({ risk, productLine, columnId })
+      : undefined,
+    onUpdateColumnHeader: editing
+      ? (columnId: string, field: ColumnHeaderUpdateField, value: string) =>
+          updateColumnHeader(risk, productLine, columnId, field, value)
+      : undefined,
+    onUpdateCustomColumnValue: editing
+      ? (index: number, columnId: string, value: string, subKey?: string) =>
+          updateProductCustomColumnValue(risk, index, columnId, value, subKey)
+      : undefined,
+    onUpdateCustomColumnMode: editing
+      ? (index: number, columnId: string, mode: 'detail' | 'merged') =>
+          updateProductCustomColumnMode(risk, index, columnId, mode)
+      : undefined,
+    onChangeCustomColumnKind: editing
+      ? (columnId: string, kind: 'simple' | 'grouped') =>
+          changeProductCustomColumnKind(risk, productLine, columnId, kind)
+      : undefined,
+    onDeleteCustomColumn: editing
+      ? (columnId: string) => deleteProductCustomColumn(risk, productLine, columnId)
+      : undefined,
+    onAddCustomSubColumn: editing
+      ? (columnId: string) => addProductCustomSubColumn(risk, productLine, columnId)
+      : undefined,
+    onRemoveCustomSubColumn: editing
+      ? (columnId: string, subIndex: number) =>
+          removeProductCustomSubColumn(risk, productLine, columnId, subIndex)
+      : undefined,
+  })
+
   const cardSectionId: PeriodSectionId | null = activeTab === 'notCovered' ? 'notCovered' : null
 
   const sectionTitle =
@@ -577,6 +927,7 @@ export function WarrantyPeriodPage() {
       <PageHeader
         subtitle="SEAH·CM WARRANTY GUIDE"
         title="세아씨엠 보증연한"
+        actions={user ? <WarrantyGuideDownloadButton userEmail={user.email} /> : null}
         description={
           <>
             <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
@@ -602,6 +953,7 @@ export function WarrantyPeriodPage() {
               setHighlightedProduct(null)
               setHighlightedNotCoveredIndex(null)
               setProductInsertAnchor(null)
+              setProductColumnInsertAnchor(null)
               setNotCoveredInsertAnchor(null)
               setCoastalInsertAnchor(null)
             }}
@@ -664,6 +1016,8 @@ export function WarrantyPeriodPage() {
               onSave={() => saveSection('highRisk:paint')}
               onReset={() => resetSection('highRisk:paint')}
               onAdd={() => handleSectionAdd('highRisk:paint')}
+              onAddGroupedColumn={() => handleSectionAddGroupedColumn('highRisk:paint')}
+              onAddSimpleColumn={() => handleSectionAddSimpleColumn('highRisk:paint')}
             >
               <ProductGuideTable
                 filterLabel="PAINT 제품군 선택"
@@ -699,6 +1053,7 @@ export function WarrantyPeriodPage() {
                     ? (from, to) => reorderProduct('highRisk:paint', from, to)
                     : undefined
                 }
+                {...buildProductColumnProps('highRisk', 'paint', isSectionEditing('highRisk:paint'))}
               />
             </PeriodSection>
 
@@ -712,6 +1067,8 @@ export function WarrantyPeriodPage() {
               onSave={() => saveSection('highRisk:print')}
               onReset={() => resetSection('highRisk:print')}
               onAdd={() => handleSectionAdd('highRisk:print')}
+              onAddGroupedColumn={() => handleSectionAddGroupedColumn('highRisk:print')}
+              onAddSimpleColumn={() => handleSectionAddSimpleColumn('highRisk:print')}
             >
               <ProductGuideTable
                 filterLabel="PRINT 제품군 선택"
@@ -747,6 +1104,7 @@ export function WarrantyPeriodPage() {
                     ? (from, to) => reorderProduct('highRisk:print', from, to)
                     : undefined
                 }
+                {...buildProductColumnProps('highRisk', 'print', isSectionEditing('highRisk:print'))}
               />
             </PeriodSection>
           </>
@@ -790,6 +1148,8 @@ export function WarrantyPeriodPage() {
               onSave={() => saveSection('lowRisk:paint')}
               onReset={() => resetSection('lowRisk:paint')}
               onAdd={() => handleSectionAdd('lowRisk:paint')}
+              onAddGroupedColumn={() => handleSectionAddGroupedColumn('lowRisk:paint')}
+              onAddSimpleColumn={() => handleSectionAddSimpleColumn('lowRisk:paint')}
             >
               <ProductGuideTable
                 filterLabel="PAINT 제품군 선택"
@@ -825,6 +1185,7 @@ export function WarrantyPeriodPage() {
                     ? (from, to) => reorderProduct('lowRisk:paint', from, to)
                     : undefined
                 }
+                {...buildProductColumnProps('lowRisk', 'paint', isSectionEditing('lowRisk:paint'))}
               />
             </PeriodSection>
 
@@ -838,6 +1199,8 @@ export function WarrantyPeriodPage() {
               onSave={() => saveSection('lowRisk:print')}
               onReset={() => resetSection('lowRisk:print')}
               onAdd={() => handleSectionAdd('lowRisk:print')}
+              onAddGroupedColumn={() => handleSectionAddGroupedColumn('lowRisk:print')}
+              onAddSimpleColumn={() => handleSectionAddSimpleColumn('lowRisk:print')}
             >
               <ProductGuideTable
                 filterLabel="PRINT 제품군 선택"
@@ -873,6 +1236,7 @@ export function WarrantyPeriodPage() {
                     ? (from, to) => reorderProduct('lowRisk:print', from, to)
                     : undefined
                 }
+                {...buildProductColumnProps('lowRisk', 'print', isSectionEditing('lowRisk:print'))}
               />
             </PeriodSection>
           </>

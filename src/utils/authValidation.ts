@@ -65,6 +65,11 @@ export function canEditWarrantyPeriod(email: string | undefined | null): boolean
   return isWarrantyAdmin(email)
 }
 
+/** Warranty Guide 파일 업로드 — 관리자(김채린) 전용 */
+export function canUploadWarrantyGuide(email: string | undefined | null): boolean {
+  return isWarrantyAdmin(email)
+}
+
 export function canEditWarrantyIssuanceLog(email: string | undefined | null): boolean {
   return isWarrantyAdmin(email)
 }

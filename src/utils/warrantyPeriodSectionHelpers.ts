@@ -1,5 +1,6 @@
 import type { ProductLine, ProductWarranty, WarrantyPeriodData } from '../types'
 import { resolveProductLine } from './productWarrantyHelpers'
+import { getProductTableLayoutForLine, withProductTableLayoutForLine } from './productTableLayoutHelpers'
 import type { PeriodSectionId } from '../components/warranty-period/PeriodSection'
 
 export function replaceSectionProducts(
@@ -29,6 +30,21 @@ export function replaceSectionProducts(
   return result
 }
 
+function resetProductLineSection(
+  current: WarrantyPeriodData['highRisk'],
+  saved: WarrantyPeriodData['highRisk'],
+  line: ProductLine
+): WarrantyPeriodData['highRisk'] {
+  return withProductTableLayoutForLine(
+    {
+      ...current,
+      products: replaceSectionProducts(current.products, saved.products, line),
+    },
+    line,
+    getProductTableLayoutForLine(saved, line)
+  )
+}
+
 export function applyPeriodSectionReset(
   current: WarrantyPeriodData,
   saved: WarrantyPeriodData,
@@ -43,18 +59,12 @@ export function applyPeriodSectionReset(
     case 'highRisk:paint':
       return {
         ...current,
-        highRisk: {
-          ...current.highRisk,
-          products: replaceSectionProducts(current.highRisk.products, saved.highRisk.products, 'paint'),
-        },
+        highRisk: resetProductLineSection(current.highRisk, saved.highRisk, 'paint'),
       }
     case 'highRisk:print':
       return {
         ...current,
-        highRisk: {
-          ...current.highRisk,
-          products: replaceSectionProducts(current.highRisk.products, saved.highRisk.products, 'print'),
-        },
+        highRisk: resetProductLineSection(current.highRisk, saved.highRisk, 'print'),
       }
     case 'lowRisk:countries':
       return {
@@ -69,16 +79,16 @@ export function applyPeriodSectionReset(
       return {
         ...current,
         lowRisk: {
-          ...current.lowRisk,
-          products: replaceSectionProducts(current.lowRisk.products, saved.lowRisk.products, 'paint'),
+          ...resetProductLineSection(current.lowRisk, saved.lowRisk, 'paint'),
+          note: current.lowRisk.note,
         },
       }
     case 'lowRisk:print':
       return {
         ...current,
         lowRisk: {
-          ...current.lowRisk,
-          products: replaceSectionProducts(current.lowRisk.products, saved.lowRisk.products, 'print'),
+          ...resetProductLineSection(current.lowRisk, saved.lowRisk, 'print'),
+          note: current.lowRisk.note,
         },
       }
     case 'coastalAl:highRisk':

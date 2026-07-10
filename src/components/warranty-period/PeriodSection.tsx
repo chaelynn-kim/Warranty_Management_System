@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { Pencil, Plus, RotateCcw, Save } from 'lucide-react'
+import { BetweenHorizontalStart, Columns2, Pencil, Plus, RotateCcw, Save } from 'lucide-react'
 import { filterResetButtonClass, filterSearchButtonClass } from '../ui/FilterActions'
 import { periodSectionTitleClass } from './periodTheme'
 
@@ -18,11 +18,15 @@ function EditingToolbar({
   canAdd,
   onSave,
   onAdd,
+  onAddGroupedColumn,
+  onAddSimpleColumn,
   onReset,
 }: {
   canAdd: boolean
   onSave: () => void
   onAdd: () => void
+  onAddGroupedColumn?: () => void
+  onAddSimpleColumn?: () => void
   onReset: () => void
 }) {
   return (
@@ -37,6 +41,28 @@ function EditingToolbar({
       >
         <Plus className="h-4 w-4" />
       </button>
+      {onAddGroupedColumn && (
+        <button
+          type="button"
+          onClick={onAddGroupedColumn}
+          aria-label="그룹 열 추가"
+          title="CHALK 형식 — 그룹 제목 + 하위 열(기간·ROOF·WALL)"
+          className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent"
+        >
+          <BetweenHorizontalStart className="h-4 w-4" />
+        </button>
+      )}
+      {onAddSimpleColumn && (
+        <button
+          type="button"
+          onClick={onAddSimpleColumn}
+          aria-label="단일 열 추가"
+          title="RC등급 형식 — 2행 병합 단일 헤더"
+          className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-colors hover:border-accent hover:text-accent"
+        >
+          <Columns2 className="h-4 w-4" />
+        </button>
+      )}
       <button type="button" onClick={onSave} className={filterSearchButtonClass}>
         <Save className="h-4 w-4 shrink-0" />
         저장
@@ -59,6 +85,8 @@ interface PeriodSectionProps {
   onSave: () => void
   onReset: () => void
   onAdd?: () => void
+  onAddGroupedColumn?: () => void
+  onAddSimpleColumn?: () => void
   children: ReactNode
   className?: string
   headerless?: boolean
@@ -75,6 +103,8 @@ export function PeriodSection({
   onSave,
   onReset,
   onAdd,
+  onAddGroupedColumn,
+  onAddSimpleColumn,
   children,
   className = 'mb-6',
   headerless = false,
@@ -111,7 +141,16 @@ export function PeriodSection({
           <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
             수정 중
           </span>
-          {onAdd && <EditingToolbar canAdd={canAdd} onSave={onSave} onAdd={onAdd} onReset={onReset} />}
+          {onAdd && (
+            <EditingToolbar
+              canAdd={canAdd}
+              onSave={onSave}
+              onAdd={onAdd}
+              onAddGroupedColumn={onAddGroupedColumn}
+              onAddSimpleColumn={onAddSimpleColumn}
+              onReset={onReset}
+            />
+          )}
           {!onAdd && (
             <div className="ml-auto flex flex-wrap gap-2">
               <button type="button" onClick={onSave} className={filterSearchButtonClass}>
@@ -203,6 +242,8 @@ export function CardSectionToolbar({
   canAdd,
   onSave,
   onAdd,
+  onAddGroupedColumn,
+  onAddSimpleColumn,
   onReset,
 }: {
   editing: boolean
@@ -210,6 +251,8 @@ export function CardSectionToolbar({
   canAdd: boolean
   onSave: () => void
   onAdd: () => void
+  onAddGroupedColumn?: () => void
+  onAddSimpleColumn?: () => void
   onReset: () => void
 }) {
   if (!editing && !saveMessage) return null
@@ -227,7 +270,14 @@ export function CardSectionToolbar({
         )}
       </div>
       {editing && (
-        <EditingToolbar canAdd={canAdd} onSave={onSave} onAdd={onAdd} onReset={onReset} />
+        <EditingToolbar
+          canAdd={canAdd}
+          onSave={onSave}
+          onAdd={onAdd}
+          onAddGroupedColumn={onAddGroupedColumn}
+          onAddSimpleColumn={onAddSimpleColumn}
+          onReset={onReset}
+        />
       )}
     </div>
   )

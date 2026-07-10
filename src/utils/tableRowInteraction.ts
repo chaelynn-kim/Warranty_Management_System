@@ -5,3 +5,6 @@ export function isTableRowInteractiveTarget(target: EventTarget | null): boolean
 
 export const insertAnchorRowClass =
   'bg-amber-500/10 ring-2 ring-inset ring-amber-400/80 shadow-[inset_0_3px_0_0_rgba(251,191,36,0.85)]'
+
+export const insertAnchorColumnClass =
+  'bg-amber-500/10 ring-2 ring-inset ring-amber-400/80 shadow-[inset_3px_0_0_0_rgba(251,191,36,0.85)]'

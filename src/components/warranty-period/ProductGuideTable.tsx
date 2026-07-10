@@ -1,13 +1,32 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { Check, ChevronDown, Filter, GripVertical, X } from 'lucide-react'
-import type { ProductWarranty } from '../../types'
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
+import { Check, ChevronDown, Filter, GripVertical, Plus, X } from 'lucide-react'
+import type { BuiltinColumnLabel, ProductTableLayout, ProductWarranty } from '../../types'
 import {
   resolveProductLine,
   resolveChalkMode,
   resolveColorFadingMode,
   type SectionDisplayMode,
 } from '../../utils/productWarrantyHelpers'
-import { insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
+import { insertAnchorColumnClass, insertAnchorRowClass, isTableRowInteractiveTarget } from '../../utils/tableRowInteraction'
+import {
+  countLayoutHeaderColumns,
+  customColumnToHeaderLabel,
+  formatCustomGroupHeaderTitle,
+  formatCustomSimpleHeaderTitle,
+  formatGroupHeaderTitle,
+  formatSimpleHeaderTitle,
+  getBuiltinColumnLabel,
+  getCustomColumnDef,
+  getCustomColumnToggleLabel,
+  getCustomColumnValue,
+  isBuiltinColumnId,
+  isCustomColumnId,
+  listGroupedCustomColumnIds,
+  resolveCustomColumnMode,
+  resolveProductTableLayout,
+  type BuiltinColumnId,
+  type ColumnHeaderUpdateField,
+} from '../../utils/productTableLayoutHelpers'
 import { GuideCell } from './GuideCell'
 import {
   PeriodSectionInlineHeader,
@@ -25,7 +44,6 @@ import {
   periodThStickyRowSpan,
   periodThSubClass,
   periodTableClass,
-  periodDataColCount,
   periodRowHoverClass,
   periodRiskBorderClass,
   periodRiskHeaderBorderClass,
@@ -52,6 +70,29 @@ interface ProductGuideTableProps {
   onSelectInsertAnchor?: (index: number) => void
   onDelete?: (index: number) => void
   onReorder?: (fromIndex: number, toIndex: number) => void
+  columnLayout?: ProductTableLayout
+  columnInsertAnchorId?: string | null
+  onSelectColumnInsertAnchor?: (columnId: string) => void
+  onUpdateColumnHeader?: (
+    columnId: string,
+    field: 'titleEn' | 'titleKo' | `sub:${number}`,
+    value: string
+  ) => void
+  onChangeCustomColumnKind?: (columnId: string, kind: 'simple' | 'grouped') => void
+  onDeleteCustomColumn?: (columnId: string) => void
+  onAddCustomSubColumn?: (columnId: string) => void
+  onRemoveCustomSubColumn?: (columnId: string, subIndex: number) => void
+  onUpdateCustomColumnValue?: (
+    index: number,
+    columnId: string,
+    value: string,
+    subKey?: string
+  ) => void
+  onUpdateCustomColumnMode?: (
+    index: number,
+    columnId: string,
+    mode: 'detail' | 'merged'
+  ) => void
   splitByPrintPaint?: boolean
   riskVariant?: 'high' | 'low'
   filterLabel?: string
@@ -233,6 +274,576 @@ function ProductCategoryBox({
   )
 }
 
+function columnHeaderClickProps(
+  columnId: string,
+  editing: boolean,
+  columnInsertAnchorId: string | null,
+  onSelectColumnInsertAnchor?: (columnId: string) => void
+) {
+  const isAnchor = editing && columnInsertAnchorId === columnId
+  return {
+    onClick: editing && onSelectColumnInsertAnchor
+      ? (e: ReactMouseEvent) => {
+          if (isTableRowInteractiveTarget(e.target)) return
+          onSelectColumnInsertAnchor(columnId)
+        }
+      : undefined,
+    className: `${isAnchor ? insertAnchorColumnClass : ''} ${
+      editing && onSelectColumnInsertAnchor ? 'cursor-pointer' : ''
+    }`.trim(),
+  }
+}
+
+function BuiltinColumnHeader({
+  columnId,
+  layout,
+  editing,
+  columnInsertAnchorId,
+  onSelectColumnInsertAnchor,
+  onUpdateColumnHeader,
+}: {
+  columnId: BuiltinColumnId
+  layout: ProductTableLayout
+  editing: boolean
+  columnInsertAnchorId: string | null
+  onSelectColumnInsertAnchor?: (columnId: string) => void
+  onUpdateColumnHeader?: (columnId: string, field: ColumnHeaderUpdateField, value: string) => void
+}) {
+  const label = getBuiltinColumnLabel(layout, columnId)
+  const clickProps = columnHeaderClickProps(
+    columnId,
+    editing,
+    columnInsertAnchorId,
+    onSelectColumnInsertAnchor
+  )
+  const isGrouped = columnId === 'colorFading' || columnId === 'chalk'
+
+  if (isGrouped) {
+    const subCount = label.subColumns?.length ?? 3
+    return (
+      <th
+        colSpan={subCount}
+        className={`${periodThGroupClass} ${periodThStickyRow1} ${clickProps.className}`}
+        onClick={clickProps.onClick}
+      >
+        {editing && onUpdateColumnHeader ? (
+          <GroupedHeaderTitleEditor
+            columnId={columnId}
+            label={label}
+            onUpdateColumnHeader={onUpdateColumnHeader}
+          />
+        ) : (
+          formatGroupHeaderTitle(label)
+        )}
+      </th>
+    )
+  }
+
+  const simpleTitle = formatSimpleHeaderTitle(label)
+
+  return (
+    <th
+      rowSpan={2}
+      className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan} ${clickProps.className}`}
+      onClick={clickProps.onClick}
+    >
+      {editing && onUpdateColumnHeader ? (
+        <SimpleHeaderTitleEditor
+          columnId={columnId}
+          label={label}
+          onUpdateColumnHeader={onUpdateColumnHeader}
+        />
+      ) : simpleTitle.secondary ? (
+        <>
+          <span className="block break-all">{simpleTitle.primary}</span>
+          <span className="block">{simpleTitle.secondary}</span>
+        </>
+      ) : (
+        <span className="block break-all">{simpleTitle.primary}</span>
+      )}
+    </th>
+  )
+}
+
+function ColumnHeaderKindControls({
+  columnId,
+  kind,
+  onChangeKind,
+  onDelete,
+}: {
+  columnId: string
+  kind: 'simple' | 'grouped'
+  onChangeKind?: (columnId: string, kind: 'simple' | 'grouped') => void
+  onDelete?: (columnId: string) => void
+}) {
+  if (!onChangeKind && !onDelete) return null
+
+  const base =
+    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors'
+  const active = 'bg-accent text-white'
+  const inactive = 'bg-bg-primary/60 text-text-muted hover:text-text-primary'
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {onChangeKind && (
+        <div className="inline-flex overflow-hidden rounded border border-border/70">
+          <button
+            type="button"
+            onClick={() => onChangeKind(columnId, 'simple')}
+            className={`${base} ${kind === 'simple' ? active : inactive}`}
+          >
+            단일
+          </button>
+          <button
+            type="button"
+            onClick={() => onChangeKind(columnId, 'grouped')}
+            className={`${base} ${kind === 'grouped' ? active : inactive}`}
+          >
+            그룹
+          </button>
+        </div>
+      )}
+      {onDelete && (
+        <button
+          type="button"
+          onClick={() => onDelete(columnId)}
+          className="inline-flex h-5 w-5 items-center justify-center rounded text-text-muted hover:bg-red-500/15 hover:text-red-400"
+          aria-label="열 삭제"
+          title="열 삭제"
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </div>
+  )
+}
+
+function GroupedHeaderTitleEditor({
+  columnId,
+  label,
+  onUpdateColumnHeader,
+}: {
+  columnId: string
+  label: BuiltinColumnLabel
+  onUpdateColumnHeader: (columnId: string, field: ColumnHeaderUpdateField, value: string) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+      <input
+        value={label.titleEn}
+        onChange={(e) => onUpdateColumnHeader(columnId, 'titleEn', e.target.value)}
+        className={`${periodInputClass} min-w-0 flex-1 px-1 py-0.5 text-[11px]`}
+        placeholder="영문 제목"
+      />
+      <span className="text-[10px] text-text-muted">(</span>
+      <input
+        value={label.titleKo}
+        onChange={(e) => onUpdateColumnHeader(columnId, 'titleKo', e.target.value)}
+        className={`${periodInputClass} min-w-0 flex-1 px-1 py-0.5 text-[11px]`}
+        placeholder="한글 제목"
+      />
+      <span className="text-[10px] text-text-muted">)</span>
+    </div>
+  )
+}
+
+function SimpleHeaderTitleEditor({
+  columnId,
+  label,
+  onUpdateColumnHeader,
+}: {
+  columnId: string
+  label: BuiltinColumnLabel
+  onUpdateColumnHeader: (columnId: string, field: ColumnHeaderUpdateField, value: string) => void
+}) {
+  return (
+    <div className="space-y-1" onClick={(e) => e.stopPropagation()}>
+      <input
+        value={label.titleEn}
+        onChange={(e) => onUpdateColumnHeader(columnId, 'titleEn', e.target.value)}
+        className={`${periodInputClass} w-full px-1 py-0.5 text-[11px]`}
+        placeholder="영문 (선택)"
+      />
+      <input
+        value={label.titleKo}
+        onChange={(e) => onUpdateColumnHeader(columnId, 'titleKo', e.target.value)}
+        className={`${periodInputClass} w-full px-1 py-0.5 text-[11px]`}
+        placeholder="한글 제목"
+      />
+    </div>
+  )
+}
+
+function CustomColumnHeader({
+  columnId,
+  layout,
+  editing,
+  columnInsertAnchorId,
+  onSelectColumnInsertAnchor,
+  onUpdateColumnHeader,
+  onChangeCustomColumnKind,
+  onDeleteCustomColumn,
+}: {
+  columnId: string
+  layout: ProductTableLayout
+  editing: boolean
+  columnInsertAnchorId: string | null
+  onSelectColumnInsertAnchor?: (columnId: string) => void
+  onUpdateColumnHeader?: (
+    columnId: string,
+    field: 'titleEn' | 'titleKo' | `sub:${number}`,
+    value: string
+  ) => void
+  onChangeCustomColumnKind?: (columnId: string, kind: 'simple' | 'grouped') => void
+  onDeleteCustomColumn?: (columnId: string) => void
+}) {
+  const def = getCustomColumnDef(layout, columnId)
+  if (!def) return null
+
+  const clickProps = columnHeaderClickProps(
+    columnId,
+    editing,
+    columnInsertAnchorId,
+    onSelectColumnInsertAnchor
+  )
+
+  if (def.kind === 'grouped') {
+    const subCount = def.subColumns?.length ?? 3
+    return (
+      <th
+        colSpan={subCount}
+        className={`${periodThGroupClass} ${periodThStickyRow1} ${clickProps.className}`}
+        onClick={clickProps.onClick}
+      >
+        {editing && onUpdateColumnHeader ? (
+          <div>
+            <GroupedHeaderTitleEditor
+              columnId={columnId}
+              label={customColumnToHeaderLabel(def)}
+              onUpdateColumnHeader={onUpdateColumnHeader}
+            />
+            <ColumnHeaderKindControls
+              columnId={columnId}
+              kind={def.kind}
+              onChangeKind={onChangeCustomColumnKind}
+              onDelete={onDeleteCustomColumn}
+            />
+          </div>
+        ) : (
+          formatCustomGroupHeaderTitle(def)
+        )}
+      </th>
+    )
+  }
+
+  const simpleTitle = formatCustomSimpleHeaderTitle(def)
+
+  return (
+    <th
+      rowSpan={2}
+      className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan} ${clickProps.className}`}
+      onClick={clickProps.onClick}
+    >
+      {editing && onUpdateColumnHeader ? (
+        <div>
+          <SimpleHeaderTitleEditor
+            columnId={columnId}
+            label={customColumnToHeaderLabel(def)}
+            onUpdateColumnHeader={onUpdateColumnHeader}
+          />
+          <ColumnHeaderKindControls
+            columnId={columnId}
+            kind={def.kind}
+            onChangeKind={onChangeCustomColumnKind}
+            onDelete={onDeleteCustomColumn}
+          />
+        </div>
+      ) : (
+        <>
+          {simpleTitle.secondary ? (
+            <>
+              <span className="block break-all">{simpleTitle.primary}</span>
+              <span className="block">{simpleTitle.secondary}</span>
+            </>
+          ) : (
+            <span className="block break-all">{simpleTitle.primary}</span>
+          )}
+        </>
+      )}
+    </th>
+  )
+}
+
+function renderBuiltinSubHeaders(
+  columnId: BuiltinColumnId,
+  layout: ProductTableLayout,
+  headerRow2Top: number,
+  editing: boolean,
+  onUpdateColumnHeader?: (columnId: string, field: ColumnHeaderUpdateField, value: string) => void
+) {
+  if (columnId !== 'colorFading' && columnId !== 'chalk') return null
+
+  const label = getBuiltinColumnLabel(layout, columnId)
+
+  return (label.subColumns ?? []).map((subLabel, index) => (
+    <th
+      key={`${columnId}-sub-${index}`}
+      className={`${periodThSubClass} ${periodThStickyRow2}`}
+      style={{ top: headerRow2Top }}
+    >
+      {editing && onUpdateColumnHeader ? (
+        <input
+          value={subLabel}
+          onChange={(e) => onUpdateColumnHeader(columnId, `sub:${index}`, e.target.value)}
+          className={`${periodInputClass} w-full px-1 py-0.5 text-[10px]`}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        subLabel
+      )}
+    </th>
+  ))
+}
+
+function renderCustomSubHeaders(
+  columnId: string,
+  layout: ProductTableLayout,
+  headerRow2Top: number,
+  editing: boolean,
+  onUpdateColumnHeader?: (
+    columnId: string,
+    field: 'titleEn' | 'titleKo' | `sub:${number}`,
+    value: string
+  ) => void,
+  onAddCustomSubColumn?: (columnId: string) => void,
+  onRemoveCustomSubColumn?: (columnId: string, subIndex: number) => void
+) {
+  const def = getCustomColumnDef(layout, columnId)
+  if (!def || def.kind !== 'grouped') return null
+
+  const subColumns = def.subColumns ?? []
+
+  return subColumns.map((label, index) => {
+    const isLast = index === subColumns.length - 1
+    return (
+      <th
+        key={`${columnId}-sub-${index}`}
+        className={`${periodThSubClass} ${periodThStickyRow2}`}
+        style={{ top: headerRow2Top }}
+      >
+        {editing ? (
+          <div className="flex items-center justify-center gap-0.5" onClick={(e) => e.stopPropagation()}>
+            {onUpdateColumnHeader ? (
+              <input
+                value={label}
+                onChange={(e) => onUpdateColumnHeader(columnId, `sub:${index}`, e.target.value)}
+                className={`${periodInputClass} min-w-0 flex-1 px-1 py-0.5 text-[10px]`}
+              />
+            ) : (
+              label
+            )}
+            {subColumns.length > 1 && onRemoveCustomSubColumn && (
+              <button
+                type="button"
+                onClick={() => onRemoveCustomSubColumn(columnId, index)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-text-muted hover:bg-red-500/15 hover:text-red-400"
+                aria-label="하위 열 삭제"
+                title="하위 열 삭제"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+            {isLast && onAddCustomSubColumn && (
+              <button
+                type="button"
+                onClick={() => onAddCustomSubColumn(columnId)}
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center rounded text-text-muted hover:bg-accent/15 hover:text-accent"
+                aria-label="하위 열 추가"
+                title="하위 열 추가"
+              >
+                <Plus className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </div>
+        ) : (
+          label
+        )}
+      </th>
+    )
+  })
+}
+
+function renderBuiltinDataCells(
+  columnId: BuiltinColumnId,
+  product: ProductWarranty,
+  index: number,
+  editing: boolean,
+  onUpdate: (index: number, field: ProductField, value: string) => void
+) {
+  const colorFadingMode = resolveColorFadingMode(product)
+  const chalkMode = resolveChalkMode(product)
+
+  if (columnId === 'perforation') {
+    return (
+      <td className={periodTdClass}>
+        <GuideCell
+          value={product.perforation}
+          editing={editing}
+          onChange={(v) => onUpdate(index, 'perforation', v)}
+        />
+      </td>
+    )
+  }
+
+  if (columnId === 'peelFlake') {
+    return (
+      <td className={periodTdClass}>
+        <GuideCell
+          value={product.peelFlake}
+          editing={editing}
+          onChange={(v) => onUpdate(index, 'peelFlake', v)}
+        />
+      </td>
+    )
+  }
+
+  if (columnId === 'colorFading') {
+    if (colorFadingMode === 'merged') {
+      return (
+        <td colSpan={3} className={`${periodTdClass} text-center`}>
+          <GuideCell
+            value={product.colorFading}
+            editing={editing}
+            onChange={(v) => onUpdate(index, 'colorFading', v)}
+          />
+        </td>
+      )
+    }
+    return (
+      <>
+        <td className={periodTdClass}>
+          <GuideCell
+            value={product.colorFading}
+            editing={editing}
+            onChange={(v) => onUpdate(index, 'colorFading', v)}
+          />
+        </td>
+        <td className={periodTdClass}>
+          <GuideCell
+            value={product.colorFadingRoof}
+            editing={editing}
+            formatSplit
+            onChange={(v) => onUpdate(index, 'colorFadingRoof', v)}
+          />
+        </td>
+        <td className={periodTdClass}>
+          <GuideCell
+            value={product.colorFadingWall}
+            editing={editing}
+            formatSplit
+            onChange={(v) => onUpdate(index, 'colorFadingWall', v)}
+          />
+        </td>
+      </>
+    )
+  }
+
+  if (chalkMode === 'merged') {
+    return (
+      <td colSpan={3} className={`${periodTdClass} text-center`}>
+        <GuideCell
+          value={product.chalk}
+          editing={editing}
+          onChange={(v) => onUpdate(index, 'chalk', v)}
+        />
+      </td>
+    )
+  }
+
+  return (
+    <>
+      <td className={periodTdClass}>
+        <GuideCell
+          value={product.chalk}
+          editing={editing}
+          onChange={(v) => onUpdate(index, 'chalk', v)}
+        />
+      </td>
+      <td className={periodTdClass}>
+        <GuideCell
+          value={product.chalkRoof}
+          editing={editing}
+          formatSplit
+          onChange={(v) => onUpdate(index, 'chalkRoof', v)}
+        />
+      </td>
+      <td className={periodTdClass}>
+        <GuideCell
+          value={product.chalkWall}
+          editing={editing}
+          formatSplit
+          onChange={(v) => onUpdate(index, 'chalkWall', v)}
+        />
+      </td>
+    </>
+  )
+}
+
+function renderCustomDataCells(
+  columnId: string,
+  layout: ProductTableLayout,
+  product: ProductWarranty,
+  index: number,
+  editing: boolean,
+  onUpdateCustomColumnValue?: (
+    index: number,
+    columnId: string,
+    value: string,
+    subKey?: string
+  ) => void
+) {
+  const def = getCustomColumnDef(layout, columnId)
+  if (!def) return null
+
+  if (def.kind === 'grouped') {
+    const mode = resolveCustomColumnMode(product, columnId)
+    const subCount = def.subColumns?.length ?? 3
+
+    if (mode === 'merged') {
+      return (
+        <td colSpan={subCount} className={`${periodTdClass} text-center`}>
+          <GuideCell
+            value={getCustomColumnValue(product, columnId)}
+            editing={editing}
+            onChange={(v) => onUpdateCustomColumnValue?.(index, columnId, v)}
+          />
+        </td>
+      )
+    }
+
+    return (def.subColumns ?? []).map((subKey) => (
+      <td key={`${columnId}-${subKey}`} className={periodTdClass}>
+        <GuideCell
+          value={getCustomColumnValue(product, columnId, subKey)}
+          editing={editing}
+          formatSplit
+          onChange={(v) => onUpdateCustomColumnValue?.(index, columnId, v, subKey)}
+        />
+      </td>
+    ))
+  }
+
+  return (
+    <td className={periodTdClass}>
+      <GuideCell
+        value={getCustomColumnValue(product, columnId)}
+        editing={editing}
+        onChange={(v) => onUpdateCustomColumnValue?.(index, columnId, v)}
+      />
+    </td>
+  )
+}
+
 interface ProductGuideTableGridProps {
   items: ProductGuideTableItem[]
   editing: boolean
@@ -253,6 +864,29 @@ interface ProductGuideTableGridProps {
   emptyMessage: string
   bordered?: boolean
   riskVariant?: 'high' | 'low'
+  columnLayout: ProductTableLayout
+  columnInsertAnchorId: string | null
+  onSelectColumnInsertAnchor?: (columnId: string) => void
+  onUpdateColumnHeader?: (
+    columnId: string,
+    field: 'titleEn' | 'titleKo' | `sub:${number}`,
+    value: string
+  ) => void
+  onChangeCustomColumnKind?: (columnId: string, kind: 'simple' | 'grouped') => void
+  onDeleteCustomColumn?: (columnId: string) => void
+  onAddCustomSubColumn?: (columnId: string) => void
+  onRemoveCustomSubColumn?: (columnId: string, subIndex: number) => void
+  onUpdateCustomColumnValue?: (
+    index: number,
+    columnId: string,
+    value: string,
+    subKey?: string
+  ) => void
+  onUpdateCustomColumnMode?: (
+    index: number,
+    columnId: string,
+    mode: 'detail' | 'merged'
+  ) => void
 }
 
 function ProductGuideTableGrid({
@@ -275,6 +909,16 @@ function ProductGuideTableGrid({
   emptyMessage,
   bordered = true,
   riskVariant,
+  columnLayout,
+  columnInsertAnchorId,
+  onSelectColumnInsertAnchor,
+  onUpdateColumnHeader,
+  onChangeCustomColumnKind,
+  onDeleteCustomColumn,
+  onAddCustomSubColumn,
+  onRemoveCustomSubColumn,
+  onUpdateCustomColumnValue,
+  onUpdateCustomColumnMode,
 }: ProductGuideTableGridProps) {
   const headerRowRef = useRef<HTMLTableRowElement>(null)
   const [headerRowHeight, setHeaderRowHeight] = useState(0)
@@ -293,13 +937,25 @@ function ProductGuideTableGrid({
 
   const headerRow2Top = headerRowHeight > 0 ? headerRowHeight : 43
   const hasActionColumn = editing && (onDelete || onReorder)
+  const dataColCount = countLayoutHeaderColumns(columnLayout)
+  const groupedCustomColumnIds = useMemo(
+    () => listGroupedCustomColumnIds(columnLayout),
+    [columnLayout]
+  )
+  const hasGroupedSubHeaders = columnLayout.columnOrder.some((columnId) => {
+    if (isBuiltinColumnId(columnId)) {
+      return columnId === 'colorFading' || columnId === 'chalk'
+    }
+    const def = getCustomColumnDef(columnLayout, columnId)
+    return def?.kind === 'grouped'
+  })
 
   return (
     <div className={bordered ? 'overflow-x-auto rounded-lg border border-border' : 'overflow-x-auto'}>
       <table className={periodTableClass}>
         <colgroup>
           {hasActionColumn && <col className="w-11" />}
-          {Array.from({ length: periodDataColCount }, (_, index) => (
+          {Array.from({ length: dataColCount }, (_, index) => (
             <col key={index} />
           ))}
         </colgroup>
@@ -317,47 +973,65 @@ function ProductGuideTableGrid({
             >
               {groupHeader}
             </th>
-            <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-              <span className="block break-all">PERFORATION</span>
-              <span className="block">(천공)</span>
-            </th>
-            <th rowSpan={2} className={`${periodThStackedClass} ${periodThStickyRow1} ${periodThStickyRowSpan}`}>
-              <span className="block break-all">PEEL/FLAKE</span>
-              <span className="block">(도막박리)</span>
-            </th>
-            <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
-              COLOR FADING (변색/탈색)
-            </th>
-            <th colSpan={3} className={`${periodThGroupClass} ${periodThStickyRow1}`}>
-              CHALK (백화/묻어남)
-            </th>
+            {columnLayout.columnOrder.map((columnId) =>
+              isBuiltinColumnId(columnId) ? (
+                <BuiltinColumnHeader
+                  key={columnId}
+                  columnId={columnId}
+                  layout={columnLayout}
+                  editing={editing}
+                  columnInsertAnchorId={columnInsertAnchorId}
+                  onSelectColumnInsertAnchor={onSelectColumnInsertAnchor}
+                  onUpdateColumnHeader={onUpdateColumnHeader}
+                />
+              ) : isCustomColumnId(columnId) ? (
+                <CustomColumnHeader
+                  key={columnId}
+                  columnId={columnId}
+                  layout={columnLayout}
+                  editing={editing}
+                  columnInsertAnchorId={columnInsertAnchorId}
+                  onSelectColumnInsertAnchor={onSelectColumnInsertAnchor}
+                  onUpdateColumnHeader={onUpdateColumnHeader}
+                  onChangeCustomColumnKind={onChangeCustomColumnKind}
+                  onDeleteCustomColumn={onDeleteCustomColumn}
+                />
+              ) : null
+            )}
           </tr>
-          <tr>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              기간
-            </th>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              ROOF
-            </th>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              WALL
-            </th>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              기간
-            </th>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              ROOF
-            </th>
-            <th className={`${periodThSubClass} ${periodThStickyRow2}`} style={{ top: headerRow2Top }}>
-              WALL
-            </th>
-          </tr>
+          {hasGroupedSubHeaders ? (
+            <tr>
+              {columnLayout.columnOrder.map((columnId) => {
+                if (isBuiltinColumnId(columnId)) {
+                  return renderBuiltinSubHeaders(
+                    columnId,
+                    columnLayout,
+                    headerRow2Top,
+                    editing,
+                    onUpdateColumnHeader
+                  )
+                }
+                if (isCustomColumnId(columnId)) {
+                  return renderCustomSubHeaders(
+                    columnId,
+                    columnLayout,
+                    headerRow2Top,
+                    editing,
+                    onUpdateColumnHeader,
+                    onAddCustomSubColumn,
+                    onRemoveCustomSubColumn
+                  )
+                }
+                return null
+              })}
+            </tr>
+          ) : null}
         </thead>
         <tbody>
           {items.length === 0 ? (
             <tr>
               <td
-                colSpan={hasActionColumn ? periodDataColCount + 1 : periodDataColCount}
+                colSpan={hasActionColumn ? dataColCount + 1 : dataColCount}
                 className="border border-border/50 px-4 py-8 text-center text-sm text-text-muted"
               >
                 {emptyMessage}
@@ -367,8 +1041,6 @@ function ProductGuideTableGrid({
             items.map(({ product, index }) => {
               const colorFadingMode = resolveColorFadingMode(product)
               const chalkMode = resolveChalkMode(product)
-              const isColorFadingMerged = colorFadingMode === 'merged'
-              const isChalkMerged = chalkMode === 'merged'
               const isHighlighted = highlightedIndex === index
               const isInsertAnchor = editing && insertAnchorIndex === index
               const isDragging = draggingIndex === index
@@ -481,95 +1153,35 @@ function ProductGuideTableGrid({
                             mode={chalkMode}
                             onChange={(mode) => onUpdate(index, 'chalkMode', mode)}
                           />
+                          {groupedCustomColumnIds.map((columnId) => (
+                            <SectionModeToggle
+                              key={columnId}
+                              label={getCustomColumnToggleLabel(columnLayout, columnId)}
+                              mode={resolveCustomColumnMode(product, columnId)}
+                              onChange={(mode) =>
+                                onUpdateCustomColumnMode?.(index, columnId, mode)
+                              }
+                            />
+                          ))}
                         </div>
                       </>
                     ) : (
                       product.productGroup
                     )}
                   </td>
-              <td className={periodTdClass}>
-                <GuideCell
-                  value={product.perforation}
-                  editing={editing}
-                  onChange={(v) => onUpdate(index, 'perforation', v)}
-                />
-              </td>
-              <td className={periodTdClass}>
-                <GuideCell
-                  value={product.peelFlake}
-                  editing={editing}
-                  onChange={(v) => onUpdate(index, 'peelFlake', v)}
-                />
-              </td>
-                  {isColorFadingMerged ? (
-                    <td colSpan={3} className={`${periodTdClass} text-center`}>
-                      <GuideCell
-                        value={product.colorFading}
-                        editing={editing}
-                        onChange={(v) => onUpdate(index, 'colorFading', v)}
-                      />
-                    </td>
-                  ) : (
-                    <>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.colorFading}
-                          editing={editing}
-                          onChange={(v) => onUpdate(index, 'colorFading', v)}
-                        />
-                      </td>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.colorFadingRoof}
-                          editing={editing}
-                          formatSplit
-                          onChange={(v) => onUpdate(index, 'colorFadingRoof', v)}
-                        />
-                      </td>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.colorFadingWall}
-                          editing={editing}
-                          formatSplit
-                          onChange={(v) => onUpdate(index, 'colorFadingWall', v)}
-                        />
-                      </td>
-                    </>
-                  )}
-                  {isChalkMerged ? (
-                    <td colSpan={3} className={`${periodTdClass} text-center`}>
-                      <GuideCell
-                        value={product.chalk}
-                        editing={editing}
-                        onChange={(v) => onUpdate(index, 'chalk', v)}
-                      />
-                    </td>
-                  ) : (
-                    <>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.chalk}
-                          editing={editing}
-                          onChange={(v) => onUpdate(index, 'chalk', v)}
-                        />
-                      </td>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.chalkRoof}
-                          editing={editing}
-                          formatSplit
-                          onChange={(v) => onUpdate(index, 'chalkRoof', v)}
-                        />
-                      </td>
-                      <td className={periodTdClass}>
-                        <GuideCell
-                          value={product.chalkWall}
-                          editing={editing}
-                          formatSplit
-                          onChange={(v) => onUpdate(index, 'chalkWall', v)}
-                        />
-                      </td>
-                    </>
+                  {columnLayout.columnOrder.map((columnId) =>
+                    isBuiltinColumnId(columnId)
+                      ? renderBuiltinDataCells(columnId, product, index, editing, onUpdate)
+                      : isCustomColumnId(columnId)
+                        ? renderCustomDataCells(
+                            columnId,
+                            columnLayout,
+                            product,
+                            index,
+                            editing,
+                            onUpdateCustomColumnValue
+                          )
+                        : null
                   )}
                 </tr>
               )
@@ -624,6 +1236,16 @@ export function ProductGuideTable({
   onSelectInsertAnchor,
   onDelete,
   onReorder,
+  columnLayout,
+  columnInsertAnchorId = null,
+  onSelectColumnInsertAnchor,
+  onUpdateColumnHeader,
+  onChangeCustomColumnKind,
+  onDeleteCustomColumn,
+  onAddCustomSubColumn,
+  onRemoveCustomSubColumn,
+  onUpdateCustomColumnValue,
+  onUpdateCustomColumnMode,
   splitByPrintPaint = false,
   riskVariant,
   filterLabel = '제품군 선택',
@@ -635,6 +1257,10 @@ export function ProductGuideTable({
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map())
+  const resolvedColumnLayout = useMemo(
+    () => resolveProductTableLayout(columnLayout),
+    [columnLayout]
+  )
 
   useEffect(() => {
     if (addTick > 0) {
@@ -776,6 +1402,16 @@ export function ProductGuideTable({
     dragOverIndex,
     setDragOverIndex,
     riskVariant,
+    columnLayout: resolvedColumnLayout,
+    columnInsertAnchorId,
+    onSelectColumnInsertAnchor,
+    onUpdateColumnHeader,
+    onChangeCustomColumnKind,
+    onDeleteCustomColumn,
+    onAddCustomSubColumn,
+    onRemoveCustomSubColumn,
+    onUpdateCustomColumnValue,
+    onUpdateCustomColumnMode,
   }
 
   return (
@@ -786,6 +1422,14 @@ export function ProductGuideTable({
             행을 클릭해 선택한 뒤 <span className="font-medium text-amber-400/90">+</span>를 누르면 해당 행{' '}
             <span className="text-amber-400/90">위</span>에 새 행이 추가됩니다.
           </p>
+          {onSelectColumnInsertAnchor && (
+            <p className="text-xs text-text-muted">
+              수정 모드에서 <span className="font-medium text-amber-400/90">모든 열 헤더</span>를 직접
+              입력할 수 있습니다. <span className="font-medium text-amber-400/90">그룹 열</span>은 CHALK처럼
+              그룹 제목 + 하위 열, <span className="font-medium text-amber-400/90">단일 열</span>은 RC등급처럼
+              2행 병합 헤더입니다. 한글 제목만 입력해도 됩니다.
+            </p>
+          )}
           {onReorder && canReorder && (
             <p className="text-xs text-text-muted">⋮⋮ 드래그로 순서를 변경할 수 있습니다.</p>
           )}

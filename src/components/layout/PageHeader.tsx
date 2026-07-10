@@ -4,6 +4,7 @@ interface PageHeaderProps {
   subtitle?: string
   title: ReactNode
   description: ReactNode
+  actions?: ReactNode
 }
 
 const cautionIconMaskStyle: CSSProperties = {
@@ -27,7 +28,7 @@ export function PageHeaderCautionIcon({ className = 'h-4 w-4' }: { className?: s
   )
 }
 
-export function PageHeader({ subtitle, title, description }: PageHeaderProps) {
+export function PageHeader({ subtitle, title, description, actions }: PageHeaderProps) {
   const subtitleEl = subtitle ? (
     <p className="mb-1.5 text-[10px] font-semibold tracking-widest text-text-muted uppercase sm:text-xs">
       {subtitle}
@@ -42,9 +43,16 @@ export function PageHeader({ subtitle, title, description }: PageHeaderProps) {
 
   return (
     <div className="mb-6 sm:mb-8">
-      {subtitleEl}
-      <h1 className="text-xl font-bold text-text-primary sm:text-2xl lg:text-3xl">{title}</h1>
-      {descriptionEl}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 flex-1">
+          {subtitleEl}
+          <h1 className="text-xl font-bold text-text-primary sm:text-2xl lg:text-3xl">{title}</h1>
+          {descriptionEl}
+        </div>
+        {actions ? (
+          <div className="flex shrink-0 items-start justify-end lg:pt-8">{actions}</div>
+        ) : null}
+      </div>
     </div>
   )
 }
