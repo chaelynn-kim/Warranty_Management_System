@@ -1,6 +1,7 @@
 import JSZip from 'jszip'
 import type { ProductWarranty } from '../../types'
 import { translateDetailRegionToEnglish } from './countryTranslation'
+import { EMBEDDED_PPTX_TO_PDF_CONFIG } from '../../lib/pptxToPdf.embedded'
 import type { SlideReplacement } from './pptxReplacer'
 import { applySlideReplacements } from './pptxReplacer'
 import { postProcessSlideXml } from './pptxPostProcess'
@@ -191,24 +192,29 @@ function buildPaintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
 
 function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const peelYears = extractWarrantyYears(ctx.product.peelFlake)
+  const perfYears = ctx.perforationYears
 
   const rules: SlideReplacement[] = [
-    rule(1, 0, 0, String(ctx.perforationYears), { useCoverYearGray: true }),
+    rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
     rule(2, 0, 0, ctx.resin),
-    rule(2, 0, 1, formatYearsKo(ctx.perforationYears)),
+    rule(2, 0, 1, formatYearsKo(perfYears)),
+    // 보증 항목 본문 — 박리/균열 설명 문단
     rule(2, 4, 0, formatYearsKoSpacedTrailing(peelYears)),
-    rule(2, 6, 0, formatYearsKoSpaced(ctx.perforationYears)),
-    rule(2, 40, 0, formatYearsKoSpaced(peelYears)),
-    rule(2, 43, 0, formatYearsKoSpaced(ctx.perforationYears)),
+    // 보증 항목 본문 — 변색 설명 문단(템플릿 placeholder 연수)
+    rule(2, 6, 0, formatYearsKoSpaced(perfYears)),
+    // 보증 내용 표(지붕) — 천공 → 박리 → 변색 → 백화
+    rule(2, 40, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 43, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 45, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
     rule(2, 47, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkRoof'))),
-    rule(2, 54, 0, formatYearsKoSpaced(peelYears)),
-    rule(2, 57, 0, formatYearsKoSpaced(ctx.perforationYears)),
+    // 보증 내용 표(벽체) — 천공 → 박리 → 변색 → 백화
+    rule(2, 54, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 57, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 59, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 61, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkWall'))),
     rule(4, 0, 0, ctx.issueDate),
-    rule(4, 11, 0, formatYearsPlusOneKo(ctx.perforationYears)),
+    rule(4, 11, 0, formatYearsPlusOneKo(perfYears)),
   ]
 
   appendSlide3CoatingRules(rules, ctx, ctx.detailRegionLabel, formatCoatingStructureKo(ctx.coatingStructure))
@@ -217,22 +223,25 @@ function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
 
 function buildPrintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const peelYears = extractWarrantyYears(ctx.product.peelFlake)
+  const perfYears = ctx.perforationYears
 
   const rules: SlideReplacement[] = [
-    rule(1, 0, 0, String(ctx.perforationYears), { useCoverYearGray: true }),
+    rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
-    rule(2, 0, 0, formatYearsEnUpper(ctx.perforationYears)),
-    rule(2, 32, 0, formatYearsEnShort(peelYears)),
-    rule(2, 35, 0, formatYearsEnShort(ctx.perforationYears)),
+    rule(2, 0, 0, formatYearsEnUpper(perfYears)),
+    // Warranty terms 표(Roof) — Perforation → Peel & flake → Color → Chalk
+    rule(2, 32, 0, formatYearsEnShort(perfYears)),
+    rule(2, 35, 0, formatYearsEnShort(peelYears)),
     rule(2, 37, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
     rule(2, 39, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkRoof'))),
-    rule(2, 56, 0, formatYearsEnShort(peelYears)),
-    rule(2, 58, 0, formatYearsEnShort(ctx.perforationYears)),
+    // Warranty terms 표(Wall) — Perforation → Peel & flake → Color → Chalk
+    rule(2, 56, 0, formatYearsEnShort(perfYears)),
+    rule(2, 58, 0, formatYearsEnShort(peelYears)),
     rule(2, 59, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 60, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkWall'))),
     rule(3, 3, 0, ctx.resin),
     rule(3, 10, 0, ctx.resin),
-    rule(4, 9, 0, formatYearsPlusOneEn(ctx.perforationYears)),
+    rule(4, 9, 0, formatYearsPlusOneEn(perfYears)),
     rule(4, 11, 0, ctx.issueDate),
   ]
 
@@ -357,7 +366,8 @@ export async function generateWarrantyCertificate(
 }
 
 export async function convertWarrantyCertificateToPdf(pptxBlob: Blob): Promise<Blob> {
-  const apiBaseUrl = import.meta.env.VITE_PPTX_TO_PDF_API_URL?.trim()
+  const apiBaseUrl =
+    import.meta.env.VITE_PPTX_TO_PDF_API_URL?.trim() || EMBEDDED_PPTX_TO_PDF_CONFIG.apiUrl
   if (!apiBaseUrl) {
     throw new Error(
       'PDF 변환 서버가 설정되지 않았습니다. PPTX로 다운로드한 뒤 PowerPoint에서 PDF로 저장해 주세요.'
@@ -368,7 +378,8 @@ export async function convertWarrantyCertificateToPdf(pptxBlob: Blob): Promise<B
   formData.append('file', pptxBlob, 'certificate.pptx')
 
   const headers: Record<string, string> = {}
-  const apiKey = import.meta.env.VITE_PPTX_TO_PDF_API_KEY?.trim()
+  const apiKey =
+    import.meta.env.VITE_PPTX_TO_PDF_API_KEY?.trim() || EMBEDDED_PPTX_TO_PDF_CONFIG.apiKey
   if (apiKey) headers['x-api-key'] = apiKey
 
   let response: Response
