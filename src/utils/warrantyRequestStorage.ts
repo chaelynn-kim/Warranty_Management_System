@@ -113,6 +113,12 @@ function normalizeCoatingStructure(value: string): string {
   return joinMultiValue(parseCoatingStructures(value))
 }
 
+function normalizeResinValue(value: string): string {
+  return joinMultiValue(
+    parseMultiValue(value).map((item) => (item === 'RMP MATT' ? 'MATT' : item))
+  )
+}
+
 function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): WarrantyIssuanceRequestRecord {
   const legacy = record as WarrantyIssuanceRequestRecord & {
     reviewMemo?: string
@@ -148,6 +154,7 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
       (record.warrantyTermAttachments?.trim() ? record.warrantyTermAttachments : ''),
     reviewResult: record.reviewResult ?? legacy.reviewMemo ?? '',
     status: normalizeRequestStatus(record.status),
+    resin: normalizeResinValue(record.resin ?? ''),
     coatingStructure: normalizeCoatingStructure(record.coatingStructure ?? ''),
     detailRegion: normalizeDetailRegionValue(record.detailRegion ?? ''),
     requesterEmail: record.requesterEmail?.trim() ?? '',
@@ -253,6 +260,42 @@ export function displayRequestValue(value: string): string {
 export function toWarrantyIssuanceRequest(
   record: WarrantyIssuanceRequestRecord
 ): WarrantyIssuanceRequest {
-  const { id: _id, status: _status, sequenceNo: _sequenceNo, ...request } = record
+  const {
+    id: _id,
+    status: _status,
+    sequenceNo: _sequenceNo,
+    requesterEmail: _requesterEmail,
+    ...request
+  } = record
   return request
+}
+
+/** 폼 저장 시 메타 필드(id/status/sequenceNo/requesterEmail)가 덮어쓰이지 않도록 병합 */
+export function mergeWarrantyRequestRecord(
+  record: WarrantyIssuanceRequestRecord,
+  request: WarrantyIssuanceRequest,
+  nextStatus?: string
+): WarrantyIssuanceRequestRecord {
+  const requestWithoutMeta = request as WarrantyIssuanceRequest & {
+    requesterEmail?: string
+    id?: string
+    status?: string
+    sequenceNo?: number
+  }
+  const {
+    requesterEmail: _requesterEmail,
+    id: _id,
+    status: _status,
+    sequenceNo: _sequenceNo,
+    ...safeRequest
+  } = requestWithoutMeta
+
+  return {
+    ...record,
+    ...safeRequest,
+    id: record.id,
+    sequenceNo: record.sequenceNo,
+    requesterEmail: record.requesterEmail?.trim() || undefined,
+    status: nextStatus ?? record.status,
+  }
 }

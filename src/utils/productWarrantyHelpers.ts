@@ -54,9 +54,11 @@ export function resolveProductLine(product: ProductWarranty): ProductLine {
 }
 
 export function normalizeProductWarranty(product: ProductWarranty): ProductWarranty {
+  const productGroup = product.productGroup === 'RMP MATT' ? 'MATT' : product.productGroup
   return {
     ...product,
-    productLine: resolveProductLine(product),
+    productGroup,
+    productLine: resolveProductLine({ ...product, productGroup }),
     colorFadingMode: resolveColorFadingMode(product),
     chalkMode: resolveChalkMode(product),
   }

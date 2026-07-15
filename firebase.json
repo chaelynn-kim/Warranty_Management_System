@@ -6,6 +6,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
+    "site": "warranty-management-common",
     "public": "dist",
     "ignore": [
       "firebase.json",

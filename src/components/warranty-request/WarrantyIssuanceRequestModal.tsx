@@ -40,7 +40,7 @@ interface WarrantyIssuanceRequestModalProps {
     id: string,
     request: WarrantyIssuanceRequest,
     options: { editScope: EditScope; targetStatus?: string }
-  ) => void
+  ) => void | Promise<void>
   onPersist?: (id: string, request: WarrantyIssuanceRequest) => void
   onStatusChange?: (id: string, nextStatus: string) => void
   viewRequest?: WarrantyIssuanceRequestRecord | null
@@ -159,18 +159,21 @@ export function WarrantyIssuanceRequestModal({
     onPersist?.(viewRequest.id, request)
   }
 
-  const executeSaveUpdate = () => {
+  const executeSaveUpdate = async () => {
     if (!formRef.current || !viewRequest || !editScope) {
       setError('폼을 불러올 수 없습니다.')
       return
     }
 
     const request = formRef.current.getValue()
-    onUpdate?.(viewRequest.id, request, {
-      editScope,
-      targetStatus: editScope === 'quality' ? qualityTargetStatus : undefined,
-    })
-    onClose()
+    try {
+      await onUpdate?.(viewRequest.id, request, {
+        editScope,
+        targetStatus: editScope === 'quality' ? qualityTargetStatus : undefined,
+      })
+    } finally {
+      onClose()
+    }
   }
 
   const handleSaveUpdate = () => {
@@ -215,12 +218,12 @@ export function WarrantyIssuanceRequestModal({
       }
     }
 
-    executeSaveUpdate()
+    void executeSaveUpdate()
   }
 
   const handleConfirmPublish = () => {
     setPublishConfirmOpen(false)
-    executeSaveUpdate()
+    void executeSaveUpdate()
   }
 
   const handleStartRequestEdit = () => {
@@ -272,7 +275,7 @@ export function WarrantyIssuanceRequestModal({
     status === WARRANTY_REQUEST_STATUS_PENDING
       ? '품질경영팀 팀장 승인 시 접수 처리됩니다.'
       : status === WARRANTY_REQUEST_STATUS_RECEIVED
-        ? '검토 결과 작성 후 상태를 발행 완료 또는 보증 불가로 변경하고 저장할 수 있습니다. 발행 완료·보증 불가로 최초 저장 시 요청자에게 알림이 발송됩니다.'
+        ? '검토 결과 작성 후 상태를 발행 완료 또는 보증 불가로 변경하고 저장할 수 있습니다. 발행 완료·보증 불가로 변경 저장 시(접수→재발행 포함) 요청자에게 알림이 발송됩니다.'
         : status === WARRANTY_REQUEST_STATUS_COMPLETED
           ? '품질경영팀 담당자가 검토 결과·상태를 수정할 수 있습니다.'
           : status === WARRANTY_REQUEST_STATUS_DENIED

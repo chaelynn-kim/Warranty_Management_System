@@ -1,4 +1,5 @@
 import emailjs from '@emailjs/browser'
+import { EMBEDDED_EMAILJS_CONFIG } from '../lib/emailjs.embedded'
 import type { WarrantyIssuanceRequest } from '../types'
 import { WARRANTY_SITE_OWNER_SENDER_NAME, WARRANTY_SITE_URL } from './authValidation'
 import { formatDisplayDate } from './helpers'
@@ -7,10 +8,21 @@ import {
   formatRequestResin,
 } from './warrantyRequestStorage'
 
-const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID ?? ''
-const PENDING_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID ?? ''
-const COMPLETED_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_COMPLETED_TEMPLATE_ID ?? ''
-const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY ?? ''
+function envOr(raw: string | undefined, fallback: string): string {
+  const trimmed = typeof raw === 'string' ? raw.trim() : ''
+  return trimmed !== '' ? trimmed : fallback
+}
+
+const SERVICE_ID = envOr(import.meta.env.VITE_EMAILJS_SERVICE_ID, EMBEDDED_EMAILJS_CONFIG.serviceId)
+const PENDING_TEMPLATE_ID = envOr(
+  import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
+  EMBEDDED_EMAILJS_CONFIG.pendingTemplateId
+)
+const COMPLETED_TEMPLATE_ID = envOr(
+  import.meta.env.VITE_EMAILJS_COMPLETED_TEMPLATE_ID,
+  EMBEDDED_EMAILJS_CONFIG.completedTemplateId
+)
+const PUBLIC_KEY = envOr(import.meta.env.VITE_EMAILJS_PUBLIC_KEY, EMBEDDED_EMAILJS_CONFIG.publicKey)
 
 if (PUBLIC_KEY) {
   emailjs.init({ publicKey: PUBLIC_KEY })
@@ -125,7 +137,7 @@ export async function sendWarrantyRequestPendingEmail(
   await emailjs.send(SERVICE_ID, PENDING_TEMPLATE_ID, templateParams, { publicKey: PUBLIC_KEY })
 }
 
-/** 품질 작성 후 발행 완료·보증 불가 최초 저장 시 요청자 알림 메일 */
+/** 품질 작성 후 발행 완료·보증 불가로 전환 저장 시 요청자 알림 메일 */
 export async function sendWarrantyRequestCompletedEmail(
   request: WarrantyIssuanceRequest,
   options?: { requesterEmail?: string }

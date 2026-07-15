@@ -104,13 +104,14 @@ function paintResinMatchesProduct(resin: string, product: ProductWarranty): bool
   const resinKey = normalizeKey(resin)
 
   if (resinKey === 'RMP') return group === 'RMP'
-  if (resinKey === 'RMP MATT') return group === 'RMP MATT'
+  if (resinKey === 'MATT') return group === 'MATT' || group === 'RMP MATT'
   if (resinKey === 'ADP') return group === 'ADP'
   if (resinKey === 'NDP') return group === 'NDP'
   if (resinKey === 'HDP') return group === 'HDP'
   if (resinKey === 'SMP') return group === 'SMP'
   if (resinKey === 'URETHANE') return group === 'URETHANE'
   if (resinKey === 'SQP40') return group === 'SQP40'
+  if (resinKey === 'SQP40 MATT') return group === 'SQP40 MATT'
   if (resinKey === 'PVDF') return group === 'PVDF'
 
   return group === resinKey

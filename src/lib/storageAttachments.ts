@@ -1,6 +1,6 @@
 import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import type { WarrantyFileAttachment } from '../types'
-import { isStorageEnabled, storage } from './firebase'
+import { auth, isStorageEnabled, storage } from './firebase'
 
 export type RequestAttachmentSlot =
   | 'company-ko'
@@ -33,6 +33,9 @@ export function buildWarrantyGuideStoragePath(fileId: string, fileName: string):
 function assertStorageReady(): void {
   if (!isStorageEnabled || !storage) {
     throw new Error('Firebase Storage가 설정되지 않았습니다.')
+  }
+  if (!auth?.currentUser) {
+    throw new Error('로그인이 필요합니다. @seah.co.kr 계정으로 로그인한 뒤 다시 시도해 주세요.')
   }
 }
 

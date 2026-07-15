@@ -31,3 +31,35 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+## Firebase Hosting 배포
+
+프로젝트에 `firebase-tools`가 포함되어 있어 전역 설치 없이 배포할 수 있습니다.
+
+```bash
+npm run deploy:hosting
+```
+
+또는 단계별로 실행할 때 (PowerShell):
+
+```powershell
+npm run build
+npx firebase deploy --only hosting
+```
+
+> PowerShell에서 한 줄로 실행할 때는 `&&` 대신 `;`를 사용하세요.  
+> 예: `npm run build; npx firebase deploy --only hosting`
+
+최초 1회 Firebase 로그인이 필요합니다.
+
+```bash
+npx firebase login
+```
+
+배포 URL: https://warranty-management-common.web.app
+
+Storage·Firestore 보안 규칙(첨부 파일, Warranty Guide 등)을 반영하려면 Hosting 배포와 별도로 한 번 실행하세요.
+
+```bash
+npm run deploy:rules
+```

@@ -235,6 +235,14 @@ export function WarrantyPeriodPage() {
       addNotCoveredItem(notCoveredInsertAnchor ?? undefined)
       return
     }
+    if (sectionId === 'highRisk:countries') {
+      addCountry('highRisk')
+      return
+    }
+    if (sectionId === 'lowRisk:countries') {
+      addCountry('lowRisk')
+      return
+    }
     if (sectionId === 'coastalAl:highRisk' && coastalInsertAnchor?.side === 'highRisk') {
       addCoastalRow('highRisk', coastalInsertAnchor.index)
       return
@@ -303,6 +311,43 @@ export function WarrantyPeriodPage() {
     setData((prev) => {
       const countries = [...prev[section].countries]
       countries[index] = { ...countries[index], [field]: value }
+      return { ...prev, [section]: { ...prev[section], countries } }
+    })
+    setSectionMessages({})
+  }
+
+  const addCountry = (section: 'highRisk' | 'lowRisk', atIndex?: number) => {
+    setData((prev) => {
+      const countries = [...prev[section].countries]
+      const insertAt =
+        atIndex !== undefined && atIndex >= 0 && atIndex <= countries.length
+          ? atIndex
+          : countries.length
+      countries.splice(insertAt, 0, { region: '', countries: '' })
+      return { ...prev, [section]: { ...prev[section], countries } }
+    })
+    setSectionMessages({})
+  }
+
+  const deleteCountry = (section: 'highRisk' | 'lowRisk', index: number) => {
+    setData((prev) => {
+      const countries = [...prev[section].countries]
+      countries.splice(index, 1)
+      return { ...prev, [section]: { ...prev[section], countries } }
+    })
+    setSectionMessages({})
+  }
+
+  const reorderCountry = (
+    section: 'highRisk' | 'lowRisk',
+    fromIndex: number,
+    toIndex: number
+  ) => {
+    if (fromIndex === toIndex) return
+    setData((prev) => {
+      const countries = [...prev[section].countries]
+      const [moved] = countries.splice(fromIndex, 1)
+      countries.splice(toIndex, 0, moved)
       return { ...prev, [section]: { ...prev[section], countries } }
     })
     setSectionMessages({})
@@ -929,15 +974,15 @@ export function WarrantyPeriodPage() {
         title="세아씨엠 보증연한"
         actions={user ? <WarrantyGuideDownloadButton userEmail={user.email} /> : null}
         description={
-          <>
-            <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
-            <p className="flex items-center gap-1.5 font-bold text-text-primary">
-              <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0 text-white" />
-              <span>
-                단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.
-              </span>
-            </p>
-          </>
+          <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
+        }
+        descriptionNote={
+          <p className="flex items-center gap-1.5 font-bold text-text-primary">
+            <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0 text-white" />
+            <span>
+              단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.
+            </span>
+          </p>
         }
       />
 
@@ -988,9 +1033,11 @@ export function WarrantyPeriodPage() {
               canEdit={canEdit}
               editing={isSectionEditing('highRisk:countries')}
               saveMessage={sectionMessage('highRisk:countries')}
+              canAdd
               onEdit={() => startSectionEdit('highRisk:countries')}
               onSave={() => saveSection('highRisk:countries')}
               onReset={() => resetSection('highRisk:countries')}
+              onAdd={() => handleSectionAdd('highRisk:countries')}
             >
               <CountryGuideGrid
                 countries={data.highRisk.countries}
@@ -1002,6 +1049,16 @@ export function WarrantyPeriodPage() {
                   onEdit: () => startSectionEdit('highRisk:countries'),
                 }}
                 onUpdate={(index, field, value) => updateCountry('highRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('highRisk:countries')
+                    ? (index) => deleteCountry('highRisk', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('highRisk:countries')
+                    ? (from, to) => reorderCountry('highRisk', from, to)
+                    : undefined
+                }
               />
             </PeriodSection>
 
@@ -1118,9 +1175,11 @@ export function WarrantyPeriodPage() {
               canEdit={canEdit}
               editing={isSectionEditing('lowRisk:countries')}
               saveMessage={sectionMessage('lowRisk:countries')}
+              canAdd
               onEdit={() => startSectionEdit('lowRisk:countries')}
               onSave={() => saveSection('lowRisk:countries')}
               onReset={() => resetSection('lowRisk:countries')}
+              onAdd={() => handleSectionAdd('lowRisk:countries')}
             >
               <CountryGuideGrid
                 countries={data.lowRisk.countries}
@@ -1134,6 +1193,16 @@ export function WarrantyPeriodPage() {
                   onEdit: () => startSectionEdit('lowRisk:countries'),
                 }}
                 onUpdate={(index, field, value) => updateCountry('lowRisk', index, field, value)}
+                onDelete={
+                  isSectionEditing('lowRisk:countries')
+                    ? (index) => deleteCountry('lowRisk', index)
+                    : undefined
+                }
+                onReorder={
+                  isSectionEditing('lowRisk:countries')
+                    ? (from, to) => reorderCountry('lowRisk', from, to)
+                    : undefined
+                }
               />
             </PeriodSection>
 

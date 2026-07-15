@@ -29,7 +29,10 @@ import {
   persistWarrantyRequestRecords,
   reloadWarrantyRequestRecords,
 } from '../utils/warrantyRequestRecordsCache'
-import { resequenceWarrantyRequestRecordsBySequenceDesc } from '../utils/warrantyRequestStorage'
+import {
+  mergeWarrantyRequestRecord,
+  resequenceWarrantyRequestRecordsBySequenceDesc,
+} from '../utils/warrantyRequestStorage'
 import { downloadWarrantyRequestExcel } from '../utils/warrantyExcel'
 import {
   filterRecordsByIssueDateRange,
@@ -160,7 +163,7 @@ export function WarrantyIssuancePage({
     if (!current) return
 
     const nextRecords = requestRecords.map((record) =>
-      record.id === id ? { ...record, ...request, status: record.status } : record
+      record.id === id ? mergeWarrantyRequestRecord(record, request) : record
     )
 
     try {
@@ -171,7 +174,9 @@ export function WarrantyIssuancePage({
     }
 
     setRequestRecords(nextRecords)
-    setViewingRequest((prev) => (prev?.id === id ? { ...prev, ...request } : prev))
+    setViewingRequest((prev) =>
+      prev?.id === id ? mergeWarrantyRequestRecord(prev, request) : prev
+    )
   }
 
   const handleRequestUpdate = async (
@@ -194,6 +199,7 @@ export function WarrantyIssuancePage({
       options.targetStatus
     )
     const previousStatus = normalizeRequestStatus(current.status)
+    // 발행 완료·보증 불가로 "진입"할 때마다 알림 (최초뿐 아니라 접수→재발행 포함)
     const isNewlyCompleted =
       nextStatus === WARRANTY_REQUEST_STATUS_COMPLETED &&
       previousStatus !== WARRANTY_REQUEST_STATUS_COMPLETED
@@ -202,7 +208,7 @@ export function WarrantyIssuancePage({
       previousStatus !== WARRANTY_REQUEST_STATUS_DENIED
     const shouldNotifyRequester = isNewlyCompleted || isNewlyDenied
     const nextRecords = requestRecords.map((record) =>
-      record.id === id ? { ...record, ...request, status: nextStatus } : record
+      record.id === id ? mergeWarrantyRequestRecord(record, request, nextStatus) : record
     )
 
     try {
@@ -218,20 +224,25 @@ export function WarrantyIssuancePage({
 
     if (shouldNotifyRequester) {
       const updatedRecord = nextRecords.find((record) => record.id === id)
+      const requesterEmail =
+        updatedRecord?.requesterEmail?.trim() || current.requesterEmail?.trim() || ''
       try {
-        await sendWarrantyRequestCompletedEmail(request, {
-          requesterEmail: updatedRecord?.requesterEmail ?? current.requesterEmail,
-        })
-        setRequestSaveMessage(
-          isNewlyDenied ? '보증 불가로 처리되었습니다.' : '발행 완료 처리되었습니다.'
-        )
+        await sendWarrantyRequestCompletedEmail(request, { requesterEmail })
+        const successMessage = isNewlyDenied
+          ? '보증 불가로 처리되었고 요청자에게 알림 메일을 발송했습니다.'
+          : '발행 완료 처리되었고 요청자에게 알림 메일을 발송했습니다.'
+        setRequestSaveMessage(successMessage)
+        window.alert(successMessage)
       } catch (mailError) {
         console.error('[EmailJS] 요청자 알림 메일 발송 실패', mailError)
-        setRequestSaveMessage(
-          isNewlyDenied
-            ? '보증 불가 처리되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
-            : '발행 완료되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.'
-        )
+        const detail = mailError instanceof Error ? mailError.message : ''
+        const failMessage =
+          (isNewlyDenied
+            ? '보증 불가 처리되었으나 알림 메일 발송에 실패했습니다.'
+            : '발행 완료되었으나 알림 메일 발송에 실패했습니다.') +
+          (detail ? ` (${detail})` : ' 관리자에게 문의해 주세요.')
+        setRequestSaveMessage(failMessage)
+        window.alert(failMessage)
       }
     } else {
       const revertedToPending =
@@ -254,7 +265,7 @@ export function WarrantyIssuancePage({
       )
     }
 
-    setTimeout(() => setRequestSaveMessage(''), 3000)
+    setTimeout(() => setRequestSaveMessage(''), 6000)
   }
 
   const handleRequestReorder = (fromId: string, toId: string) => {
@@ -356,11 +367,9 @@ export function WarrantyIssuancePage({
               됩니다.
             </p>
             <p>
-              승인 후 담당자가 검토를 마치면, 의뢰한 영업사원에게{' '}
-              <strong className="font-semibold text-text-primary">
-                발행 완료·보증 불가 알림 메일이 자동 발송
-              </strong>
-              됩니다.
+              승인 후 담당자가 상태를 발행 완료·보증 불가로 변경해 저장하면, 의뢰한 영업사원에게{' '}
+              <strong className="font-semibold text-text-primary">알림 메일이 자동 발송</strong>
+              됩니다. (접수→재발행 완료로 다시 변경해도 발송)
             </p>
           </div>
         }

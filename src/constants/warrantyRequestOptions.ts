@@ -11,8 +11,9 @@ export const WARRANTY_REQUEST_RESINS = [
   'URETHANE',
   'MVP',
   'SQP40',
+  'SQP40 MATT',
   'PVDF',
-  'RMP MATT',
+  'MATT',
 ] as const
 
 export const WARRANTY_REQUEST_PRODUCT_ITEMS = ['PRINT', 'PAINT'] as const

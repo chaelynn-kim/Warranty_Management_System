@@ -126,6 +126,21 @@
         "notes": ""
       },
       {
+        "productGroup": "SQP40 MATT",
+        "productLine": "paint",
+        "peelFlake": "20Y",
+        "perforation": "20Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
+        "colorFading": "15Y",
+        "colorFadingRoof": "≤ΔE8\n(15Y)",
+        "colorFadingWall": "≤ΔE6\n(20Y)",
+        "chalk": "15Y",
+        "chalkRoof": "≥#4\n(15Y)",
+        "chalkWall": "≥#6\n(15Y)",
+        "notes": ""
+      },
+      {
         "productGroup": "PVDF",
         "productLine": "paint",
         "peelFlake": "20Y",
@@ -141,7 +156,7 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP MATT",
+        "productGroup": "MATT",
         "productLine": "paint",
         "peelFlake": "5Y",
         "perforation": "5Y",
@@ -356,6 +371,21 @@
         "notes": ""
       },
       {
+        "productGroup": "SQP40 MATT",
+        "productLine": "paint",
+        "peelFlake": "40Y",
+        "perforation": "40Y",
+        "colorFadingMode": "detail",
+        "chalkMode": "detail",
+        "colorFading": "30Y",
+        "colorFadingRoof": "≤ΔE8\n(30Y)",
+        "colorFadingWall": "≤ΔE6\n(30Y)",
+        "chalk": "30Y",
+        "chalkRoof": "≥#4\n(30Y)",
+        "chalkWall": "≥#6\n(30Y)",
+        "notes": ""
+      },
+      {
         "productGroup": "PVDF",
         "productLine": "paint",
         "peelFlake": "40Y",
@@ -371,7 +401,7 @@
         "notes": ""
       },
       {
-        "productGroup": "RMP MATT",
+        "productGroup": "MATT",
         "productLine": "paint",
         "peelFlake": "10Y",
         "perforation": "10Y",

@@ -15,10 +15,11 @@ export const RESIN_TYPES = [
   'MVP',
   'NDP',
   'SQP40',
+  'SQP40 MATT',
   'URETHANE',
   'HBU',
   'PVDF',
-  'RMP MATT',
+  'MATT',
 ] as const
 
 export function normalizeOptionValue(value: string): string {

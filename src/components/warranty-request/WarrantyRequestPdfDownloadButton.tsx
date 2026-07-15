@@ -1,3 +1,4 @@
+import { Download, Loader2 } from 'lucide-react'
 import { useState } from 'react'
 import type { WarrantyIssuanceRequest } from '../../types'
 
@@ -41,7 +42,11 @@ export function WarrantyRequestPdfDownloadButton({
         title="의뢰 내용 PDF로 저장"
         className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-bg-primary px-3 text-xs font-medium text-text-primary transition-colors hover:border-accent hover:text-accent disabled:cursor-wait disabled:opacity-60 sm:text-sm"
       >
-        <span aria-hidden>📥</span>
+        {downloading ? (
+          <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden />
+        ) : (
+          <Download className="h-4 w-4 shrink-0" aria-hidden />
+        )}
         <span>{downloading ? 'PDF 생성 중…' : '보증 발행 의뢰서'}</span>
       </button>
       {error && (
