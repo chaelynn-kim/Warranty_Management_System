@@ -2,6 +2,9 @@ const RED_FILL = '<a:solidFill><a:srgbClr val="FF0000"/></a:solidFill>'
 /** 1페이지 대형 연수 — 제목(NDP TOP W950)과 동일한 회색 */
 const WARRANTY_COVER_YEAR_COLOR = 'A9A9A9'
 const WARRANTY_COVER_YEAR_FILL = `<a:solidFill><a:srgbClr val="${WARRANTY_COVER_YEAR_COLOR}"/></a:solidFill>`
+/** 양식에서 빨간 표시로 지정한 자리표시자 치환 후 — 굵은 검정 */
+const FILLED_EMPHASIS_COLOR = '000000'
+const FILLED_EMPHASIS_FILL = `<a:solidFill><a:srgbClr val="${FILLED_EMPHASIS_COLOR}"/></a:solidFill>`
 
 function escapeXml(text: string): string {
   return text
@@ -12,29 +15,48 @@ function escapeXml(text: string): string {
 }
 
 function stripRunRedFill(runXml: string): string {
-  return runXml.replace(/<a:solidFill><a:srgbClr val="FF0000"\/?><\/a:solidFill>/g, '')
+  return runXml.replace(/<a:solidFill><a:srgbClr val="FF0000"\/?><\/a:solidFill>/gi, '')
 }
 
 function stripParagraphRedColors(paragraphXml: string): string {
-  return paragraphXml.replace(/<a:solidFill><a:srgbClr val="FF0000"\/?><\/a:solidFill>/g, '')
+  return paragraphXml.replace(/<a:solidFill><a:srgbClr val="FF0000"\/?><\/a:solidFill>/gi, '')
+}
+
+function ensureBoldRun(runXml: string): string {
+  if (/\sb="1"/.test(runXml) || /\sb="true"/.test(runXml)) return runXml
+  if (/\sb="0"/.test(runXml) || /\sb="false"/.test(runXml)) {
+    return runXml.replace(/\sb="0"/, ' b="1"').replace(/\sb="false"/, ' b="1"')
+  }
+  if (/<a:rPr[^>]*\/>/.test(runXml)) {
+    return runXml.replace(/<a:rPr([^>]*)\/>/, '<a:rPr$1 b="1"/>')
+  }
+  if (/<a:rPr[^>]*>/.test(runXml)) {
+    return runXml.replace(/<a:rPr([^>]*)>/, '<a:rPr$1 b="1">')
+  }
+  return runXml.replace(/<a:r>/, `<a:r><a:rPr b="1">${FILLED_EMPHASIS_FILL}</a:rPr>`)
+}
+
+function applyRunSolidFill(runXml: string, fillXml: string, colorHex: string): string {
+  let next = runXml
+  if (/FF0000/i.test(next)) {
+    next = next.replace(/<a:srgbClr val="FF0000"\/?>/gi, `<a:srgbClr val="${colorHex}"/>`)
+  } else if (/<a:solidFill>[\s\S]*?<\/a:solidFill>/.test(next)) {
+    next = next.replace(/<a:solidFill>[\s\S]*?<\/a:solidFill>/, fillXml)
+  } else if (/<a:rPr[^>]*>/.test(next)) {
+    next = next.replace(/<a:rPr([^>]*)>/, `<a:rPr$1>${fillXml}`)
+  } else {
+    next = next.replace(/<a:r>/, `<a:r><a:rPr>${fillXml}</a:rPr>`)
+  }
+  return next
+}
+
+/** 빨간 표시 자리 → 굵은 검정 */
+function applyEmphasisBlackStyle(runXml: string): string {
+  return ensureBoldRun(applyRunSolidFill(runXml, FILLED_EMPHASIS_FILL, FILLED_EMPHASIS_COLOR))
 }
 
 function applyCoverYearStyle(runXml: string): string {
-  let next = runXml
-
-  if (next.includes('FF0000')) {
-    next = next.replace(/<a:srgbClr val="FF0000"\/?>/g, `<a:srgbClr val="${WARRANTY_COVER_YEAR_COLOR}"/>`)
-  } else if (/<a:solidFill>[\s\S]*?<\/a:solidFill>/.test(next)) {
-    next = next.replace(/<a:solidFill>[\s\S]*?<\/a:solidFill>/, WARRANTY_COVER_YEAR_FILL)
-  } else if (/<a:rPr[^>]*>/.test(next)) {
-    next = next.replace(/<a:rPr([^>]*)>/, `<a:rPr$1>${WARRANTY_COVER_YEAR_FILL}`)
-  }
-
-  if (/<a:rPr[^>]*>/.test(next) && !/\sb="1"/.test(next) && !/\sb="true"/.test(next)) {
-    next = next.replace(/<a:rPr([^>]*)>/, '<a:rPr$1 b="1">')
-  }
-
-  return next
+  return ensureBoldRun(applyRunSolidFill(runXml, WARRANTY_COVER_YEAR_FILL, WARRANTY_COVER_YEAR_COLOR))
 }
 
 function getRedGroups(paragraphXml: string): string[] {
@@ -61,7 +83,8 @@ function getRedGroups(paragraphXml: string): string[] {
 function setRedGroupsInParagraph(
   paragraphXml: string,
   groupValues: Map<number, string>,
-  grayGroups: Set<number>
+  grayGroups: Set<number>,
+  emphasisGroups: Set<number>
 ): string {
   if (groupValues.size === 0) return paragraphXml
 
@@ -85,8 +108,14 @@ function setRedGroupsInParagraph(
     const newText = groupValues.get(currentGroup)
     if (newText === undefined) return run
 
-    const useCoverGray = grayGroups.has(currentGroup)
-    const nextRun = useCoverGray ? applyCoverYearStyle(run) : stripRunRedFill(run)
+    let nextRun: string
+    if (grayGroups.has(currentGroup)) {
+      nextRun = applyCoverYearStyle(run)
+    } else if (emphasisGroups.has(currentGroup)) {
+      nextRun = applyEmphasisBlackStyle(run)
+    } else {
+      nextRun = stripRunRedFill(run)
+    }
 
     if (!appliedGroups.has(currentGroup)) {
       appliedGroups.add(currentGroup)
@@ -136,6 +165,8 @@ export interface SlideReplacement {
   value: string
   /** 1페이지 대형 연수만 제목과 동일한 회색 적용 */
   useCoverYearGray?: boolean
+  /** 양식 빨간 표시 자리 — 치환 후 굵은 검정 */
+  emphasizeBoldBlack?: boolean
 }
 
 export function applySlideReplacements(slideXml: string, replacements: SlideReplacement[]): string {
@@ -157,11 +188,13 @@ export function applySlideReplacements(slideXml: string, replacements: SlideRepl
 
     const groupValues = new Map<number, string>()
     const grayGroups = new Set<number>()
+    const emphasisGroups = new Set<number>()
     for (const rule of rules) {
       groupValues.set(rule.group, rule.value)
       if (rule.useCoverYearGray) grayGroups.add(rule.group)
+      if (rule.emphasizeBoldBlack) emphasisGroups.add(rule.group)
     }
-    return setRedGroupsInParagraph(paragraph, groupValues, grayGroups)
+    return setRedGroupsInParagraph(paragraph, groupValues, grayGroups, emphasisGroups)
   })
 }
 

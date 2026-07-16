@@ -367,9 +367,9 @@ export function WarrantyIssuancePage({
               됩니다.
             </p>
             <p>
-              승인 후 담당자가 상태를 발행 완료·보증 불가로 변경해 저장하면, 의뢰한 영업사원에게{' '}
+              승인 후 담당자가 보증서 작성 후 상태를 발행 완료·보증 불가로 변경해 저장하면, 의뢰한 영업사원에게{' '}
               <strong className="font-semibold text-text-primary">알림 메일이 자동 발송</strong>
-              됩니다. (접수→재발행 완료로 다시 변경해도 발송)
+              됩니다.
             </p>
           </div>
         }

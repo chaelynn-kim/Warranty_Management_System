@@ -106,7 +106,7 @@ const EN_HARD_LINE_BREAK = '\u000e'
 /** 탭 없는 짧은 문단 — LibreOffice에서 한 줄로 유지 */
 const EN_SINGLE_LINE_PARAGRAPH_MAX = 145
 
-const SLIDE3_EN_BODY_CX = 6100000
+const SLIDE3_EN_BODY_CX = 5686425
 const SLIDE4_EN_BODY_CX = 7600000
 
 /** LibreOffice가 단어 경계에서 잘못 줄바꿈하지 않도록 고정할 영문 구문 (긴 문단용) */
@@ -349,6 +349,23 @@ function setParagraphEnCertificateText(
   return `<a:p>${pPr}${runXml}${tail}</a:p>`
 }
 
+function getRunStyleKey(runXml: string): string {
+  const bold = /\sb="1"|\sb="true"/.test(runXml) ? '1' : '0'
+  const color = runXml.match(/<a:srgbClr\s+val="([A-Fa-f0-9]+)"/i)?.[1]?.toUpperCase() ?? '_'
+  return `${bold}:${color}`
+}
+
+function stripRunCharacterSpacing(runXml: string): string {
+  return runXml.replace(/\s*spc="-?\d+"/g, '')
+}
+
+function normalizeRunSegmentText(text: string): string {
+  return text
+    .replace(/\t/g, ' ')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s{2,}/g, ' ')
+}
+
 function consolidateParagraph(paragraphXml: string, enCertificateBody = false): string {
   const firstRunIndex = paragraphXml.indexOf('<a:r>')
   if (firstRunIndex < 0) return paragraphXml
@@ -364,6 +381,47 @@ function consolidateParagraph(paragraphXml: string, enCertificateBody = false): 
   const runs = paragraphXml.match(/<a:r>[\s\S]*?<\/a:r>/g) ?? []
   const firstRunBase = runs[0]
   if (!firstRunBase) return paragraphXml
+
+  const hasEmphasisBold = runs.some((run) => /\sb="1"|\sb="true"/.test(run))
+
+  // 굵은 검정 자리표시자가 있으면 스타일별로만 합쳐 탭/조각 런을 정리 (볼드 유지)
+  if (hasEmphasisBold) {
+    const groups: Array<{ key: string; base: string; text: string }> = []
+    for (const run of runs) {
+      const raw = decodeXmlEntities(run.match(/<a:t>([\s\S]*?)<\/a:t>/)?.[1] ?? '')
+      if (!raw) continue
+      const key = getRunStyleKey(run)
+      const last = groups[groups.length - 1]
+      if (last && last.key === key) {
+        last.text += raw
+      } else {
+        groups.push({ key, base: stripRunCharacterSpacing(run), text: raw })
+      }
+    }
+
+    if (groups.length === 0) return paragraphXml
+
+    if (groups.some((group) => group.text.includes('\t'))) {
+      pPr = stripTabListFromParagraphProperties(pPr)
+    }
+    if (enCertificateBody) {
+      pPr = pPr.replace(/\s*marR="\d+"/g, '')
+    }
+
+    const runXml = groups
+      .map((group, index) => {
+        let text = normalizeRunSegmentText(group.text)
+        if (index === 0) text = text.replace(/^\s+/, '')
+        if (index === groups.length - 1) text = text.replace(/\s+$/, '')
+        if (enCertificateBody) {
+          text = normalizeMarineDistanceText(text)
+        }
+        return buildAmpersandSafeRunXml(group.base, text)
+      })
+      .join('')
+
+    return `<a:p>${pPr}${runXml}${tail}</a:p>`
+  }
 
   let joined = runs
     .map((run) => decodeXmlEntities(run.match(/<a:t>([\s\S]*?)<\/a:t>/)?.[1] ?? ''))
@@ -1010,9 +1068,13 @@ function applySlide2EnPrintHeaderBoldFix(slideXml: string): string {
     return shapeXml.replace(/<a:p>[\s\S]*?<\/a:p>/g, (paragraph) => {
       if (!extractParagraphText(paragraph).includes('VALIDATED FOR STEEL')) return paragraph
 
-      return paragraph.replace(/<a:rPr([^>]*)(\/?)>/g, (_match, attrs: string, selfClose: string) => {
-        const cleaned = attrs.replace(/\s*b="1"/g, '')
-        return `<a:rPr${cleaned}${selfClose}>`
+      // 본문은 볼드 제거, 검정 solidFill이 있는 강조 자리표시자만 볼드 유지
+      return paragraph.replace(/<a:r>[\s\S]*?<\/a:r>/g, (run) => {
+        const keepEmphasisBold = /<a:srgbClr val="000000"\/?>/i.test(run)
+        if (keepEmphasisBold) return run
+        return run
+          .replace(/\s*b="1"/g, '')
+          .replace(/\s*b="true"/g, '')
       })
     })
   })
@@ -1358,10 +1420,25 @@ function enSlide3ListItemUsesSingleLine(item: {
 }
 
 function stripSlide3EnRedText(paragraphXml: string): string {
-  return paragraphXml.replace(
-    /<a:solidFill><a:srgbClr val="FF0000"\/>/gi,
-    '<a:solidFill><a:srgbClr val="000000"/>'
-  )
+  return paragraphXml.replace(/<a:r>[\s\S]*?<\/a:r>/g, (run) => {
+    if (!/FF0000/i.test(run)) return run
+    let next = run.replace(
+      /<a:solidFill><a:srgbClr val="FF0000"\/>/gi,
+      '<a:solidFill><a:srgbClr val="000000"/>'
+    )
+    next = next.replace(/<a:srgbClr val="FF0000"\/?>/gi, '<a:srgbClr val="000000"/>')
+    if (!/\sb="1"/.test(next) && !/\sb="true"/.test(next)) {
+      if (/<a:rPr[^>]*>/.test(next)) {
+        next = next.replace(/<a:rPr([^>]*)>/, '<a:rPr$1 b="1">')
+      } else {
+        next = next.replace(
+          /<a:r>/,
+          '<a:r><a:rPr b="1"><a:solidFill><a:srgbClr val="000000"/></a:solidFill></a:rPr>'
+        )
+      }
+    }
+    return next
+  })
 }
 
 function slide3EnMainItemGapPts(startAt: number): number | undefined {

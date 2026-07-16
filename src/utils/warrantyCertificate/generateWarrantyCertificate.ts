@@ -1,6 +1,6 @@
 import JSZip from 'jszip'
 import type { ProductWarranty } from '../../types'
-import { translateDetailRegionToEnglish } from './countryTranslation'
+import { formatDetailRegionEnForSlide3 } from './countryTranslation'
 import { EMBEDDED_PPTX_TO_PDF_CONFIG } from '../../lib/pptxToPdf.embedded'
 import type { SlideReplacement } from './pptxReplacer'
 import { applySlideReplacements } from './pptxReplacer'
@@ -79,7 +79,7 @@ function rule(
   paragraph: number,
   group: number,
   value: string,
-  options?: { useCoverYearGray?: boolean }
+  options?: { useCoverYearGray?: boolean; emphasizeBoldBlack?: boolean }
 ): SlideReplacement {
   return {
     slide,
@@ -87,8 +87,11 @@ function rule(
     group,
     value,
     useCoverYearGray: options?.useCoverYearGray,
+    emphasizeBoldBlack: options?.emphasizeBoldBlack,
   }
 }
+
+const EMPHASIS = { emphasizeBoldBlack: true } as const
 
 function buildContext(input: WarrantyCertificateInput): ReplacementContext | null {
   const product = pickWarrantyProduct(
@@ -121,10 +124,10 @@ function appendSlide3CoatingRules(
   detailRegionValue: string,
   coatingStructureValue: string
 ): void {
-  rules.push(rule(3, 1, 0, detailRegionValue))
-  rules.push(rule(3, 2, 0, coatingStructureValue))
-  rules.push(rule(3, 2, 1, ctx.totalCoatingThickness))
-  rules.push(rule(3, 2, 2, ctx.primerThickness))
+  rules.push(rule(3, 1, 0, detailRegionValue, EMPHASIS))
+  rules.push(rule(3, 2, 0, coatingStructureValue, EMPHASIS))
+  rules.push(rule(3, 2, 1, ctx.totalCoatingThickness, EMPHASIS))
+  rules.push(rule(3, 2, 2, ctx.primerThickness, EMPHASIS))
 }
 
 function buildPaintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
@@ -134,10 +137,10 @@ function buildPaintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const rules: SlideReplacement[] = [
     rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
-    rule(2, 0, 0, ctx.resin),
-    rule(2, 0, 1, formatYearsKo(perfYears)),
-    rule(2, 5, 0, ctx.resin),
-    rule(2, 5, 1, formatYearsKo(perfYears)),
+    rule(2, 0, 0, ctx.resin, EMPHASIS),
+    rule(2, 0, 1, formatYearsKo(perfYears), EMPHASIS),
+    rule(2, 5, 0, ctx.resin, EMPHASIS),
+    rule(2, 5, 1, formatYearsKo(perfYears), EMPHASIS),
     rule(2, 45, 0, formatYearsKoSpaced(perfYears)),
     rule(2, 48, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 50, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
@@ -146,10 +149,10 @@ function buildPaintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 61, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 63, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 65, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkWall'))),
-    rule(3, 3, 0, `${ctx.resin} `),
-    rule(3, 11, 0, ctx.resin),
-    rule(4, 11, 0, String(perfYears + 1)),
-    rule(4, 13, 0, ctx.issueDate),
+    rule(3, 3, 0, `${ctx.resin} `, EMPHASIS),
+    rule(3, 11, 0, ctx.resin, EMPHASIS),
+    rule(4, 11, 0, String(perfYears + 1), EMPHASIS),
+    rule(4, 13, 0, ctx.issueDate, EMPHASIS),
   ]
 
   appendSlide3CoatingRules(rules, ctx, ctx.detailRegionLabel, formatCoatingStructureKo(ctx.coatingStructure))
@@ -163,10 +166,10 @@ function buildPaintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const rules: SlideReplacement[] = [
     rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
-    rule(2, 0, 0, ctx.resin),
-    rule(2, 0, 1, formatYearsEnUpper(perfYears)),
-    rule(2, 5, 0, ctx.resin),
-    rule(2, 5, 1, formatYearsEnLower(perfYears)),
+    rule(2, 0, 0, ctx.resin, EMPHASIS),
+    rule(2, 0, 1, formatYearsEnUpper(perfYears), EMPHASIS),
+    rule(2, 5, 0, ctx.resin, EMPHASIS),
+    rule(2, 5, 1, formatYearsEnLower(perfYears), EMPHASIS),
     rule(2, 45, 0, formatYearsEnShort(perfYears)),
     rule(2, 48, 0, formatYearsEnShort(peelYears)),
     rule(2, 50, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingRoof'))),
@@ -175,16 +178,16 @@ function buildPaintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 62, 0, formatYearsEnShort(peelYears)),
     rule(2, 64, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 66, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkWall'))),
-    rule(3, 3, 0, ctx.resin),
-    rule(3, 10, 0, ctx.resin),
-    rule(4, 11, 0, formatYearsPlusOneEn(perfYears)),
-    rule(4, 13, 0, ctx.issueDate),
+    rule(3, 3, 0, ctx.resin, EMPHASIS),
+    rule(3, 10, 0, ctx.resin, EMPHASIS),
+    rule(4, 11, 0, formatYearsPlusOneEn(perfYears), EMPHASIS),
+    rule(4, 13, 0, ctx.issueDate, EMPHASIS),
   ]
 
   appendSlide3CoatingRules(
     rules,
     ctx,
-    translateDetailRegionToEnglish(ctx.detailRegionLabel),
+    formatDetailRegionEnForSlide3(ctx.detailRegionLabel, { includeTrailingPeriod: false }),
     formatCoatingStructureEn(ctx.coatingStructure)
   )
   return rules
@@ -197,12 +200,12 @@ function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const rules: SlideReplacement[] = [
     rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
-    rule(2, 0, 0, ctx.resin),
-    rule(2, 0, 1, formatYearsKo(perfYears)),
+    rule(2, 0, 0, ctx.resin, EMPHASIS),
+    rule(2, 0, 1, formatYearsKo(perfYears), EMPHASIS),
     // 보증 항목 본문 — 박리/균열 설명 문단
-    rule(2, 4, 0, formatYearsKoSpacedTrailing(peelYears)),
+    rule(2, 4, 0, formatYearsKoSpacedTrailing(peelYears), EMPHASIS),
     // 보증 항목 본문 — 변색 설명 문단(템플릿 placeholder 연수)
-    rule(2, 6, 0, formatYearsKoSpaced(perfYears)),
+    rule(2, 6, 0, formatYearsKoSpaced(perfYears), EMPHASIS),
     // 보증 내용 표(지붕) — 천공 → 박리 → 변색 → 백화
     rule(2, 40, 0, formatYearsKoSpaced(perfYears)),
     rule(2, 43, 0, formatYearsKoSpaced(peelYears)),
@@ -213,8 +216,8 @@ function buildPrintKoReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 57, 0, formatYearsKoSpaced(peelYears)),
     rule(2, 59, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 61, 0, formatWarrantyCellKo(getWarrantyCell(ctx.product, 'chalkWall'))),
-    rule(4, 0, 0, ctx.issueDate),
-    rule(4, 11, 0, formatYearsPlusOneKo(perfYears)),
+    rule(4, 0, 0, ctx.issueDate, EMPHASIS),
+    rule(4, 11, 0, formatYearsPlusOneKo(perfYears), EMPHASIS),
   ]
 
   appendSlide3CoatingRules(rules, ctx, ctx.detailRegionLabel, formatCoatingStructureKo(ctx.coatingStructure))
@@ -228,7 +231,7 @@ function buildPrintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
   const rules: SlideReplacement[] = [
     rule(1, 0, 0, String(perfYears), { useCoverYearGray: true }),
     rule(1, 1, 0, formatTitleLine(ctx.resin, ctx.colorName)),
-    rule(2, 0, 0, formatYearsEnUpper(perfYears)),
+    rule(2, 0, 0, formatYearsEnUpper(perfYears), EMPHASIS),
     // Warranty terms 표(Roof) — Perforation → Peel & flake → Color → Chalk
     rule(2, 32, 0, formatYearsEnShort(perfYears)),
     rule(2, 35, 0, formatYearsEnShort(peelYears)),
@@ -239,16 +242,16 @@ function buildPrintEnReplacements(ctx: ReplacementContext): SlideReplacement[] {
     rule(2, 58, 0, formatYearsEnShort(peelYears)),
     rule(2, 59, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'colorFadingWall'))),
     rule(2, 60, 0, formatWarrantyCellEn(getWarrantyCell(ctx.product, 'chalkWall'))),
-    rule(3, 3, 0, ctx.resin),
-    rule(3, 10, 0, ctx.resin),
-    rule(4, 9, 0, formatYearsPlusOneEn(perfYears)),
-    rule(4, 11, 0, ctx.issueDate),
+    rule(3, 3, 0, ctx.resin, EMPHASIS),
+    rule(3, 10, 0, ctx.resin, EMPHASIS),
+    rule(4, 9, 0, formatYearsPlusOneEn(perfYears), EMPHASIS),
+    rule(4, 11, 0, ctx.issueDate, EMPHASIS),
   ]
 
   appendSlide3CoatingRules(
     rules,
     ctx,
-    translateDetailRegionToEnglish(ctx.detailRegionLabel),
+    formatDetailRegionEnForSlide3(ctx.detailRegionLabel, { includeTrailingPeriod: true }),
     formatCoatingStructureEn(ctx.coatingStructure)
   )
   return rules

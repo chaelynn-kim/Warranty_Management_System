@@ -47,19 +47,13 @@ for (const country of [...HIGH_RISK_DETAIL_REGIONS, ...LOW_RISK_DETAIL_REGIONS])
   }
 }
 
-function ensureTrailingPeriod(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return ''
-  return trimmed.endsWith('.') ? trimmed : `${trimmed}.`
-}
-
 export function translateCountryToEnglish(countryKo: string): string {
   const trimmed = countryKo.trim()
   if (!trimmed) return ''
   return COUNTRY_EN[trimmed] ?? trimmed
 }
 
-/** PAINT/PRINT 영문 보증서 3페이지 item 1 — 국가명 고정 번역 + 마침표 */
+/** 영문 보증서 3페이지 — 세부 국가명 고정 번역 (마침표는 템플릿/호출측에서 처리) */
 export function translateDetailRegionToEnglish(detailRegionKo: string): string {
   const parts = detailRegionKo
     .split(/[,，]/)
@@ -68,7 +62,18 @@ export function translateDetailRegionToEnglish(detailRegionKo: string): string {
     .filter((part) => part !== '-')
 
   if (parts.length === 0) return ''
-  return parts
-    .map((part) => ensureTrailingPeriod(translateCountryToEnglish(part)))
-    .join(', ')
+  return parts.map((part) => translateCountryToEnglish(part)).join(', ')
+}
+
+/**
+ * PAINT 영문: 템플릿에 국가명 뒤 `.`이 있어 마침표 없이 치환.
+ * PRINT 영문: 빨간 자리표시자에 마침표가 포함되어 있어 끝에 `.`을 붙임.
+ */
+export function formatDetailRegionEnForSlide3(
+  detailRegionKo: string,
+  options: { includeTrailingPeriod: boolean }
+): string {
+  const name = translateDetailRegionToEnglish(detailRegionKo).replace(/\.+$/, '').trim()
+  if (!name) return ''
+  return options.includeTrailingPeriod ? `${name}.` : name
 }
