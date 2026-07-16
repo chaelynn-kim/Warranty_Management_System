@@ -108,6 +108,8 @@ const EN_SINGLE_LINE_PARAGRAPH_MAX = 145
 
 const SLIDE3_EN_BODY_CX = 5686425
 const SLIDE4_EN_BODY_CX = 7600000
+/** 4페이지 발행일자 — 굵은 글씨에서도 한 줄로 들어가도록 */
+const SLIDE4_ISSUE_DATE_MIN_CX = 1100000
 
 /** LibreOffice가 단어 경계에서 잘못 줄바꿈하지 않도록 고정할 영문 구문 (긴 문단용) */
 const EN_BODY_LINE_BREAK_PROTECTED_PHRASES = [
@@ -1290,6 +1292,30 @@ function applySlide34EnBodyLayoutFix(slideXml: string, slideNumber: number): str
   return next
 }
 
+/** 발행일자(YYYY.MM.DD) 텍스트 박스가 좁아 마지막 자리가 줄바꿈되지 않도록 너비 확보 */
+function ensureSlide4IssueDateWidth(slideXml: string): string {
+  return slideXml.replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (shapeXml) => {
+    const text = extractParagraphText(shapeXml).replace(/\s+/g, '')
+    if (!/^\d{4}\.\d{2}\.\d{2}$/.test(text)) return shapeXml
+
+    let next = shapeXml.replace(/(<a:ext cx=")(\d+)(")/, (_match, prefix: string, cx: string, suffix: string) => {
+      const widened = Math.max(Number(cx), SLIDE4_ISSUE_DATE_MIN_CX)
+      return `${prefix}${widened}${suffix}`
+    })
+
+    // 줄바꿈 방지
+    if (/<a:bodyPr[^>]*wrap="/.test(next)) {
+      next = next.replace(/(<a:bodyPr[^>]*\s)wrap="[^"]*"/, '$1wrap="none"')
+    } else if (/<a:bodyPr[^>]*\/>/.test(next)) {
+      next = next.replace(/<a:bodyPr([^>]*)\/>/, '<a:bodyPr$1 wrap="none"/>')
+    } else if (/<a:bodyPr[^>]*>/.test(next)) {
+      next = next.replace(/<a:bodyPr([^>]*)>/, '<a:bodyPr$1 wrap="none">')
+    }
+
+    return next
+  })
+}
+
 const SLIDE3_EN_ITEM_7_TEXT = 'Post-painted products are not included in the warranty.'
 
 const SLIDE3_EN_ITEM_MAR_L = 201930
@@ -2456,6 +2482,10 @@ export function postProcessSlideXml(
 
   if ((slideNumber === 3 || slideNumber === 4) && language === 'en') {
     next = applySlide34EnBodyLayoutFix(next, slideNumber)
+  }
+
+  if (slideNumber === 4) {
+    next = ensureSlide4IssueDateWidth(next)
   }
 
   return next
