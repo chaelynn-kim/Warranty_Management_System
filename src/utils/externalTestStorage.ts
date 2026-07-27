@@ -99,5 +99,8 @@ export function saveExternalTestRecords(records: ExternalTestRecord[]): void {
   const normalized = sortExternalTestRecordsByNoDesc(records.map(normalizeRecord))
   localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized))
   localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
-  queueFirestorePush('external-test-records')
+  // 로컬 전용(외부시험 단독 페이지) 모드에서는 로그인/권한이 없을 수 있으므로 Firestore 동기화를 막는다.
+  if (import.meta.env.MODE !== 'external') {
+    queueFirestorePush('external-test-records')
+  }
 }

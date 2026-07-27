@@ -23,7 +23,7 @@ npm run dev
 
 브라우저에서 `http://localhost:5174` 접속
 
-> **포트 안내:** Process Data Monitoring System(판재라인)은 `http://localhost:5173`, 보증서 관리 시스템은 `http://localhost:5174`를 사용합니다.
+> **포트 안내:** Process Data Monitoring System(판재라인)은 `http://localhost:5173`, 보증서 관리 시스템은 `http://localhost:5174`, 외부 공인 기관 시험은 "`http://localhost:5175`를 사용합니다.
 
 ## 빌드
 

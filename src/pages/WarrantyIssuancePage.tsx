@@ -356,8 +356,9 @@ export function WarrantyIssuancePage({
   return (
     <div>
       <PageHeader
-        subtitle="Warranty Management System"
         title="보증서 발행 관리"
+        iconSrc="/icons/external-test-document.png"
+        iconMaskScale={100}
         description={
           <div className="space-y-1">
             <p>등록된 보증서 발행 의뢰를 조회·관리합니다.</p>
@@ -375,76 +376,32 @@ export function WarrantyIssuancePage({
         }
       />
 
-      <WarrantyRequestStatusSummary records={requestRecords} />
-
-      <WarrantyRequestPeriodSearch
-        from={draftFromDate}
-        to={draftToDate}
-        keyword={draftKeyword}
-        error={searchError}
-        onFromChange={setDraftFromDate}
-        onToChange={setDraftToDate}
-        onKeywordChange={setDraftKeyword}
-        onSearch={handlePeriodSearch}
-        onReset={handlePeriodReset}
-      />
-
       <Card
-        label="WARRANTY LOG"
         title="보증서 발행 내역"
-        titleActions={
-          <>
-            {canEditLog && (
-              <button
-                type="button"
-                onClick={handleRequestEdit}
-                disabled={requestEditing}
-                aria-label="수정"
-                title="수정"
-                className={`inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border bg-bg-tertiary transition-all disabled:cursor-not-allowed ${
-                  requestEditing
-                    ? 'border-accent text-accent shadow-[0_0_14px_rgba(59,130,246,0.55)] ring-2 ring-accent/45 disabled:opacity-100'
-                    : 'border-border text-text-primary hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30 disabled:opacity-50'
-                }`}
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={handleRequestExcelDownload}
-              aria-label="Excel 다운로드"
-              title="Excel 다운로드"
-              className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-emerald-800/50 bg-emerald-950/40 text-emerald-300 transition-all hover:border-emerald-400 hover:text-emerald-200 hover:shadow-[0_0_12px_rgba(52,211,153,0.45)] hover:ring-2 hover:ring-emerald-400/35 active:border-emerald-400 active:text-emerald-100 active:shadow-[0_0_14px_rgba(52,211,153,0.55)] active:ring-2 active:ring-emerald-400/45 focus-visible:border-emerald-400 focus-visible:text-emerald-200 focus-visible:shadow-[0_0_12px_rgba(52,211,153,0.45)] focus-visible:ring-2 focus-visible:ring-emerald-400/35"
-            >
-              <FileDown className="h-4 w-4" />
-            </button>
-          </>
-        }
       >
+        <WarrantyRequestStatusSummary records={requestRecords} />
+
+        <WarrantyRequestPeriodSearch
+          from={draftFromDate}
+          to={draftToDate}
+          keyword={draftKeyword}
+          error={searchError}
+          onFromChange={setDraftFromDate}
+          onToChange={setDraftToDate}
+          onKeywordChange={setDraftKeyword}
+          onSearch={handlePeriodSearch}
+          onReset={handlePeriodReset}
+        />
+
         {(requestEditing || requestSaveMessage) && (
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              {requestEditing && (
-                <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
-                  수정 중
-                </span>
-              )}
-              {requestSaveMessage && (
-                <span className="text-sm font-medium text-emerald-400">{requestSaveMessage}</span>
-              )}
-            </div>
+          <div className="mb-4 flex flex-wrap items-center gap-3">
             {requestEditing && (
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={handleRequestSave} className={filterSearchButtonClass}>
-                  <Save className="h-4 w-4 shrink-0" />
-                  저장
-                </button>
-                <button type="button" onClick={handleRequestDataReset} className={filterResetButtonClass}>
-                  <RotateCcw className="h-4 w-4 shrink-0" />
-                  되돌리기
-                </button>
-              </div>
+              <span className="inline-flex items-center rounded-full bg-accent/15 px-3 py-1 text-xs font-semibold tracking-wide text-accent ring-1 ring-accent/40">
+                수정 중
+              </span>
+            )}
+            {requestSaveMessage && (
+              <span className="text-sm font-medium text-emerald-400">{requestSaveMessage}</span>
             )}
           </div>
         )}
@@ -459,6 +416,52 @@ export function WarrantyIssuancePage({
             setViewingRequest(record)
             setRequestModalOpen(true)
           }}
+          toolbarActions={
+            <>
+              {canEditLog && !requestEditing && (
+                <button
+                  type="button"
+                  onClick={handleRequestEdit}
+                  aria-label="수정"
+                  title="수정"
+                  className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-border bg-bg-tertiary text-text-primary transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 focus-visible:border-accent focus-visible:text-accent focus-visible:shadow-[0_0_12px_rgba(59,130,246,0.45)] focus-visible:ring-2 focus-visible:ring-accent/30"
+                >
+                  <Pencil className="h-4 w-4" />
+                </button>
+              )}
+              {canEditLog && requestEditing && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleRequestSave}
+                    aria-label="저장"
+                    title="저장"
+                    className={filterSearchButtonClass}
+                  >
+                    <Save className="h-4 w-4 shrink-0" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleRequestDataReset}
+                    aria-label="되돌리기"
+                    title="되돌리기"
+                    className={filterResetButtonClass}
+                  >
+                    <RotateCcw className="h-4 w-4 shrink-0" />
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                onClick={handleRequestExcelDownload}
+                aria-label="Excel 다운로드"
+                title="Excel 다운로드"
+                className="inline-flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-emerald-800/50 bg-emerald-950/40 text-emerald-300 transition-all hover:border-emerald-400 hover:text-emerald-200 hover:shadow-[0_0_12px_rgba(52,211,153,0.45)] hover:ring-2 hover:ring-emerald-400/35 active:border-emerald-400 active:text-emerald-100 active:shadow-[0_0_14px_rgba(52,211,153,0.55)] active:ring-2 active:ring-emerald-400/45 focus-visible:border-emerald-400 focus-visible:text-emerald-200 focus-visible:shadow-[0_0_12px_rgba(52,211,153,0.45)] focus-visible:ring-2 focus-visible:ring-emerald-400/35"
+              >
+                <FileDown className="h-4 w-4" />
+              </button>
+            </>
+          }
         />
       </Card>
 

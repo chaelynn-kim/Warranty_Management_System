@@ -1,4 +1,5 @@
 import { useAuth } from '../contexts/AuthContext'
+import seahLogoPng from '../assets/seah logo (배경제거).png'
 
 export function LoginPage() {
   const { signInWithGoogle, authConfigured } = useAuth()
@@ -8,9 +9,10 @@ export function LoginPage() {
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white px-8 py-10 text-center shadow-2xl">
         <div className="relative mx-auto mb-3 h-11 w-full overflow-hidden">
           <img
-            src="/seahcm_logo.jpg"
+            src={seahLogoPng}
             alt="SeAH Coated Metal"
-            className="absolute left-1/2 top-1/2 w-full h-auto -translate-x-1/2 -translate-y-1/2 scale-[1.2] mix-blend-multiply"
+            style={{ filter: 'brightness(0) invert(1)' }}
+            className="absolute left-1/2 top-1/2 w-full h-auto -translate-x-1/2 -translate-y-1/2 scale-[1.2] mix-blend-normal"
           />
         </div>
 

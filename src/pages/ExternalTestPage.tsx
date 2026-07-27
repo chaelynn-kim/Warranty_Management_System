@@ -140,6 +140,8 @@ export function ExternalTestPage() {
       <PageHeader
         subtitle="External Certification Test"
         title="외부 공인 기관 시험"
+        iconSrc="/icons/warranty-issuance-management.png"
+        iconMaskScale={100}
         description="외부 공인 기관에 의뢰한 시험 목록을 조회하고 진행 현황을 관리합니다."
       />
 

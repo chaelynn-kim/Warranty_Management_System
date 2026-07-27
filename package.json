@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --host localhost --port 5174",
+    "dev:external": "vite --host localhost --port 5175 --strictPort --mode external",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview --host localhost --port 5174",

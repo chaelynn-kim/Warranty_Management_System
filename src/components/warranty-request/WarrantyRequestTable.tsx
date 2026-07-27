@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { GripVertical, X } from 'lucide-react'
 import type { WarrantyIssuanceRequestRecord } from '../../types'
 import { formatDisplayDate } from '../../utils/helpers'
@@ -25,6 +25,7 @@ interface WarrantyRequestTableProps {
   onDelete?: (id: string) => void
   onReorder?: (fromId: string, toId: string) => void
   onRowClick?: (record: WarrantyIssuanceRequestRecord) => void
+  toolbarActions?: ReactNode
 }
 
 const thClass =
@@ -133,6 +134,7 @@ export function WarrantyRequestTable({
   onDelete,
   onReorder,
   onRowClick,
+  toolbarActions,
 }: WarrantyRequestTableProps) {
   const rowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map())
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -172,26 +174,46 @@ export function WarrantyRequestTable({
 
   if (records.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-bg-primary/20 px-4 py-12 text-center text-sm text-text-muted">
-        등록된 보증서 발행 의뢰가 없습니다.
+      <div>
+        {(onRowClick || toolbarActions) && (
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+            {onRowClick && !editing ? (
+              <p className="flex items-center gap-1.5 text-[calc(0.75rem+1pt)] font-bold text-text-primary">
+                <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
+                <span>행을 클릭하면 의뢰서 상세 내용을 확인할 수 있습니다.</span>
+              </p>
+            ) : (
+              <div />
+            )}
+            {toolbarActions ? (
+              <div className="flex shrink-0 items-center gap-2">{toolbarActions}</div>
+            ) : null}
+          </div>
+        )}
+        <div className="rounded-lg border border-border bg-bg-primary/20 px-4 py-12 text-center text-sm text-text-muted">
+          등록된 보증서 발행 의뢰가 없습니다.
+        </div>
       </div>
     )
   }
 
   return (
     <div>
-      {editing ? (
-        <p className="mb-2 text-xs text-text-muted">
-          ⋮⋮ 드래그로 순서를 변경할 수 있습니다.
-        </p>
-      ) : (
-        onRowClick && (
-          <p className="mb-2 flex items-center gap-1.5 text-[calc(0.75rem+1pt)] font-bold text-text-primary">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        {editing ? (
+          <p className="text-xs text-text-muted">⋮⋮ 드래그로 순서를 변경할 수 있습니다.</p>
+        ) : onRowClick ? (
+          <p className="flex items-center gap-1.5 text-[calc(0.75rem+1pt)] font-bold text-text-primary">
             <PageHeaderCautionIcon className="h-[1em] w-[1em]" />
             <span>행을 클릭하면 의뢰서 상세 내용을 확인할 수 있습니다.</span>
           </p>
-        )
-      )}
+        ) : (
+          <div />
+        )}
+        {toolbarActions ? (
+          <div className="flex shrink-0 items-center gap-2">{toolbarActions}</div>
+        ) : null}
+      </div>
       <p className="mb-2 text-xs text-text-muted md:hidden">표는 좌우로 스크롤하여 전체 내용을 확인할 수 있습니다.</p>
       <div
         ref={scrollContainerRef}

@@ -1,24 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Header } from './components/layout/Header'
 import { WarrantyIssuancePage } from './pages/WarrantyIssuancePage'
 import { WarrantyIssuanceRequestPage } from './pages/WarrantyIssuanceRequestPage'
 import { WarrantyPeriodPage } from './pages/WarrantyPeriodPage'
-import { ExternalTestPage } from './pages/ExternalTestPage'
-import { useAuth } from './contexts/AuthContext'
-import { canAccessExternalTestTab } from './utils/authValidation'
 import type { TabId } from './types'
 
 function App() {
-  const { user } = useAuth()
   const [activeTab, setActiveTab] = useState<TabId>('issuance')
   const [highlightRequestId, setHighlightRequestId] = useState<string | null>(null)
-  const canAccessExternalTest = canAccessExternalTestTab(user?.email)
-
-  useEffect(() => {
-    if (activeTab === 'externalTest' && !canAccessExternalTest) {
-      setActiveTab('issuance')
-    }
-  }, [activeTab, canAccessExternalTest])
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -42,11 +31,6 @@ function App() {
         <div className={activeTab === 'period' ? undefined : 'hidden'}>
           <WarrantyPeriodPage />
         </div>
-        {canAccessExternalTest && (
-          <div className={activeTab === 'externalTest' ? undefined : 'hidden'}>
-            <ExternalTestPage />
-          </div>
-        )}
       </main>
     </div>
   )

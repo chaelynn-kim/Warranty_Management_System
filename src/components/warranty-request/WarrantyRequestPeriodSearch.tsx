@@ -26,7 +26,7 @@ export function WarrantyRequestPeriodSearch({
   onReset,
 }: WarrantyRequestPeriodSearchProps) {
   return (
-    <section className="mb-4 rounded-xl border border-border bg-bg-secondary p-4 sm:p-5">
+    <section className="mb-4 rounded-lg border border-border/70 bg-bg-primary/30 p-3 sm:p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
         <span className="shrink-0 text-sm font-medium text-text-secondary">발행일자</span>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">

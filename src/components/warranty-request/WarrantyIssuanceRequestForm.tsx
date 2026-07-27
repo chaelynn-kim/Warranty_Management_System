@@ -405,6 +405,8 @@ interface WarrantyIssuanceRequestFormProps {
   toolbarTitle?: ReactNode
   toolbarNotice?: ReactNode
   actionSlot?: ReactNode | ((context: { isComplete: boolean }) => ReactNode)
+  /** 필수 항목 충족 여부 변경 시 (헤더 버튼 강조 등) */
+  onCompleteChange?: (isComplete: boolean) => void
   readOnly?: boolean
   requestReadOnly?: boolean
   qualityReadOnly?: boolean
@@ -728,6 +730,7 @@ export const WarrantyIssuanceRequestForm = forwardRef<
     toolbarTitle,
     toolbarNotice,
     actionSlot,
+    onCompleteChange,
     readOnly = false,
     requestReadOnly = false,
     qualityReadOnly = true,
@@ -779,9 +782,14 @@ export const WarrantyIssuanceRequestForm = forwardRef<
 
   const isRequestComplete = isWarrantyIssuanceRequestComplete(form)
 
+  useEffect(() => {
+    onCompleteChange?.(isRequestComplete)
+  }, [isRequestComplete, onCompleteChange])
+
   const showCustomWarrantyTerm = form.warrantyTermMode === WARRANTY_TERM_OTHER
   const showCompanyWarrantyTerm = form.warrantyTermMode === WARRANTY_TERM_COMPANY
   const showCustomRequestTeam = form.requestTeam === WARRANTY_REQUEST_TEAM_OTHER
+  const showToolbar = Boolean(toolbarLabel || toolbarTitle || toolbarNotice)
 
   const patch = <K extends keyof WarrantyIssuanceRequest>(field: K, value: WarrantyIssuanceRequest[K]) => {
     setForm((prev) => {
@@ -828,23 +836,25 @@ export const WarrantyIssuanceRequestForm = forwardRef<
 
   return (
     <>
-      {showReset && !isRequestReadOnly && (
+      {showToolbar && (
         <div className={toolbarStickyClass}>
           <div className={`${periodCardHeaderClass} mb-0`}>
             {toolbarLabel}
             <div className="flex items-start justify-between gap-3">
               {toolbarTitle}
-              <div className="flex shrink-0 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleReset}
-                  className={warrantyRequestToolbarResetButtonClass}
-                >
-                  <RotateCcw className="h-4 w-4 shrink-0" />
-                  초기화
-                </button>
-                {typeof actionSlot === 'function' ? actionSlot({ isComplete: isRequestComplete }) : actionSlot}
-              </div>
+              {showReset && !isRequestReadOnly ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className={warrantyRequestToolbarResetButtonClass}
+                  >
+                    <RotateCcw className="h-4 w-4 shrink-0" />
+                    초기화
+                  </button>
+                  {typeof actionSlot === 'function' ? actionSlot({ isComplete: isRequestComplete }) : actionSlot}
+                </div>
+              ) : null}
             </div>
           </div>
           {toolbarNotice}

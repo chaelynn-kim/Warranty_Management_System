@@ -970,15 +970,16 @@ export function WarrantyPeriodPage() {
   return (
     <div>
       <PageHeader
-        subtitle="SEAH·CM WARRANTY GUIDE"
         title="세아씨엠 보증연한"
+        iconSrc="/icons/warranty-period-calendar.png"
+        iconMaskScale={95}
         actions={user ? <WarrantyGuideDownloadButton userEmail={user.email} /> : null}
         description={
           <p>제품의 판매 활성화를 위한 지역별 / 수지별 품질 보증 가이드라인입니다.</p>
         }
         descriptionNote={
           <p className="flex items-center gap-1.5 font-bold text-text-primary">
-            <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0 text-white" />
+            <PageHeaderCautionIcon className="h-[1em] w-[1em] shrink-0 translate-y-[0.05em] text-white" />
             <span>
               단, 구체적인 사안별 (색상 / 시공 지역 / 환경 / 용도)에 따라 기준이 달라질 수 있습니다.
             </span>
@@ -1013,7 +1014,7 @@ export function WarrantyPeriodPage() {
         ))}
       </nav>
 
-      <Card label="WARRANTY GUIDE" title={sectionTitle} headerNotice={cardHeaderNotice}>
+      <Card title={sectionTitle} headerNotice={cardHeaderNotice}>
         {canEdit && cardSectionId && (
           <CardSectionToolbar
             editing={isSectionEditing(cardSectionId)}

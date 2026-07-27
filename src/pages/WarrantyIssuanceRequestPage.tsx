@@ -1,13 +1,14 @@
 import { useRef, useState } from 'react'
+import { RotateCcw } from 'lucide-react'
 import { ConfirmDialog } from '../components/ui/ConfirmDialog'
 import { PageHeader } from '../components/layout/PageHeader'
 import { NeonTitleIcon } from '../components/ui/NeonTitleIcon'
 import {
   WarrantyIssuanceRequestForm,
   type WarrantyIssuanceRequestFormHandle,
+  warrantyRequestToolbarResetButtonClass,
   warrantyRequestToolbarSubmitButtonClass,
 } from '../components/warranty-request/WarrantyIssuanceRequestForm'
-import { periodCardLabelClass, periodCardTitleHeadingClass } from '../components/warranty-period/periodTheme'
 import { useAuth } from '../contexts/AuthContext'
 import { sendWarrantyRequestPendingEmail } from '../utils/emailNotification'
 import { createRequestRecord } from '../utils/warrantyRequestStorage'
@@ -26,6 +27,12 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
   const [error, setError] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isFormComplete, setIsFormComplete] = useState(false)
+
+  const handleReset = () => {
+    formRef.current?.reset()
+    setError('')
+  }
 
   const handleSubmitClick = () => {
     if (!formRef.current) {
@@ -86,51 +93,52 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
   return (
     <div>
       <PageHeader
-        subtitle="WARRANTY REQUEST"
         title="보증서 발행 의뢰"
+        iconSrc="/icons/warranty-request-document.png"
+        iconMaskScale={120}
+        sticky
         description={
-          <>
-            <p>
-              보증서 발행을 위해 아래 양식 작성 후{' '}
-              <strong className="font-semibold text-accent">[의뢰하기]</strong> 버튼을 클릭해
-              주세요.
-            </p>
-            <p>
-              의뢰 시 품질 팀장에게 <strong className="font-semibold text-text-primary"> 승인 요청 메일이 자동 발송</strong>
-              됩니다.
-            </p>
-          </>
+          <p>
+            보증서 발행을 위해 아래 양식 작성 후{' '}
+            <strong className="font-semibold text-accent">[의뢰하기]</strong> 버튼을 클릭해 주세요.
+          </p>
+        }
+        descriptionNote={
+          <p>
+            의뢰 시 품질 팀장에게{' '}
+            <strong className="font-semibold text-text-primary">승인 요청 메일이 자동 발송</strong>
+            됩니다.
+          </p>
+        }
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={handleReset} className={warrantyRequestToolbarResetButtonClass}>
+              <RotateCcw className="h-4 w-4 shrink-0" />
+              초기화
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmitClick}
+              className={warrantyRequestToolbarSubmitButtonClass(isFormComplete)}
+            >
+              <NeonTitleIcon src="/icons/warranty-request-document.png" className="h-5 w-5 shrink-0" />
+              의뢰하기
+            </button>
+          </div>
         }
       />
 
       <section className="overflow-visible rounded-xl border border-border bg-bg-secondary p-4 sm:p-6">
+        {error ? (
+          <p className="mb-4 text-sm font-medium text-red-400" role="alert" aria-live="polite">
+            {error}
+          </p>
+        ) : null}
         <WarrantyIssuanceRequestForm
           ref={formRef}
-          showReset
           showQualitySection={false}
           qualityReadOnly
-          toolbarLabel={<p className={periodCardLabelClass}>WARRANTY REQUEST FORM</p>}
-          toolbarTitle={<h2 className={periodCardTitleHeadingClass}>보증서 발행 의뢰서</h2>}
-          toolbarNotice={
-            error ? (
-              <p className="text-sm font-medium text-red-400" role="alert" aria-live="polite">
-                {error}
-              </p>
-            ) : null
-          }
-          actionSlot={({ isComplete }) => (
-            <button
-              type="button"
-              onClick={handleSubmitClick}
-              className={warrantyRequestToolbarSubmitButtonClass(isComplete)}
-            >
-              <NeonTitleIcon
-                src="/icons/warranty-request-document.png"
-                className="h-4 w-4 shrink-0"
-              />
-              의뢰하기
-            </button>
-          )}
+          onCompleteChange={setIsFormComplete}
         />
       </section>
 

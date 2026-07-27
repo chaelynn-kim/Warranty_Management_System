@@ -74,7 +74,7 @@ export function WarrantyGuideDownloadButton({ userEmail }: WarrantyGuideDownload
   const downloadButtonClass = `${filterActionButtonClass} border-emerald-800/50 bg-emerald-950/40 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-950/60 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50`
 
   return (
-    <div className="flex flex-wrap items-center justify-end gap-2">
+    <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={() => void handleDownload()}

@@ -253,7 +253,7 @@ export function DatePicker({
             aria-label="달력 열기"
             aria-expanded={open}
           >
-            <ChevronDown className="h-4 w-4" />
+            <Calendar className="h-4 w-4" />
           </button>
         </div>
         {calendarPanel}

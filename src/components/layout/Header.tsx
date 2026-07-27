@@ -1,8 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { TabId } from '../../types'
-import { useAuth } from '../../contexts/AuthContext'
 import { NeonTitleIcon } from '../ui/NeonTitleIcon'
-import { canAccessExternalTestTab } from '../../utils/authValidation'
 import { SeahLogo } from './SeahLogo'
 import { UserAccountBar } from './UserAccountBar'
 
@@ -16,40 +14,36 @@ const tabs: {
   label: string
   shortLabel: string
   iconSrc: string
+  /** 발행 의뢰 아이콘과 육안상 동일 크기로 맞추기 위한 mask 보정 */
+  iconMaskScale: number
 }[] = [
   {
     id: 'issuanceRequest',
     label: '보증서 발행 의뢰',
     shortLabel: '발행 의뢰',
     iconSrc: '/icons/warranty-request-document.png',
+    iconMaskScale: 100,
   },
   {
     id: 'issuance',
     label: '보증서 발행 관리',
     shortLabel: '발행 관리',
     iconSrc: '/icons/external-test-document.png',
+    iconMaskScale: 74,
   },
   {
     id: 'period',
     label: '보증연한',
     shortLabel: '보증연한',
     iconSrc: '/icons/warranty-period-calendar.png',
-  },
-  {
-    id: 'externalTest',
-    label: '외부 공인 기관 시험',
-    shortLabel: '외부 시험',
-    iconSrc: '/icons/warranty-issuance-management.png',
+    iconMaskScale: 78,
   },
 ]
 
 export function Header({ activeTab, onTabChange }: HeaderProps) {
-  const { user } = useAuth()
   const navRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement>>>({})
-  const visibleTabs = tabs.filter(
-    (tab) => tab.id !== 'externalTest' || canAccessExternalTestTab(user?.email)
-  )
+  const visibleTabs = tabs
 
   useEffect(() => {
     const activeButton = tabRefs.current[activeTab]
@@ -86,7 +80,11 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
           : 'text-text-secondary hover:bg-bg-tertiary/60 hover:text-text-primary md:hover:bg-transparent'
       }`}
     >
-      <NeonTitleIcon src={tab.iconSrc} className="h-4 w-4 shrink-0 sm:h-[18px] sm:w-[18px]" />
+      <NeonTitleIcon
+        src={tab.iconSrc}
+        maskScale={tab.iconMaskScale}
+        className="h-4 w-4 shrink-0 sm:h-[20px] sm:w-[20px]"
+      />
       <span className="md:hidden">{tab.shortLabel}</span>
       <span className="hidden md:inline">{tab.label}</span>
       {activeTab === tab.id && (
