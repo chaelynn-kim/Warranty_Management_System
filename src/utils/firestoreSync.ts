@@ -27,6 +27,11 @@ export const APP_DATA_STORES = [
     storageKey: 'warranty-guide-file',
     versionKey: 'warranty-guide-file-version',
   },
+  {
+    docId: 'warranty-certificate-templates',
+    storageKey: 'warranty-certificate-templates',
+    versionKey: 'warranty-certificate-templates-version',
+  },
 ] as const
 
 export type AppDataDocId = (typeof APP_DATA_STORES)[number]['docId']

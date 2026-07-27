@@ -1,4 +1,4 @@
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
+import { deleteObject, getBytes, getDownloadURL, ref, uploadBytes } from 'firebase/storage'
 import type { WarrantyFileAttachment } from '../types'
 import { auth, isStorageEnabled, storage } from './firebase'
 
@@ -28,6 +28,16 @@ export function buildRequestAttachmentPath(
 
 export function buildWarrantyGuideStoragePath(fileId: string, fileName: string): string {
   return `warranty-guide/global/${fileId}-${sanitizeFileName(fileName)}`
+}
+
+export function buildWarrantyCertificateTemplateStoragePath(
+  slot: string,
+  fileId: string,
+  fileName: string
+): string {
+  // Storage 경로에 ':' 사용 시 일부 환경에서 문제가 되어 '_'로 치환
+  const safeSlot = slot.replace(/:/g, '_')
+  return `warranty-certificate-templates/${safeSlot}/${fileId}-${sanitizeFileName(fileName)}`
 }
 
 function assertStorageReady(): void {
@@ -67,6 +77,12 @@ export async function uploadRequestAttachmentFile(
 export async function getAttachmentDownloadUrl(storagePath: string): Promise<string> {
   assertStorageReady()
   return getDownloadURL(ref(storage!, storagePath))
+}
+
+/** Firebase SDK로 직접 바이트 로드 — fetch(downloadURL) CORS 문제 회피 */
+export async function getAttachmentBytes(storagePath: string): Promise<ArrayBuffer> {
+  assertStorageReady()
+  return getBytes(ref(storage!, storagePath))
 }
 
 export async function deleteStorageAttachment(storagePath: string | undefined): Promise<void> {
@@ -152,6 +168,31 @@ export async function uploadWarrantyGuideFile(file: File): Promise<WarrantyFileA
     name: file.name,
     size: file.size,
     type: file.type || 'application/octet-stream',
+    storagePath,
+  }
+}
+
+export async function uploadWarrantyCertificateTemplateFile(
+  file: File,
+  slot: string
+): Promise<WarrantyFileAttachment> {
+  assertStorageReady()
+
+  const id = crypto.randomUUID()
+  const storagePath = buildWarrantyCertificateTemplateStoragePath(slot, id, file.name)
+  const storageRef = ref(storage!, storagePath)
+
+  await uploadBytes(storageRef, file, {
+    contentType:
+      file.type ||
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  })
+
+  return {
+    id,
+    name: file.name,
+    size: file.size,
+    type: file.type || 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     storagePath,
   }
 }

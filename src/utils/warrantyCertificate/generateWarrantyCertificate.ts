@@ -5,9 +5,7 @@ import { EMBEDDED_PPTX_TO_PDF_CONFIG } from '../../lib/pptxToPdf.embedded'
 import type { SlideReplacement } from './pptxReplacer'
 import { applySlideReplacements } from './pptxReplacer'
 import { postProcessSlideXml } from './pptxPostProcess'
-import {
-  WARRANTY_TEMPLATE_URLS,
-} from './templateAssets'
+import { loadWarrantyTemplateBuffer } from './certificateTemplateStorage'
 import {
   extractWarrantyYears,
   formatCoatingStructureEn,
@@ -45,21 +43,6 @@ export interface WarrantyCertificateInput {
   totalCoatingThickness: string
   primerThickness: string
   companyWarrantyTerms: ProductWarranty[]
-}
-
-async function loadBinaryAsset(url: string, label: string): Promise<ArrayBuffer> {
-  try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`${label}을(를) 불러오지 못했습니다.`)
-    }
-    return response.arrayBuffer()
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('불러오지 못했습니다')) {
-      throw error
-    }
-    throw new Error(`${label}을(를) 불러오지 못했습니다. 네트워크 연결을 확인해 주세요.`)
-  }
 }
 
 interface ReplacementContext {
@@ -333,17 +316,12 @@ export async function generateWarrantyCertificate(
     throw new Error(validation.message ?? '보증서를 생성할 수 없습니다.')
   }
 
-  const templateUrl = WARRANTY_TEMPLATE_URLS[input.productItem]?.[language]
-  if (!templateUrl) {
-    throw new Error('지원하지 않는 품목입니다.')
-  }
-
   const ctx = buildContext(input)
   if (!ctx) {
     throw new Error('보증서 데이터를 구성할 수 없습니다.')
   }
 
-  const templateBuffer = await loadBinaryAsset(templateUrl, '보증서 양식 파일')
+  const templateBuffer = await loadWarrantyTemplateBuffer(input.productItem, language)
   const zip = await JSZip.loadAsync(templateBuffer)
   const replacements = buildReplacements(input.productItem, language, ctx)
 

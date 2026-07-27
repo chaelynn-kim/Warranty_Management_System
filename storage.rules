@@ -21,5 +21,10 @@ service firebase.storage {
       allow read: if isSeahUser();
       allow write: if isWarrantyGuideAdmin();
     }
+
+    match /warranty-certificate-templates/{allPaths=**} {
+      allow read: if isSeahUser();
+      allow write: if isWarrantyGuideAdmin();
+    }
   }
 }

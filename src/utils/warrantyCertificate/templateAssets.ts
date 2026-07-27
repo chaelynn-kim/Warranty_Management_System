@@ -5,6 +5,7 @@ import printEnTemplateUrl from '../../assets/warranty-templates/PRINT_영문_250
 
 type TemplateLanguage = 'ko' | 'en'
 
+/** 기본 번들 양식 — Vite가 hashed URL로 번들. 업로드 양식이 있으면 Storage URL 우선. */
 export const WARRANTY_TEMPLATE_URLS: Record<string, Record<TemplateLanguage, string>> = {
   PAINT: {
     ko: paintKoTemplateUrl,

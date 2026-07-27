@@ -7,14 +7,14 @@ import { UserAccountBar } from './UserAccountBar'
 interface HeaderProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
+  showCertificateTemplateTab?: boolean
 }
 
-const tabs: {
+const baseTabs: {
   id: TabId
   label: string
   shortLabel: string
   iconSrc: string
-  /** 발행 의뢰 아이콘과 육안상 동일 크기로 맞추기 위한 mask 보정 */
   iconMaskScale: number
 }[] = [
   {
@@ -40,10 +40,22 @@ const tabs: {
   },
 ]
 
-export function Header({ activeTab, onTabChange }: HeaderProps) {
+const certificateTemplateTab = {
+  id: 'certificateTemplate' as const,
+  label: '보증서 양식 관리',
+  shortLabel: '양식 관리',
+  iconSrc: '/icons/warranty-request-document.png',
+  iconMaskScale: 90,
+}
+
+export function Header({
+  activeTab,
+  onTabChange,
+  showCertificateTemplateTab = false,
+}: HeaderProps) {
   const navRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement>>>({})
-  const visibleTabs = tabs
+  const visibleTabs = showCertificateTemplateTab ? [...baseTabs, certificateTemplateTab] : baseTabs
 
   useEffect(() => {
     const activeButton = tabRefs.current[activeTab]
@@ -63,7 +75,7 @@ export function Header({ activeTab, onTabChange }: HeaderProps) {
     })
   }, [activeTab, visibleTabs.length])
 
-  const renderTab = (tab: (typeof tabs)[number]) => (
+  const renderTab = (tab: (typeof baseTabs)[number] | typeof certificateTemplateTab) => (
     <button
       key={tab.id}
       ref={(element) => {

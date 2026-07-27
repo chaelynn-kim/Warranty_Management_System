@@ -70,6 +70,11 @@ export function canUploadWarrantyGuide(email: string | undefined | null): boolea
   return isWarrantyAdmin(email)
 }
 
+/** 보증서 PPTX 양식 관리 — 관리자(김채린) 전용 */
+export function canEditWarrantyCertificateTemplate(email: string | undefined | null): boolean {
+  return isWarrantyAdmin(email)
+}
+
 export function canEditWarrantyIssuanceLog(email: string | undefined | null): boolean {
   return isWarrantyAdmin(email)
 }
