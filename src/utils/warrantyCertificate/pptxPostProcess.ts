@@ -1545,10 +1545,13 @@ function applySlide3EnPrintListLayout(slideXml: string): string {
       const subItem = SLIDE3_EN_SUB_LIST_ITEMS.find((entry) => entry.match(text))
 
       if (item) {
+        const rewriteText = templateParagraphRewriteText(paragraph) || item.text
         let processed = setParagraphEnCertificateText(
           paragraph,
-          item.text,
-          enSlide3ListItemUsesSingleLine(item) ? { singleLine: true } : undefined
+          rewriteText,
+          enSlide3ListItemUsesSingleLine({ ...item, text: rewriteText })
+            ? { singleLine: true }
+            : undefined
         )
         processed = normalizeSlide3EnArabicPeriodItem(processed, item.startAt, {
           marR: item.marR,
@@ -1560,10 +1563,13 @@ function applySlide3EnPrintListLayout(slideXml: string): string {
       }
 
       if (subItem) {
+        const rewriteText = templateParagraphRewriteText(paragraph) || subItem.text
         let processed = setParagraphEnCertificateText(
           paragraph,
-          subItem.text,
-          enSlide3ListItemUsesSingleLine(subItem) ? { singleLine: true } : undefined
+          rewriteText,
+          enSlide3ListItemUsesSingleLine({ ...subItem, text: rewriteText })
+            ? { singleLine: true }
+            : undefined
         )
         processed = normalizeSlide3EnArabicParenSubItem(
           processed,
@@ -2101,34 +2107,49 @@ function enSlide4ListItemUsesSingleLine(item: {
   return !item.text.includes('\t') && !item.text.includes(EN_HARD_LINE_BREAK)
 }
 
-const SLIDE4_EN_PERIOD_ITEMS: Array<{
+/** 양식에 있는 문단 문구를 유지 (하드코딩 덮어쓰기 방지) */
+function templateParagraphRewriteText(paragraphXml: string): string {
+  return extractParagraphText(paragraphXml)
+    .replace(/\r\n/g, '\n')
+    .replace(/\n/g, '\t')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
+function injectYearsIntoRecordsClause(templateText: string, perforationYears: number): string {
+  const yearsLabel = formatYearsPlusOneEn(perforationYears)
+  const replaced = templateText.replace(
+    /\b\d+\s*\(\d+\)\s*years?\b|\b\d+\s*years?\b/i,
+    yearsLabel
+  )
+  if (replaced !== templateText) return replaced
+  return (
+    `End user must also maintain records for ${yearsLabel} that will identify the master coil number for each \tbuilding erected in the field, which shall be available to SeAH Coated Metal on request.`
+  )
+}
+
+type Slide4EnPeriodItem = {
   startAt: number
   match: (text: string) => boolean
-  text: string
-}> = [
+  buildText?: (templateText: string) => string
+}
+
+const SLIDE4_EN_PERIOD_ITEMS: Slide4EnPeriodItem[] = [
   {
     startAt: 14,
     match: (text) => text.includes('Claims must be submitted within the guarantee period'),
-    text:
-      'Claims must be submitted within the guarantee period and within thirty (30) days after discovering the \tdefect. Purchaser must notify the defect contents to SeAH Coated Metal in writing and give Union a \treasonable opportunity to inspect the material. And If possible, Purchaser must provide SeAH Coated \tMetal 3 samples of defect mentioning coil No., product name and lot No., shipping date and end user. \tIf not, It has to be investigated by SeAH Coated Metal or third parties.',
   },
 ]
 
-function buildSlide4EnPeriodItem15(perforationYears: number): {
-  startAt: number
-  match: (text: string) => boolean
-  text: string
-} {
-  const yearsLabel = formatYearsPlusOneEn(perforationYears)
+function buildSlide4EnPeriodItem15(perforationYears: number): Slide4EnPeriodItem {
   return {
     startAt: 15,
     match: (text) => text.includes('End user must also maintain records for'),
-    text:
-      `End user must also maintain records for ${yearsLabel} that will identify the master coil number for each \tbuilding erected in the field, which shall be available to SeAH Coated Metal on request.`,
+    buildText: (templateText) => injectYearsIntoRecordsClause(templateText, perforationYears),
   }
 }
 
-function getSlide4EnPeriodItems(perforationYears: number) {
+function getSlide4EnPeriodItems(perforationYears: number): Slide4EnPeriodItem[] {
   return [...SLIDE4_EN_PERIOD_ITEMS, buildSlide4EnPeriodItem15(perforationYears)]
 }
 
@@ -2165,10 +2186,13 @@ function applyEnSlide4ListLayout(slideXml: string): string {
     const item = SLIDE4_EN_LIST_ITEMS.find((entry) => entry.match(text))
     if (!item) return paragraph
 
+    const rewriteText = templateParagraphRewriteText(paragraph) || item.text
     let next = setParagraphEnCertificateText(
       paragraph,
-      item.text,
-      enSlide4ListItemUsesSingleLine(item) ? { singleLine: true } : undefined
+      rewriteText,
+      enSlide4ListItemUsesSingleLine({ ...item, text: rewriteText })
+        ? { singleLine: true }
+        : undefined
     )
     next = normalizeEnSlide4ListItem(next, item.startAt)
     return ensureBuAutoNumTabLst(next)
@@ -2281,9 +2305,11 @@ function applyPrintEnSlide4Layout(slideXml: string, perforationYears: number): s
 
       const periodItem = slide4EnPeriodItems.find((entry) => entry.match(text))
       if (periodItem) {
-        rebuilt.push(
-          normalizeEnSlide4PeriodItem(paragraph, periodItem.startAt, periodItem.text)
-        )
+        const templateText = templateParagraphRewriteText(paragraph)
+        const nextText = periodItem.buildText
+          ? periodItem.buildText(templateText)
+          : templateText
+        rebuilt.push(normalizeEnSlide4PeriodItem(paragraph, periodItem.startAt, nextText))
         continue
       }
 
@@ -2315,7 +2341,15 @@ function mergeSlide4EnAttackItem(slideXml: string): string {
 
   paragraphs[attackIndex] = setParagraphEnCertificateText(
     paragraphs[attackIndex],
-    SLIDE4_EN_LIST_ITEMS.find((entry) => entry.startAt === 5)!.text
+    [
+      templateParagraphRewriteText(paragraphs[attackIndex]),
+      templateParagraphRewriteText(paragraphs[ontoIndex]),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim() || SLIDE4_EN_LIST_ITEMS.find((entry) => entry.startAt === 5)!.text,
+    { singleLine: true }
   )
   paragraphs[ontoIndex] = ''
 
@@ -2347,7 +2381,14 @@ function mergeSlide4EnDebrisItem(slideXml: string): string {
 
   paragraphs[debrisIndex] = setParagraphEnCertificateText(
     paragraphs[debrisIndex],
-    SLIDE4_EN_LIST_ITEMS.find((entry) => entry.startAt === 6)!.text
+    [
+      templateParagraphRewriteText(paragraphs[debrisIndex]),
+      templateParagraphRewriteText(paragraphs[condensationIndex]),
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim() || SLIDE4_EN_LIST_ITEMS.find((entry) => entry.startAt === 6)!.text
   )
   paragraphs[condensationIndex] = ''
 

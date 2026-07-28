@@ -32,6 +32,16 @@ export const APP_DATA_STORES = [
     storageKey: 'warranty-certificate-templates',
     versionKey: 'warranty-certificate-templates-version',
   },
+  {
+    docId: 'warranty-email-mail-config',
+    storageKey: 'warranty-email-mail-config',
+    versionKey: 'warranty-email-mail-config-version',
+  },
+  {
+    docId: 'warranty-permission-config',
+    storageKey: 'warranty-permission-config',
+    versionKey: 'warranty-permission-config-version',
+  },
 ] as const
 
 export type AppDataDocId = (typeof APP_DATA_STORES)[number]['docId']

@@ -10,7 +10,7 @@ import {
   warrantyRequestToolbarSubmitButtonClass,
 } from '../components/warranty-request/WarrantyIssuanceRequestForm'
 import { useAuth } from '../contexts/AuthContext'
-import { sendWarrantyRequestPendingEmail } from '../utils/emailNotification'
+import { sendWarrantyRequestPendingEmail, formatEmailJsError } from '../utils/emailNotification'
 import { createRequestRecord } from '../utils/warrantyRequestStorage'
 import {
   getWarrantyRequestRecords,
@@ -24,35 +24,32 @@ interface WarrantyIssuanceRequestPageProps {
 export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssuanceRequestPageProps) {
   const { user } = useAuth()
   const formRef = useRef<WarrantyIssuanceRequestFormHandle>(null)
-  const [error, setError] = useState('')
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFormComplete, setIsFormComplete] = useState(false)
 
   const handleReset = () => {
     formRef.current?.reset()
-    setError('')
   }
 
   const handleSubmitClick = () => {
     if (!formRef.current) {
-      setError('폼을 불러올 수 없습니다.')
+      window.alert('폼을 불러올 수 없습니다.')
       return
     }
 
     const validationError = formRef.current.validate()
     if (validationError) {
-      setError(validationError)
+      window.alert(validationError)
       return
     }
 
-    setError('')
     setConfirmOpen(true)
   }
 
   const handleConfirmSubmit = async () => {
     if (!formRef.current || isSubmitting) {
-      setError('폼을 불러올 수 없습니다.')
+      window.alert('폼을 불러올 수 없습니다.')
       setConfirmOpen(false)
       return
     }
@@ -69,19 +66,24 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
     try {
       persistWarrantyRequestRecords(nextRecords)
     } catch {
-      setError('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      window.alert('저장에 실패했습니다. 잠시 후 다시 시도해 주세요.')
       setConfirmOpen(false)
       setIsSubmitting(false)
       return
     }
 
     try {
-      await sendWarrantyRequestPendingEmail(request, {
+      const mailResult = await sendWarrantyRequestPendingEmail(request, {
         requesterEmail: user?.email ?? undefined,
       })
+      window.alert(
+        `의뢰가 접수되었습니다.\n알림 메일 발송 완료\n수신: ${mailResult.to}` +
+          (mailResult.cc ? `\n참조: ${mailResult.cc}` : '')
+      )
     } catch (mailError) {
       console.error('[EmailJS] 의뢰 알림 메일 발송 실패', mailError)
-      setError('의뢰는 접수되었으나 알림 메일 발송에 실패했습니다. 관리자에게 문의해 주세요.')
+      const detail = formatEmailJsError(mailError)
+      window.alert(`의뢰는 접수되었으나 알림 메일 발송에 실패했습니다.\n\n${detail}`)
     }
 
     formRef.current.reset()
@@ -100,16 +102,12 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
         description={
           <p>
             보증서 발행을 위해 아래 양식 작성 후{' '}
-            <strong className="font-semibold text-accent">[의뢰하기]</strong> 버튼을 클릭해 주세요.
-          </p>
-        }
-        descriptionNote={
-          <p>
-            의뢰 시 품질 팀장에게{' '}
+            <strong className="font-semibold text-accent">[의뢰하기]</strong> 버튼을 클릭해 주세요. 의뢰 시 품질 팀장에게{' '}
             <strong className="font-semibold text-text-primary">승인 요청 메일이 자동 발송</strong>
             됩니다.
           </p>
         }
+        
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={handleReset} className={warrantyRequestToolbarResetButtonClass}>
@@ -129,11 +127,6 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       />
 
       <section className="overflow-visible rounded-xl border border-border bg-bg-secondary p-4 sm:p-6">
-        {error ? (
-          <p className="mb-4 text-sm font-medium text-red-400" role="alert" aria-live="polite">
-            {error}
-          </p>
-        ) : null}
         <WarrantyIssuanceRequestForm
           ref={formRef}
           showQualitySection={false}

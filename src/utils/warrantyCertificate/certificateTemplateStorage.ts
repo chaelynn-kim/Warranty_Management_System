@@ -178,6 +178,7 @@ export async function replaceWarrantyCertificateTemplate(
   const entry: WarrantyCertificateTemplateEntry = {
     ...attachment,
     dataBase64,
+    updatedAt: new Date().toISOString(),
   }
 
   const current = await loadWarrantyCertificateTemplates()

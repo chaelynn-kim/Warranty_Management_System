@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 
-export type FormSectionAccent = 'blue' | 'purple' | 'green' | 'orange' | 'pink'
+export type FormSectionAccent = 'blue' | 'purple' | 'green' | 'orange' | 'pink' | 'yellow'
 
 const accentStyles: Record<
   FormSectionAccent,
@@ -26,15 +27,28 @@ const accentStyles: Record<
     bar: 'bg-fuchsia-400',
     iconRing: 'border-fuchsia-400/60 text-fuchsia-400',
   },
+  yellow: {
+    bar: 'bg-yellow-400',
+    iconRing: 'border-yellow-400/60 text-yellow-400',
+  },
 }
 
 interface FormSectionHeaderProps {
   title: string
-  icon: LucideIcon
   accent: FormSectionAccent
+  icon?: LucideIcon
+  /** Lucide 대신 커스텀 아이콘(마스크 PNG 등) */
+  iconNode?: ReactNode
+  actions?: ReactNode
 }
 
-export function FormSectionHeader({ title, icon: Icon, accent }: FormSectionHeaderProps) {
+export function FormSectionHeader({
+  title,
+  icon: Icon,
+  iconNode,
+  accent,
+  actions,
+}: FormSectionHeaderProps) {
   const styles = accentStyles[accent]
 
   return (
@@ -44,9 +58,10 @@ export function FormSectionHeader({ title, icon: Icon, accent }: FormSectionHead
         className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border ${styles.iconRing}`}
         aria-hidden
       >
-        <Icon className="h-4 w-4" />
+        {iconNode ?? (Icon ? <Icon className="h-4 w-4" /> : null)}
       </span>
-      <h3 className="text-base font-semibold text-text-primary">{title}</h3>
+      <h3 className="min-w-0 flex-1 text-base font-semibold text-text-primary">{title}</h3>
+      {actions ? <div className="shrink-0">{actions}</div> : null}
     </div>
   )
 }

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Download, FileDown, Loader2, RotateCcw, Upload } from 'lucide-react'
 import { Card } from '../components/ui/Card'
 import { PageHeader } from '../components/layout/PageHeader'
-import { filterActionButtonClass } from '../components/ui/FilterActions'
+import { filterActionButtonClass, filterSearchButtonClass } from '../components/ui/FilterActions'
 import type { WarrantyCertificateTemplateEntry } from '../utils/warrantyCertificate/certificateTemplateTypes'
 import { downloadFileAttachment, formatFileSize } from '../utils/warrantyAttachments'
 import {
@@ -16,6 +16,21 @@ import {
   WARRANTY_CERTIFICATE_TEMPLATE_SLOTS,
   type WarrantyCertificateTemplateSlot,
 } from '../utils/warrantyCertificate/certificateTemplateTypes'
+
+function formatTemplateUpdatedAt(iso?: string): string {
+  const date = iso ? new Date(iso) : new Date()
+  if (Number.isNaN(date.getTime())) {
+    const now = new Date()
+    const y = now.getFullYear()
+    const m = String(now.getMonth() + 1).padStart(2, '0')
+    const d = String(now.getDate()).padStart(2, '0')
+    return `${y}.${m}.${d}`
+  }
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}.${m}.${d}`
+}
 import {
   buildSampleWarrantyCertificateInput,
 } from '../utils/warrantyCertificate/sampleWarrantyCertificateInput'
@@ -131,6 +146,9 @@ function TemplateSlotCard({
 
   const sourceLabel = file ? '업로드된 양식' : '기본 번들 양식'
   const fileLabel = file ? `${file.name} (${formatFileSize(file.size)})` : bundledName
+  const modifiedLabel = file
+    ? `수정일자_${formatTemplateUpdatedAt(file.updatedAt)}`
+    : '기본 양식'
 
   return (
     <div className="rounded-xl border border-border bg-bg-primary/30 p-4">
@@ -144,11 +162,11 @@ function TemplateSlotCard({
         <span
           className={`inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-semibold tracking-wide ${
             file
-              ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30'
+              ? 'bg-accent/15 text-accent ring-1 ring-accent/40'
               : 'bg-bg-tertiary text-text-muted ring-1 ring-border'
           }`}
         >
-          {file ? '커스텀 적용 중' : '기본 양식'}
+          {modifiedLabel}
         </span>
       </div>
 
@@ -194,8 +212,6 @@ function TemplateSlotCard({
       <div className="mt-4 border-t border-border pt-4">
         <p className="mb-1 text-xs font-medium text-text-secondary">양식 테스트</p>
         <p className="mb-2 text-[11px] leading-relaxed text-text-muted">
-          예시 의뢰 데이터로 보증서를 만들어, 업로드한 양식이 정상인지 확인합니다. (실제 의뢰서가
-          필요하지 않습니다.)
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-lg border border-border bg-bg-tertiary/60 p-0.5">
@@ -220,14 +236,14 @@ function TemplateSlotCard({
             onClick={() => void handleTestGenerate()}
             disabled={busy || !file}
             title={file ? undefined : 'PPTX 업로드 후 사용할 수 있습니다'}
-            className={`${filterActionButtonClass} border-emerald-800/50 bg-emerald-950/40 text-emerald-300 hover:border-emerald-400 hover:text-emerald-200 disabled:cursor-not-allowed disabled:opacity-50`}
+            className={`${filterSearchButtonClass} disabled:cursor-not-allowed disabled:opacity-50`}
           >
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             테스트 다운로드
           </button>
         </div>
         {!file ? (
-          <p className="mt-2 text-[11px] text-text-muted">PPTX를 업로드한 뒤 테스트할 수 있습니다.</p>
+          <p className="mt-2 text-[11px] text-text-muted"></p>
         ) : null}
       </div>
 
@@ -267,24 +283,21 @@ export function WarrantyCertificateTemplatePage({ userEmail }: WarrantyCertifica
   return (
     <div>
       <PageHeader
-        subtitle="CERTIFICATE TEMPLATE"
         title="보증서 양식 관리"
-        iconSrc="/icons/warranty-request-document.png"
-        iconMaskScale={90}
+        iconSrc="/icons/warranty-certificate-template.png"
+        iconMaskScale={95}
         description={
           <p>
-            PowerPoint에서 수정한 PPTX 양식을 업로드하면 보증서 자동 작성에 즉시 반영됩니다. 업로드 후
-            양식 테스트로 결과를 확인해 주세요.
+            수정한 PPTX 양식을 업로드하면 보증서 자동 작성에 즉시 반영됩니다. 업로드 후 양식 테스트로 결과를 확인해 주세요.
           </p>
         }
         descriptionNote={
           <p>
-            빨간 글씨 위치·슬라이드 구조를 크게 바꾸면 기존 치환 규칙과 맞지 않을 수 있습니다.
           </p>
         }
       />
 
-      <Card label="TEMPLATE SLOTS" title="품목·언어별 양식">
+      <Card>
         {loading ? (
           <div className="flex items-center gap-2 text-sm text-text-muted">
             <Loader2 className="h-4 w-4 animate-spin" />

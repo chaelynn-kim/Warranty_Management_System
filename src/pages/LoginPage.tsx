@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext'
-import seahLogoPng from '../assets/seah logo (배경제거).png'
+import seahLogoPng from '../assets/seah-coated-metal-logo.png'
 
 export function LoginPage() {
   const { signInWithGoogle, authConfigured } = useAuth()
@@ -7,17 +7,25 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#2a2d35] p-6">
       <div className="w-full max-w-md rounded-xl border border-gray-200 bg-white px-8 py-10 text-center shadow-2xl">
-        <div className="relative mx-auto mb-3 h-11 w-full overflow-hidden">
+        <div className="mb-5 flex justify-center">
           <img
             src={seahLogoPng}
             alt="SeAH Coated Metal"
-            style={{ filter: 'brightness(0) invert(1)' }}
-            className="absolute left-1/2 top-1/2 w-full h-auto -translate-x-1/2 -translate-y-1/2 scale-[1.2] mix-blend-normal"
+            className="h-8 w-auto max-w-[280px] object-contain"
           />
         </div>
 
-        <p className="mb-1 text-xs text-gray-500">Warranty Management System</p>
-        <h1 className="mb-3 text-xl font-bold text-gray-800">보증서 관리 시스템</h1>
+        <div className="relative mb-3 mx-auto w-max pt-3.5">
+          <p className="absolute inset-x-0 top-0 flex justify-between gap-1 text-[10px] font-semibold uppercase leading-none text-accent">
+            <span>Warranty</span>
+            <span>Management</span>
+            <span>System</span>
+          </p>
+          <h1 className="whitespace-nowrap text-[1.35rem] font-bold leading-tight text-gray-800">
+            보증서 관리 시스템
+          </h1>
+        </div>
+
         <p className="mb-7 text-sm leading-relaxed text-gray-500">
           회사 Google 계정(@seah.co.kr)으로 로그인해 주세요.
         </p>

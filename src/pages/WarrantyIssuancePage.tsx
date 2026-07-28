@@ -357,7 +357,7 @@ export function WarrantyIssuancePage({
     <div>
       <PageHeader
         title="보증서 발행 관리"
-        iconSrc="/icons/external-test-document.png"
+        iconSrc="/icons/warranty-issuance-docs.png"
         iconMaskScale={100}
         description={
           <div className="space-y-1">
@@ -376,9 +376,7 @@ export function WarrantyIssuancePage({
         }
       />
 
-      <Card
-        title="보증서 발행 내역"
-      >
+      <Card>
         <WarrantyRequestStatusSummary records={requestRecords} />
 
         <WarrantyRequestPeriodSearch

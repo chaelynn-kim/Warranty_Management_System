@@ -214,4 +214,10 @@ export interface WarrantyIssuanceRequestRecord extends WarrantyIssuanceRequest {
   requesterEmail?: string
 }
 
-export type TabId = 'issuanceRequest' | 'issuance' | 'period' | 'certificateTemplate'
+export type TabId =
+  | 'issuanceRequest'
+  | 'issuance'
+  | 'period'
+  | 'certificateTemplate'
+  | 'emailMail'
+  | 'permission'

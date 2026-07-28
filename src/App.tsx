@@ -1,11 +1,17 @@
 import { useState } from 'react'
 import { Header } from './components/layout/Header'
 import { WarrantyCertificateTemplatePage } from './pages/WarrantyCertificateTemplatePage'
+import { WarrantyEmailMailPage } from './pages/WarrantyEmailMailPage'
 import { WarrantyIssuancePage } from './pages/WarrantyIssuancePage'
 import { WarrantyIssuanceRequestPage } from './pages/WarrantyIssuanceRequestPage'
 import { WarrantyPeriodPage } from './pages/WarrantyPeriodPage'
+import { WarrantyPermissionPage } from './pages/WarrantyPermissionPage'
 import { useAuth } from './contexts/AuthContext'
-import { canEditWarrantyCertificateTemplate } from './utils/authValidation'
+import {
+  canEditPermissionConfig,
+  canEditWarrantyCertificateTemplate,
+  canEditWarrantyEmailMail,
+} from './utils/authValidation'
 import type { TabId } from './types'
 
 function App() {
@@ -13,6 +19,8 @@ function App() {
   const [activeTab, setActiveTab] = useState<TabId>('issuance')
   const [highlightRequestId, setHighlightRequestId] = useState<string | null>(null)
   const showCertificateTemplateTab = canEditWarrantyCertificateTemplate(user?.email)
+  const showEmailMailTab = canEditWarrantyEmailMail(user?.email)
+  const showPermissionTab = canEditPermissionConfig(user?.email)
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -20,6 +28,8 @@ function App() {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         showCertificateTemplateTab={showCertificateTemplateTab}
+        showEmailMailTab={showEmailMailTab}
+        showPermissionTab={showPermissionTab}
       />
       <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-8">
         <div className={activeTab === 'issuanceRequest' ? undefined : 'hidden'}>
@@ -43,6 +53,16 @@ function App() {
         {showCertificateTemplateTab ? (
           <div className={activeTab === 'certificateTemplate' ? undefined : 'hidden'}>
             <WarrantyCertificateTemplatePage userEmail={user?.email} />
+          </div>
+        ) : null}
+        {showEmailMailTab ? (
+          <div className={activeTab === 'emailMail' ? undefined : 'hidden'}>
+            <WarrantyEmailMailPage userEmail={user?.email} />
+          </div>
+        ) : null}
+        {showPermissionTab ? (
+          <div className={activeTab === 'permission' ? undefined : 'hidden'}>
+            <WarrantyPermissionPage userEmail={user?.email} />
           </div>
         ) : null}
       </main>

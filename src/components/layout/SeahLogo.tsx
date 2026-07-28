@@ -15,7 +15,7 @@ export function SeahLogo({ className = 'h-8 w-auto' }: SeahLogoProps) {
       <path
         d="M14.5 2.2L16.8 5.2L19.1 2.2"
         stroke="#E8574A"
-        strokeWidth="1.6"
+        strokeWidth="2.2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -24,7 +24,7 @@ export function SeahLogo({ className = 'h-8 w-auto' }: SeahLogoProps) {
         y="19.5"
         fill="#FFFFFF"
         fontFamily="'Helvetica Neue', Helvetica, Arial, sans-serif"
-        fontSize="17.5"
+        fontSize="18.5"
         fontWeight="700"
         letterSpacing="-0.3"
       >
@@ -35,7 +35,7 @@ export function SeahLogo({ className = 'h-8 w-auto' }: SeahLogoProps) {
         y="19.5"
         fill="#B8BEC8"
         fontFamily="'Helvetica Neue', Helvetica, Arial, sans-serif"
-        fontSize="14.5"
+        fontSize="15"
         fontWeight="400"
         letterSpacing="0.1"
       >

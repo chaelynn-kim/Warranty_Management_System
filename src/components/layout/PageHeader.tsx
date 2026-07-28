@@ -55,8 +55,6 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
     </p>
   ) : null
 
-  const hasNoteAndActions = descriptionNote != null && actions
-
   const descriptionStack = (
     <div className="mt-2 max-w-3xl space-y-1 text-sm leading-relaxed text-text-secondary">
       {typeof description === 'string' ? <p>{description}</p> : description}
@@ -90,23 +88,11 @@ export const PageHeader = forwardRef<HTMLDivElement, PageHeaderProps>(function P
         ) : null}
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
-            <div className="min-w-0">
-              {subtitleEl}
-              <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{title}</h1>
-            </div>
+          {subtitleEl}
+          <h1 className="text-xl font-bold text-text-primary sm:text-2xl">{title}</h1>
 
-            {/* 주의 문구가 없으면 버튼을 제목 오른쪽에 유지 */}
-            {!hasNoteAndActions && actions ? (
-              <div className="flex shrink-0 items-center justify-end gap-2 sm:pt-0.5">{actions}</div>
-            ) : null}
-          </div>
-
-          {/*
-            설명 문구는 space-y로 일정 간격 유지.
-            버튼은 오른쪽에 items-end로 두어 글자 줄간격에 영향을 주지 않음.
-          */}
-          {hasNoteAndActions ? (
+          {/* 설명은 왼쪽, 버튼은 우측 하단(보증연한 탭과 동일) */}
+          {actions ? (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4">
               <div className="min-w-0 flex-1">{descriptionStack}</div>
               <div className="flex shrink-0 items-center justify-end gap-2">{actions}</div>

@@ -9,6 +9,8 @@ export type WarrantyCertificateTemplateSlot =
 /** Firestore에 함께 저장되는 PPTX 바이트 (웹 Storage getBytes CORS 회피) */
 export interface WarrantyCertificateTemplateEntry extends WarrantyFileAttachment {
   dataBase64?: string
+  /** 양식 업로드·수정 시각 (ISO) */
+  updatedAt?: string
 }
 
 export interface WarrantyCertificateTemplatesRecord {

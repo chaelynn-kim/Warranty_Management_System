@@ -8,15 +8,19 @@ interface HeaderProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
   showCertificateTemplateTab?: boolean
+  showEmailMailTab?: boolean
+  showPermissionTab?: boolean
 }
 
-const baseTabs: {
+type TabItem = {
   id: TabId
   label: string
   shortLabel: string
   iconSrc: string
   iconMaskScale: number
-}[] = [
+}
+
+const baseTabs: TabItem[] = [
   {
     id: 'issuanceRequest',
     label: '보증서 발행 의뢰',
@@ -28,8 +32,8 @@ const baseTabs: {
     id: 'issuance',
     label: '보증서 발행 관리',
     shortLabel: '발행 관리',
-    iconSrc: '/icons/external-test-document.png',
-    iconMaskScale: 74,
+    iconSrc: '/icons/warranty-issuance-docs.png',
+    iconMaskScale: 78,
   },
   {
     id: 'period',
@@ -40,22 +44,45 @@ const baseTabs: {
   },
 ]
 
-const certificateTemplateTab = {
-  id: 'certificateTemplate' as const,
+const certificateTemplateTab: TabItem = {
+  id: 'certificateTemplate',
   label: '보증서 양식 관리',
   shortLabel: '양식 관리',
-  iconSrc: '/icons/warranty-request-document.png',
-  iconMaskScale: 90,
+  iconSrc: '/icons/warranty-certificate-template.png',
+  iconMaskScale: 75,
+}
+
+const emailMailTab: TabItem = {
+  id: 'emailMail',
+  label: '메일 수신인 관리',
+  shortLabel: '메일 관리',
+  iconSrc: '/icons/warranty-email-mail.png',
+  iconMaskScale: 85,
+}
+
+const permissionTab: TabItem = {
+  id: 'permission',
+  label: '권한 관리',
+  shortLabel: '권한 관리',
+  iconSrc: '/icons/warranty-permission.png',
+  iconMaskScale: 85,
 }
 
 export function Header({
   activeTab,
   onTabChange,
   showCertificateTemplateTab = false,
+  showEmailMailTab = false,
+  showPermissionTab = false,
 }: HeaderProps) {
   const navRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement>>>({})
-  const visibleTabs = showCertificateTemplateTab ? [...baseTabs, certificateTemplateTab] : baseTabs
+  const visibleTabs = [
+    ...baseTabs,
+    ...(showCertificateTemplateTab ? [certificateTemplateTab] : []),
+    ...(showEmailMailTab ? [emailMailTab] : []),
+    ...(showPermissionTab ? [permissionTab] : []),
+  ]
 
   useEffect(() => {
     const activeButton = tabRefs.current[activeTab]
@@ -75,7 +102,7 @@ export function Header({
     })
   }, [activeTab, visibleTabs.length])
 
-  const renderTab = (tab: (typeof baseTabs)[number] | typeof certificateTemplateTab) => (
+  const renderTab = (tab: TabItem) => (
     <button
       key={tab.id}
       ref={(element) => {
@@ -86,7 +113,7 @@ export function Header({
       onClick={() => onTabChange(tab.id)}
       aria-label={tab.label}
       aria-current={activeTab === tab.id ? 'page' : undefined}
-      className={`relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-xs font-medium whitespace-nowrap transition-colors sm:gap-2 sm:px-3 sm:text-sm md:rounded-none md:px-3 md:py-2 ${
+      className={`relative inline-flex shrink-0 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[10pt] font-medium whitespace-nowrap transition-colors sm:gap-2 sm:px-3 sm:text-[11.5pt] md:rounded-none md:px-3 md:py-2 ${
         activeTab === tab.id
           ? 'bg-accent/10 text-accent md:bg-transparent'
           : 'text-text-secondary hover:bg-bg-tertiary/60 hover:text-text-primary md:hover:bg-transparent'
@@ -95,7 +122,7 @@ export function Header({
       <NeonTitleIcon
         src={tab.iconSrc}
         maskScale={tab.iconMaskScale}
-        className="h-4 w-4 shrink-0 sm:h-[20px] sm:w-[20px]"
+        className="h-[13pt] w-[13pt] shrink-0 sm:h-[16pt] sm:w-[16pt]"
       />
       <span className="md:hidden">{tab.shortLabel}</span>
       <span className="hidden md:inline">{tab.label}</span>
@@ -113,9 +140,10 @@ export function Header({
           <UserAccountBar />
         </div>
 
-        <div className="flex items-center gap-4 px-3 pb-2 sm:px-6 md:px-6 md:py-3 md:pb-3">
-          <div className="hidden shrink-0 md:block">
+        <div className="flex items-center gap-4 px-3 pb-2 sm:px-6 md:gap-5 md:px-6 md:py-3 md:pb-3">
+          <div className="hidden shrink-0 items-center gap-5 md:flex">
             <SeahLogo />
+            <span aria-hidden className="h-5 w-px bg-border" />
           </div>
 
           <nav
