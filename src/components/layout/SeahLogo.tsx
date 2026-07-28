@@ -6,7 +6,7 @@ export function SeahLogo({ className = 'h-8 w-auto' }: SeahLogoProps) {
   return (
     <svg
       className={className}
-      viewBox="0 0 196 24"
+      viewBox="0 0 158 24"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       aria-label="SeAH Coated Metal"

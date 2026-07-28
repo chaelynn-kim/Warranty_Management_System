@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Warranty Management System ERD (테이블)</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Malgun Gothic", "Segoe UI", sans-serif;
+      background: #fff;
+      color: #111;
+      font-size: 14px;
+    }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    .sub { color: #555; margin: 0 0 24px; }
+    h2 {
+      font-size: 17px;
+      margin: 28px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 2px solid #222;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+    table.entity {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #222;
+      background: #fff;
+    }
+    table.entity caption {
+      caption-side: top;
+      text-align: left;
+      font-weight: 700;
+      font-size: 15px;
+      background: #1f2937;
+      color: #fff;
+      padding: 8px 10px;
+      border: 2px solid #222;
+      border-bottom: none;
+    }
+    table.entity th,
+    table.entity td {
+      border: 1px solid #333;
+      padding: 6px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.entity thead th {
+      background: #e5e7eb;
+      font-size: 12px;
+    }
+    .pk { color: #b45309; font-weight: 700; }
+    .fk { color: #1d4ed8; font-weight: 700; }
+    .wide { grid-column: 1 / -1; }
+    table.full { width: 100%; border-collapse: collapse; border: 2px solid #222; }
+    table.full th, table.full td {
+      border: 1px solid #333;
+      padding: 7px 9px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.full thead th { background: #1f2937; color: #fff; }
+    table.full tbody tr:nth-child(even) { background: #f8fafc; }
+    code { font-family: Consolas, monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h1>Warranty Management System — ERD (테이블 형식)</h1>
+  <p class="sub">
+    물리 DB는 Firestore <code>app-data/{docId}</code> 문서입니다. 아래는 논리 테이블(엔티티) 형식 ERD입니다.
+  </p>
+
+  <h2>0. 저장소 매핑</h2>
+  <table class="full">
+    <thead>
+      <tr>
+        <th>논리 테이블</th>
+        <th>Firestore docId</th>
+        <th>data 형태</th>
+        <th>설명</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>ExternalTestRecord</td><td><code>external-test-records</code></td><td>배열</td><td>외부시험</td></tr>
+      <tr><td>WarrantyIssuanceRequestRecord</td><td><code>warranty-issuance-requests</code></td><td>배열</td><td>보증서 발행 의뢰</td></tr>
+      <tr><td>WarrantyRecord</td><td><code>warranty-issuance-records</code></td><td>배열</td><td>구 발행 로그</td></tr>
+      <tr><td>WarrantyPeriodData</td><td><code>warranty-period-data</code></td><td>객체</td><td>보증연한</td></tr>
+      <tr><td>WarrantyGuideFileRecord</td><td><code>warranty-guide-file</code></td><td>객체</td><td>Warranty Guide</td></tr>
+      <tr><td>WarrantyCertificateTemplatesRecord</td><td><code>warranty-certificate-templates</code></td><td>객체</td><td>보증서 양식</td></tr>
+      <tr><td>WarrantyEmailMailConfigRecord</td><td><code>warranty-email-mail-config</code></td><td>객체</td><td>메일 수신인</td></tr>
+      <tr><td>PermissionConfigRecord</td><td><code>warranty-permission-config</code></td><td>객체</td><td>권한</td></tr>
+      <tr><td>WarrantyFileAttachment</td><td>(임베디드)</td><td>객체</td><td>첨부 파일 메타</td></tr>
+    </tbody>
+  </table>
+
+  <h2>1. 엔티티 테이블</h2>
+  <div class="grid">
+
+    <table class="entity">
+      <caption>ExternalTestRecord</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>string</td><td class="pk">PK</td><td>고유 ID</td></tr>
+        <tr><td>no</td><td>string</td><td></td><td>번호</td></tr>
+        <tr><td>purpose</td><td>string</td><td></td><td>목적</td></tr>
+        <tr><td>sampleName</td><td>string</td><td></td><td>시료명</td></tr>
+        <tr><td>colorName</td><td>string</td><td></td><td>색상명</td></tr>
+        <tr><td>workshop</td><td>string</td><td></td><td>작업장</td></tr>
+        <tr><td>productionDate</td><td>string</td><td></td><td>생산일</td></tr>
+        <tr><td>itemCode</td><td>string</td><td></td><td>품목코드</td></tr>
+        <tr><td>itemName</td><td>string</td><td></td><td>품목명</td></tr>
+        <tr><td>resin</td><td>string</td><td></td><td>수지</td></tr>
+        <tr><td>requestDate</td><td>string</td><td></td><td>의뢰일</td></tr>
+        <tr><td>receiptDate</td><td>string</td><td></td><td>접수일</td></tr>
+        <tr><td>completionDate</td><td>string</td><td></td><td>완료일</td></tr>
+        <tr><td>notes</td><td>string</td><td></td><td>비고</td></tr>
+        <tr><td>status</td><td>string</td><td></td><td>상태</td></tr>
+        <tr><td>institution</td><td>string</td><td></td><td>시험기관</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity wide">
+      <caption>WarrantyIssuanceRequestRecord (보증서 발행 의뢰)</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>string</td><td class="pk">PK</td><td>의뢰 ID</td></tr>
+        <tr><td>sequenceNo</td><td>number</td><td></td><td>의뢰 No</td></tr>
+        <tr><td>status</td><td>string</td><td></td><td>승인대기/접수/발행완료/보증불가</td></tr>
+        <tr><td>requesterEmail</td><td>string?</td><td class="fk">FK*</td><td>의뢰자 이메일 → Auth/메일</td></tr>
+        <tr><td>requestDate</td><td>string</td><td></td><td>의뢰일</td></tr>
+        <tr><td>requestTeam</td><td>string</td><td></td><td>의뢰팀</td></tr>
+        <tr><td>requestTeamCustom</td><td>string</td><td></td><td>의뢰팀 직접입력</td></tr>
+        <tr><td>requesterName</td><td>string</td><td></td><td>의뢰자명</td></tr>
+        <tr><td>colorName</td><td>string</td><td></td><td>색상명</td></tr>
+        <tr><td>resin</td><td>string</td><td></td><td>수지</td></tr>
+        <tr><td>resinCustom</td><td>string</td><td></td><td>수지 직접입력</td></tr>
+        <tr><td>paintCompany</td><td>string</td><td></td><td>도료사</td></tr>
+        <tr><td>paintCompanyCustom</td><td>string</td><td></td><td>도료사 직접입력</td></tr>
+        <tr><td>material</td><td>string</td><td></td><td>소재</td></tr>
+        <tr><td>materialCustom</td><td>string</td><td></td><td>소재 직접입력</td></tr>
+        <tr><td>coatingStructure</td><td>string</td><td></td><td>도장구조</td></tr>
+        <tr><td>productItem</td><td>string</td><td class="fk">FK*</td><td>PAINT/PRINT → 양식 슬롯</td></tr>
+        <tr><td>region</td><td>string</td><td></td><td>지역</td></tr>
+        <tr><td>detailRegion</td><td>string</td><td></td><td>상세지역</td></tr>
+        <tr><td>detailRegionCustom</td><td>string</td><td></td><td>상세지역 직접입력</td></tr>
+        <tr><td>customer</td><td>string</td><td></td><td>고객</td></tr>
+        <tr><td>usage</td><td>string</td><td></td><td>용도</td></tr>
+        <tr><td>language</td><td>string</td><td class="fk">FK*</td><td>ko/en → 양식 슬롯</td></tr>
+        <tr><td>warrantyTermMode</td><td>string</td><td></td><td>보증기간 모드</td></tr>
+        <tr><td>warrantyTermCustom</td><td>string</td><td></td><td>보증기간 직접입력</td></tr>
+        <tr><td>additionalRequest</td><td>string</td><td></td><td>추가 요청 사항</td></tr>
+        <tr><td>additionalRequestAttachments</td><td>JSON</td><td class="fk">FK*</td><td>→ WarrantyFileAttachment[]</td></tr>
+        <tr><td>companyWarrantyAttachmentKo</td><td>JSON</td><td class="fk">FK*</td><td>당사 Warranty 국문</td></tr>
+        <tr><td>companyWarrantyAttachmentEn</td><td>JSON</td><td class="fk">FK*</td><td>당사 Warranty 영문</td></tr>
+        <tr><td>supplierWarrantyAttachmentKo</td><td>JSON</td><td class="fk">FK*</td><td>도료사 Warranty 국문</td></tr>
+        <tr><td>supplierWarrantyAttachmentEn</td><td>JSON</td><td class="fk">FK*</td><td>도료사 Warranty 영문</td></tr>
+        <tr><td>issueDate</td><td>string</td><td></td><td>발행일</td></tr>
+        <tr><td>qualityAuthor</td><td>string</td><td></td><td>품질 작성자</td></tr>
+        <tr><td>totalCoatingThickness</td><td>string</td><td></td><td>총도막두께</td></tr>
+        <tr><td>primerThickness</td><td>string</td><td></td><td>프라이머두께</td></tr>
+        <tr><td>companyWarrantyTerms</td><td>JSON</td><td class="fk">FK*</td><td>→ ProductWarranty[]</td></tr>
+        <tr><td>companyWarrantyTermsLookupKey</td><td>string</td><td class="fk">FK*</td><td>보증연한 조회 키</td></tr>
+        <tr><td>reviewResult</td><td>string</td><td></td><td>검토 결과</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>WarrantyRecord (레거시 발행 로그)</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>string</td><td class="pk">PK</td><td>ID (의뢰로 이관)</td></tr>
+        <tr><td>requestDate</td><td>string</td><td></td><td>의뢰일</td></tr>
+        <tr><td>requester</td><td>string</td><td></td><td>의뢰자</td></tr>
+        <tr><td>region</td><td>string</td><td></td><td>지역</td></tr>
+        <tr><td>detailRegion</td><td>string</td><td></td><td>상세지역</td></tr>
+        <tr><td>customer</td><td>string</td><td></td><td>고객</td></tr>
+        <tr><td>colorName</td><td>string</td><td></td><td>색상명</td></tr>
+        <tr><td>paintCompany</td><td>string</td><td></td><td>도료사</td></tr>
+        <tr><td>resin</td><td>string</td><td></td><td>수지</td></tr>
+        <tr><td>additionalRequest</td><td>string</td><td></td><td>추가요청</td></tr>
+        <tr><td>fileAttachment</td><td>JSON</td><td class="fk">FK*</td><td>첨부</td></tr>
+        <tr><td>issueDate</td><td>string</td><td></td><td>발행일</td></tr>
+        <tr><td>reviewResult</td><td>string</td><td></td><td>검토결과</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>WarrantyFileAttachment</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>string</td><td class="pk">PK</td><td>파일 ID</td></tr>
+        <tr><td>name</td><td>string</td><td></td><td>파일명</td></tr>
+        <tr><td>size</td><td>number</td><td></td><td>크기(byte)</td></tr>
+        <tr><td>type</td><td>string</td><td></td><td>MIME</td></tr>
+        <tr><td>storagePath</td><td>string?</td><td class="fk">FK*</td><td>Storage 경로</td></tr>
+        <tr><td>dataUrl</td><td>string?</td><td></td><td>(deprecated)</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>PermissionConfigRecord.roles[]</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td>enum</td><td class="pk">PK</td><td>admin/teamLeader/receiptAssignee/quality</td></tr>
+        <tr><td>label</td><td>string</td><td></td><td>표시명</td></tr>
+        <tr><td>description</td><td>string</td><td></td><td>설명</td></tr>
+        <tr><td>emails</td><td>string[]</td><td></td><td>허용 이메일</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>WarrantyEmailMailConfigRecord.templates</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>templateId</td><td>pending|completed</td><td class="pk">PK</td><td>템플릿</td></tr>
+        <tr><td>to</td><td>string</td><td></td><td>수신</td></tr>
+        <tr><td>cc</td><td>string</td><td></td><td>참조</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>WarrantyCertificateTemplatesRecord</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>slot</td><td>PAINT/PRINT:ko/en</td><td class="pk">PK</td><td>양식 슬롯</td></tr>
+        <tr><td>id, name, size, type</td><td>—</td><td></td><td>파일 메타</td></tr>
+        <tr><td>storagePath</td><td>string?</td><td class="fk">FK*</td><td>Storage</td></tr>
+        <tr><td>dataBase64</td><td>string?</td><td></td><td>Firestore 본문</td></tr>
+        <tr><td>updatedAt</td><td>string?</td><td></td><td>수정시각</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>WarrantyGuideFileRecord</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>file</td><td>WarrantyFileAttachment?</td><td class="fk">FK*</td><td>가이드 1건</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity wide">
+      <caption>WarrantyPeriodData (보증연한)</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>highRisk</td><td>ProductRiskSection</td><td></td><td>고위험</td></tr>
+        <tr><td>lowRisk</td><td>ProductRiskSection + note</td><td></td><td>저위험</td></tr>
+        <tr><td>coastalAl</td><td>CoastalAlSection</td><td></td><td>해안거리</td></tr>
+        <tr><td>notCovered</td><td>NotCoveredSection</td><td></td><td>보증제외</td></tr>
+        <tr><td>countries[].region/countries</td><td>string</td><td></td><td>국가</td></tr>
+        <tr><td>products[].productGroup</td><td>string</td><td></td><td>제품군</td></tr>
+        <tr><td>products[].productLine</td><td>paint|print?</td><td></td><td>라인</td></tr>
+        <tr><td>products[].peelFlake/perforation</td><td>string</td><td></td><td>보증항목</td></tr>
+        <tr><td>products[].colorFading*/chalk*</td><td>string</td><td></td><td>변색·초킹</td></tr>
+        <tr><td>products[].notes</td><td>string</td><td></td><td>비고</td></tr>
+        <tr><td>productTableLayouts</td><td>object?</td><td></td><td>테이블 레이아웃</td></tr>
+        <tr><td>coastalAl.*.rows[]</td><td>{distance,coat2,coat3}</td><td></td><td>거리별 코트</td></tr>
+        <tr><td>notCovered.items[]</td><td>string[]</td><td></td><td>제외 항목</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>2. 관계 테이블</h2>
+  <table class="full">
+    <thead>
+      <tr>
+        <th>From</th>
+        <th>To</th>
+        <th>관계</th>
+        <th>연결 키 / 방식</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Firebase Auth</td>
+        <td>PermissionConfigRecord</td>
+        <td>N:M (논리)</td>
+        <td>email ∈ roles.emails</td>
+      </tr>
+      <tr>
+        <td>PermissionConfigRecord</td>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>권한 적용</td>
+        <td>역할별 승인/접수/품질</td>
+      </tr>
+      <tr>
+        <td>WarrantyEmailMailConfigRecord</td>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>1:N (논리)</td>
+        <td>{{requester_email}} = requesterEmail</td>
+      </tr>
+      <tr>
+        <td>WarrantyPeriodData</td>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>1:N (논리)</td>
+        <td>companyWarrantyTermsLookupKey</td>
+      </tr>
+      <tr>
+        <td>WarrantyCertificateTemplatesRecord</td>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>1:N (논리)</td>
+        <td>productItem + language → slot</td>
+      </tr>
+      <tr>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>WarrantyFileAttachment / Storage</td>
+        <td>1:N</td>
+        <td>첨부 JSON → storagePath</td>
+      </tr>
+      <tr>
+        <td>WarrantyRecord</td>
+        <td>WarrantyIssuanceRequestRecord</td>
+        <td>1:1 이관</td>
+        <td>동일 id</td>
+      </tr>
+      <tr>
+        <td>ExternalTestRecord</td>
+        <td>—</td>
+        <td>—</td>
+        <td>독립</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>3. Firebase Storage 경로 테이블</h2>
+  <table class="full">
+    <thead>
+      <tr><th>Prefix</th><th>경로</th><th>연결</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>warranty-attachments/</code></td>
+        <td><code>requests/{recordId}/{slot}/{fileId}-{name}</code></td>
+        <td>발행 의뢰 첨부</td>
+      </tr>
+      <tr>
+        <td><code>warranty-guide/</code></td>
+        <td><code>global/{fileId}-{name}</code></td>
+        <td>Warranty Guide</td>
+      </tr>
+      <tr>
+        <td><code>warranty-certificate-templates/</code></td>
+        <td><code>{slot}/{fileId}-{name}</code></td>
+        <td>보증서 양식</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p class="sub" style="margin-top:24px">※ FK* = Firestore FK가 아닌 논리/소프트 참조</p>
+</body>
+</html>

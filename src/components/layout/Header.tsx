@@ -140,8 +140,8 @@ export function Header({
           <UserAccountBar />
         </div>
 
-        <div className="flex items-center gap-4 px-3 pb-2 sm:px-6 md:gap-5 md:px-6 md:py-3 md:pb-3">
-          <div className="hidden shrink-0 items-center gap-5 md:flex">
+        <div className="flex items-center gap-3 px-3 pb-2 sm:px-6 md:gap-3 md:px-6 md:py-3 md:pb-3">
+          <div className="hidden shrink-0 items-center gap-2.5 md:flex">
             <SeahLogo />
             <span aria-hidden className="h-5 w-px bg-border" />
           </div>
