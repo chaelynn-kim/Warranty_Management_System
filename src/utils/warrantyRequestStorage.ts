@@ -17,7 +17,7 @@ import { normalizeRequestStatus } from './warrantyRequestStatus'
 
 const STORAGE_KEY = 'warranty-issuance-requests'
 const STORAGE_VERSION_KEY = 'warranty-issuance-requests-version'
-const CURRENT_VERSION = '14'
+const CURRENT_VERSION = '15'
 
 function normalizeDetailRegionValue(detailRegion: string): string {
   return joinMultiValue(
@@ -91,7 +91,11 @@ function assignSequenceNumbers(
 export function createRequestRecord(
   request: WarrantyIssuanceRequest,
   existingRecords: WarrantyIssuanceRequestRecord[] = [],
-  options?: { requesterEmail?: string }
+  options?: {
+    requesterEmail?: string
+    hasDuplicateHistory?: boolean
+    duplicateOfRequestId?: string
+  }
 ): WarrantyIssuanceRequestRecord {
   const maxSequenceNo = existingRecords.reduce(
     (max, record) => Math.max(max, record.sequenceNo ?? 0),
@@ -99,12 +103,19 @@ export function createRequestRecord(
   )
 
   const requesterEmail = options?.requesterEmail?.trim() ?? ''
+  const duplicateOfRequestId = options?.duplicateOfRequestId?.trim() ?? ''
 
   return {
     id: crypto.randomUUID(),
     status: WARRANTY_REQUEST_STATUS_PENDING,
     sequenceNo: maxSequenceNo + 1,
     ...(requesterEmail ? { requesterEmail } : {}),
+    ...(options?.hasDuplicateHistory
+      ? {
+          hasDuplicateHistory: true,
+          ...(duplicateOfRequestId ? { duplicateOfRequestId } : {}),
+        }
+      : {}),
     ...request,
   }
 }
@@ -158,6 +169,8 @@ function normalizeRequestRecord(record: WarrantyIssuanceRequestRecord): Warranty
     coatingStructure: normalizeCoatingStructure(record.coatingStructure ?? ''),
     detailRegion: normalizeDetailRegionValue(record.detailRegion ?? ''),
     requesterEmail: record.requesterEmail?.trim() ?? '',
+    hasDuplicateHistory: Boolean(record.hasDuplicateHistory),
+    duplicateOfRequestId: record.duplicateOfRequestId?.trim() || undefined,
   }
 }
 
@@ -281,12 +294,16 @@ export function mergeWarrantyRequestRecord(
     id?: string
     status?: string
     sequenceNo?: number
+    hasDuplicateHistory?: boolean
+    duplicateOfRequestId?: string
   }
   const {
     requesterEmail: _requesterEmail,
     id: _id,
     status: _status,
     sequenceNo: _sequenceNo,
+    hasDuplicateHistory: _hasDuplicateHistory,
+    duplicateOfRequestId: _duplicateOfRequestId,
     ...safeRequest
   } = requestWithoutMeta
 
@@ -296,6 +313,8 @@ export function mergeWarrantyRequestRecord(
     id: record.id,
     sequenceNo: record.sequenceNo,
     requesterEmail: record.requesterEmail?.trim() || undefined,
+    hasDuplicateHistory: record.hasDuplicateHistory,
+    duplicateOfRequestId: record.duplicateOfRequestId,
     status: nextStatus ?? record.status,
   }
 }

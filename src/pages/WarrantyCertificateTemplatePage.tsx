@@ -40,6 +40,7 @@ import {
   generateWarrantyCertificateFile,
   type WarrantyCertificateFormat,
 } from '../utils/warrantyCertificate/generateWarrantyCertificate'
+import { logActivity } from '../utils/activityLogStorage'
 
 interface TemplateSlotCardProps {
   slot: WarrantyCertificateTemplateSlot
@@ -81,6 +82,12 @@ function TemplateSlotCard({
     try {
       await replaceWarrantyCertificateTemplate(slot, selected, file ?? null, userEmail)
       onUpdated()
+      logActivity({
+        action: 'template.upload',
+        detail: `양식 업로드: ${slot} / ${selected.name}`,
+        meta: { slot, fileName: selected.name },
+        userEmail,
+      })
       window.alert(`양식이 업로드되었습니다.\n${selected.name}`)
     } catch (err) {
       const message = err instanceof Error ? err.message : '업로드에 실패했습니다.'
@@ -119,6 +126,12 @@ function TemplateSlotCard({
     try {
       await clearWarrantyCertificateTemplate(slot, userEmail)
       onUpdated()
+      logActivity({
+        action: 'template.reset',
+        detail: `양식 초기화: ${slot}`,
+        meta: { slot },
+        userEmail,
+      })
       window.alert('기본 번들 양식으로 되돌렸습니다.')
     } catch (err) {
       const message = err instanceof Error ? err.message : '되돌리기에 실패했습니다.'

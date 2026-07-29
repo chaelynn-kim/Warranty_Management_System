@@ -29,6 +29,7 @@ import {
   type WarrantyEmailTemplateId,
 } from '../utils/emailMailConfigTypes'
 import { formatEmailJsError, sendWarrantyEmailTest } from '../utils/emailNotification'
+import { logActivity } from '../utils/activityLogStorage'
 
 /** PPTX 업로드와 동일 — 호버 시 파란 네온 */
 const accentNeonButtonClass = `${filterActionButtonClass} border-border bg-bg-tertiary text-text-primary transition-all hover:border-accent hover:text-accent hover:shadow-[0_0_12px_rgba(59,130,246,0.45)] hover:ring-2 hover:ring-accent/30 active:border-accent active:text-accent active:shadow-[0_0_14px_rgba(59,130,246,0.55)] active:ring-2 active:ring-accent/45 disabled:cursor-not-allowed disabled:opacity-50`
@@ -297,6 +298,11 @@ export function WarrantyEmailMailPage({ userEmail }: WarrantyEmailMailPageProps)
       await saveWarrantyEmailMailConfig(draft, userEmail ?? undefined)
       setDirty(false)
       setEditing(false)
+      logActivity({
+        action: 'email_mail.save',
+        detail: '메일 수신인 설정 저장',
+        userEmail,
+      })
       window.alert('수신·참조 설정이 저장되었습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '저장에 실패했습니다.')
@@ -333,6 +339,12 @@ export function WarrantyEmailMailPage({ userEmail }: WarrantyEmailMailPageProps)
       const result = await sendWarrantyEmailTest(templateId, {
         actorEmail: userEmail,
         draftTemplate: draft.templates[templateId],
+      })
+      logActivity({
+        action: 'email_mail.test',
+        detail: `메일 테스트 발송: ${templateId}`,
+        meta: { templateId },
+        userEmail,
       })
       window.alert(`테스트 메일을 발송했습니다.\n수신: ${result.to}`)
     } catch (err) {

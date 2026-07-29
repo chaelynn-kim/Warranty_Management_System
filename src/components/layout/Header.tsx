@@ -10,6 +10,7 @@ interface HeaderProps {
   showCertificateTemplateTab?: boolean
   showEmailMailTab?: boolean
   showPermissionTab?: boolean
+  showActivityLogTab?: boolean
 }
 
 type TabItem = {
@@ -68,12 +69,21 @@ const permissionTab: TabItem = {
   iconMaskScale: 85,
 }
 
+const activityLogTab: TabItem = {
+  id: 'activityLog',
+  label: '이력 로그',
+  shortLabel: '이력 로그',
+  iconSrc: '/icons/warranty-activity-log.png',
+  iconMaskScale: 85,
+}
+
 export function Header({
   activeTab,
   onTabChange,
   showCertificateTemplateTab = false,
   showEmailMailTab = false,
   showPermissionTab = false,
+  showActivityLogTab = false,
 }: HeaderProps) {
   const navRef = useRef<HTMLElement>(null)
   const tabRefs = useRef<Partial<Record<TabId, HTMLButtonElement>>>({})
@@ -82,6 +92,7 @@ export function Header({
     ...(showCertificateTemplateTab ? [certificateTemplateTab] : []),
     ...(showEmailMailTab ? [emailMailTab] : []),
     ...(showPermissionTab ? [permissionTab] : []),
+    ...(showActivityLogTab ? [activityLogTab] : []),
   ]
 
   useEffect(() => {

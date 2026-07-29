@@ -52,6 +52,7 @@ import {
   type ColumnHeaderUpdateField,
 } from '../utils/productTableLayoutHelpers'
 import { loadWarrantyPeriod, saveWarrantyPeriod, createEmptyProductWarranty } from '../utils/warrantyPeriodStorage'
+import { logActivity } from '../utils/activityLogStorage'
 
 type PeriodTab = 'highRisk' | 'lowRisk' | 'coastalAl' | 'notCovered'
 
@@ -193,6 +194,11 @@ export function WarrantyPeriodPage() {
     if (sectionId === 'coastalAl:highRisk' || sectionId === 'coastalAl:lowRisk') {
       setCoastalInsertAnchor(null)
     }
+    logActivity({
+      action: 'period.save',
+      detail: `보증연한 저장: ${sectionId}`,
+      meta: { sectionId },
+    })
     setSectionMessage(sectionId, '저장되었습니다.')
     window.setTimeout(() => clearSectionMessage(sectionId), 3000)
   }

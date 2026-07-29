@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Header } from './components/layout/Header'
+import { ActivityLogPage } from './pages/ActivityLogPage'
 import { WarrantyCertificateTemplatePage } from './pages/WarrantyCertificateTemplatePage'
 import { WarrantyEmailMailPage } from './pages/WarrantyEmailMailPage'
 import { WarrantyIssuancePage } from './pages/WarrantyIssuancePage'
@@ -11,6 +12,7 @@ import {
   canEditPermissionConfig,
   canEditWarrantyCertificateTemplate,
   canEditWarrantyEmailMail,
+  canViewActivityLog,
 } from './utils/authValidation'
 import type { TabId } from './types'
 
@@ -21,6 +23,7 @@ function App() {
   const showCertificateTemplateTab = canEditWarrantyCertificateTemplate(user?.email)
   const showEmailMailTab = canEditWarrantyEmailMail(user?.email)
   const showPermissionTab = canEditPermissionConfig(user?.email)
+  const showActivityLogTab = canViewActivityLog(user?.email)
 
   return (
     <div className="min-h-screen bg-bg-primary">
@@ -30,6 +33,7 @@ function App() {
         showCertificateTemplateTab={showCertificateTemplateTab}
         showEmailMailTab={showEmailMailTab}
         showPermissionTab={showPermissionTab}
+        showActivityLogTab={showActivityLogTab}
       />
       <main className="mx-auto max-w-[1600px] px-3 py-5 sm:px-6 sm:py-8">
         <div className={activeTab === 'issuanceRequest' ? undefined : 'hidden'}>
@@ -63,6 +67,11 @@ function App() {
         {showPermissionTab ? (
           <div className={activeTab === 'permission' ? undefined : 'hidden'}>
             <WarrantyPermissionPage userEmail={user?.email} />
+          </div>
+        ) : null}
+        {showActivityLogTab ? (
+          <div className={activeTab === 'activityLog' ? undefined : 'hidden'}>
+            <ActivityLogPage />
           </div>
         ) : null}
       </main>

@@ -27,6 +27,7 @@ import {
   type PermissionConfigRecord,
   type PermissionRoleId,
 } from '../utils/permissionConfigTypes'
+import { logActivity } from '../utils/activityLogStorage'
 
 const saveButtonClass = `${filterSearchButtonClass} shadow-md shadow-accent/25 disabled:cursor-not-allowed disabled:opacity-50`
 
@@ -287,6 +288,11 @@ export function WarrantyPermissionPage({ userEmail }: WarrantyPermissionPageProp
       await savePermissionConfig(next, userEmail ?? undefined)
       applyRecord(next)
       setEditing(false)
+      logActivity({
+        action: 'permission.save',
+        detail: '권한 설정 저장',
+        userEmail,
+      })
       window.alert('권한 설정이 저장되었습니다.')
     } catch (err) {
       setError(err instanceof Error ? err.message : '저장에 실패했습니다.')

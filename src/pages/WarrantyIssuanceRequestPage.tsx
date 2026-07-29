@@ -11,11 +11,17 @@ import {
 } from '../components/warranty-request/WarrantyIssuanceRequestForm'
 import { useAuth } from '../contexts/AuthContext'
 import { sendWarrantyRequestPendingEmail, formatEmailJsError } from '../utils/emailNotification'
+import {
+  DUPLICATE_REQUEST_CONFIRM_MESSAGE,
+  findDuplicateWarrantyRequest,
+} from '../utils/warrantyRequestDuplicate'
 import { createRequestRecord } from '../utils/warrantyRequestStorage'
 import {
   getWarrantyRequestRecords,
   persistWarrantyRequestRecords,
 } from '../utils/warrantyRequestRecordsCache'
+import { logActivity } from '../utils/activityLogStorage'
+import type { WarrantyIssuanceRequestRecord } from '../types'
 
 interface WarrantyIssuanceRequestPageProps {
   onRequestSubmitted?: (recordId: string) => void
@@ -25,6 +31,9 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
   const { user } = useAuth()
   const formRef = useRef<WarrantyIssuanceRequestFormHandle>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [duplicateConfirmOpen, setDuplicateConfirmOpen] = useState(false)
+  const [duplicateMatch, setDuplicateMatch] = useState<WarrantyIssuanceRequestRecord | null>(null)
+  const [proceedDespiteDuplicate, setProceedDespiteDuplicate] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isFormComplete, setIsFormComplete] = useState(false)
 
@@ -44,7 +53,53 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       return
     }
 
+    const request = formRef.current.getValue()
+    const duplicate = findDuplicateWarrantyRequest(request, getWarrantyRequestRecords())
+    if (duplicate) {
+      setDuplicateMatch(duplicate)
+      setProceedDespiteDuplicate(false)
+      setDuplicateConfirmOpen(true)
+      logActivity({
+        action: 'request.duplicate_prompt',
+        detail: `동일 의뢰 감지: ${duplicate.id}`,
+        meta: { existingRequestId: duplicate.id },
+      })
+      return
+    }
+
+    setDuplicateMatch(null)
+    setProceedDespiteDuplicate(false)
     setConfirmOpen(true)
+  }
+
+  const handleDuplicateYes = () => {
+    if (!duplicateMatch) {
+      setDuplicateConfirmOpen(false)
+      return
+    }
+    const existingId = duplicateMatch.id
+    setDuplicateConfirmOpen(false)
+    setDuplicateMatch(null)
+    setProceedDespiteDuplicate(false)
+    logActivity({
+      action: 'request.duplicate_view_existing',
+      detail: `기존 의뢰 확인: ${existingId}`,
+      meta: { existingRequestId: existingId },
+    })
+    onRequestSubmitted?.(existingId)
+  }
+
+  const handleDuplicateNo = () => {
+    setDuplicateConfirmOpen(false)
+    setProceedDespiteDuplicate(true)
+    setConfirmOpen(true)
+    logActivity({
+      action: 'request.duplicate_continue',
+      detail: duplicateMatch
+        ? `동일 의뢰 무시 후 신규 진행 (참고: ${duplicateMatch.id})`
+        : '동일 의뢰 무시 후 신규 진행',
+      meta: duplicateMatch ? { existingRequestId: duplicateMatch.id } : undefined,
+    })
   }
 
   const handleConfirmSubmit = async () => {
@@ -56,8 +111,17 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
 
     const request = formRef.current.getValue()
     const existingRecords = getWarrantyRequestRecords()
+    const matched =
+      proceedDespiteDuplicate && duplicateMatch
+        ? duplicateMatch
+        : proceedDespiteDuplicate
+          ? findDuplicateWarrantyRequest(request, existingRecords)
+          : null
+
     const newRecord = createRequestRecord(request, existingRecords, {
       requesterEmail: user?.email ?? undefined,
+      hasDuplicateHistory: Boolean(matched),
+      duplicateOfRequestId: matched?.id,
     })
     const nextRecords = [newRecord, ...existingRecords]
 
@@ -88,7 +152,20 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
 
     formRef.current.reset()
     setConfirmOpen(false)
+    setDuplicateMatch(null)
+    setProceedDespiteDuplicate(false)
     setIsSubmitting(false)
+    logActivity({
+      action: 'request.submit',
+      detail: matched
+        ? `의뢰 제출 (동일 이력 있음, 참고: ${matched.id}) → ${newRecord.id}`
+        : `의뢰 제출 → ${newRecord.id}`,
+      meta: {
+        requestId: newRecord.id,
+        hasDuplicateHistory: Boolean(matched),
+        ...(matched ? { duplicateOfRequestId: matched.id } : {}),
+      },
+    })
     onRequestSubmitted?.(newRecord.id)
   }
 
@@ -107,7 +184,6 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
             됩니다.
           </p>
         }
-        
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" onClick={handleReset} className={warrantyRequestToolbarResetButtonClass}>
@@ -136,12 +212,23 @@ export function WarrantyIssuanceRequestPage({ onRequestSubmitted }: WarrantyIssu
       </section>
 
       <ConfirmDialog
+        open={duplicateConfirmOpen}
+        message={DUPLICATE_REQUEST_CONFIRM_MESSAGE}
+        confirmLabel="예"
+        cancelLabel="아니오"
+        onConfirm={handleDuplicateYes}
+        onCancel={handleDuplicateNo}
+      />
+
+      <ConfirmDialog
         open={confirmOpen}
         message="의뢰 하시겠습니까?"
         confirming={isSubmitting}
         onCancel={() => {
           if (isSubmitting) return
           setConfirmOpen(false)
+          setProceedDespiteDuplicate(false)
+          setDuplicateMatch(null)
         }}
         onConfirm={() => void handleConfirmSubmit()}
       />

@@ -69,6 +69,11 @@ export function canEditPermissionConfig(email: string | undefined | null): boole
   return isWarrantyAdmin(email)
 }
 
+/** 이력 로그 탭 — 관리자 전용 */
+export function canViewActivityLog(email: string | undefined | null): boolean {
+  return isWarrantyAdmin(email)
+}
+
 export function canEditWarrantyIssuanceLog(email: string | undefined | null): boolean {
   return isWarrantyAdmin(email)
 }

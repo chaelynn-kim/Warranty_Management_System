@@ -34,6 +34,7 @@ import {
   resequenceWarrantyRequestRecordsBySequenceDesc,
 } from '../utils/warrantyRequestStorage'
 import { downloadWarrantyRequestExcel } from '../utils/warrantyExcel'
+import { logActivity } from '../utils/activityLogStorage'
 import {
   filterRecordsByIssueDateRange,
   filterRecordsByKeyword,
@@ -222,6 +223,20 @@ export function WarrantyIssuancePage({
     setRequestRecords(nextRecords)
     setHighlightedRequestId(id)
 
+    const statusChanged = previousStatus !== nextStatus
+    logActivity({
+      action: statusChanged ? 'request.status_change' : 'request.save',
+      detail: statusChanged
+        ? `의뢰 ${id} 저장·상태 변경 (${options.editScope}): ${previousStatus} → ${nextStatus}`
+        : `의뢰 ${id} 저장 (${options.editScope})`,
+      meta: {
+        requestId: id,
+        editScope: options.editScope,
+        previousStatus,
+        nextStatus,
+      },
+    })
+
     if (shouldNotifyRequester) {
       const updatedRecord = nextRecords.find((record) => record.id === id)
       const requesterEmail =
@@ -302,6 +317,14 @@ export function WarrantyIssuancePage({
     setRequestRecords(nextRecords)
     setViewingRequest((prev) => (prev?.id === id ? { ...prev, status: nextStatus } : prev))
     setHighlightedRequestId(id)
+    logActivity({
+      action:
+        nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED
+          ? 'request.approve'
+          : 'request.status_change',
+      detail: `의뢰 ${id} 상태 → ${nextStatus}`,
+      meta: { requestId: id, nextStatus },
+    })
     setRequestSaveMessage(
       nextStatus === WARRANTY_REQUEST_STATUS_RECEIVED
         ? '팀장 승인되어 접수 처리되었습니다.'

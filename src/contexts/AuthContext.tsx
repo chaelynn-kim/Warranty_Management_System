@@ -15,6 +15,7 @@ import {
   type User,
 } from 'firebase/auth'
 import { auth, isFirebaseEnabled } from '../lib/firebase'
+import { logActivity, writeActivityLog } from '../utils/activityLogStorage'
 import { enforceCompanyEmail } from '../utils/authValidation'
 
 interface AuthContextValue {
@@ -70,7 +71,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = useCallback(async () => {
     if (!auth) return
     try {
-      await signInWithPopup(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
+      logActivity({
+        action: 'auth.login',
+        detail: 'Google 로그인',
+        userEmail: result.user.email,
+        userName: result.user.displayName,
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : '알 수 없는 오류'
       window.alert(`로그인에 실패했습니다: ${message}`)
@@ -79,6 +86,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = useCallback(async () => {
     if (!auth) return
+    await writeActivityLog({
+      action: 'auth.logout',
+      detail: '로그아웃',
+      userEmail: auth.currentUser?.email,
+      userName: auth.currentUser?.displayName,
+    })
     await firebaseSignOut(auth)
     setUser(null)
   }, [])

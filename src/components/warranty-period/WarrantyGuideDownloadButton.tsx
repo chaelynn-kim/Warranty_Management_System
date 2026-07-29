@@ -5,6 +5,7 @@ import { filterActionButtonClass } from '../ui/FilterActions'
 import { canUploadWarrantyGuide } from '../../utils/authValidation'
 import { downloadFileAttachment, formatFileSize } from '../../utils/warrantyAttachments'
 import { loadWarrantyGuideFile, replaceWarrantyGuideFile } from '../../utils/warrantyGuideFile'
+import { logActivity } from '../../utils/activityLogStorage'
 
 interface WarrantyGuideDownloadButtonProps {
   userEmail?: string | null
@@ -62,6 +63,11 @@ export function WarrantyGuideDownloadButton({ userEmail }: WarrantyGuideDownload
     try {
       const record = await replaceWarrantyGuideFile(selected, file, userEmail ?? undefined)
       setFile(record.file)
+      logActivity({
+        action: 'guide.upload',
+        detail: `Warranty Guide 업로드: ${record.file?.name ?? selected.name}`,
+        userEmail,
+      })
       window.alert(`파일이 업로드되었습니다.\n${record.file?.name ?? ''}`)
     } catch (error) {
       const message = error instanceof Error ? error.message : '파일 업로드에 실패했습니다.'

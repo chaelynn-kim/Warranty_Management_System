@@ -379,8 +379,16 @@ export function WarrantyRequestTable({
                     />
                   </td>
                   <td className={`${tdBorderClass} px-1 py-1 align-top`}>
-                    <div className="flex justify-center whitespace-nowrap py-1">
+                    <div className="flex flex-col items-center justify-center gap-1 whitespace-nowrap py-1">
                       <RequestStatusBadge status={record.status} className="shrink-0 whitespace-nowrap" />
+                      {record.hasDuplicateHistory ? (
+                        <span
+                          className="max-w-[7.5rem] truncate rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-300"
+                          title="동일한 내용의 의뢰 이력이 있습니다."
+                        >
+                          동일 이력
+                        </span>
+                      ) : null}
                     </div>
                   </td>
                 </tr>

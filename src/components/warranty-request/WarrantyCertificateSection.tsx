@@ -13,6 +13,7 @@ import {
   type WarrantyCertificateFormat,
   type WarrantyCertificateLanguage,
 } from '../../utils/warrantyCertificate/generateWarrantyCertificate'
+import { logActivity } from '../../utils/activityLogStorage'
 
 interface WarrantyCertificateSectionProps {
   productItem: string
@@ -85,6 +86,11 @@ export function WarrantyCertificateSection({
       const blob = await generateWarrantyCertificateFile(input, language, format)
       const filename = buildWarrantyCertificateFilename(input, language, format)
       downloadWarrantyCertificate(blob, filename)
+      logActivity({
+        action: 'certificate.generate',
+        detail: `보증서 생성: ${filename}`,
+        meta: { language, format, productItem: input.productItem },
+      })
     } catch (err) {
       const message = err instanceof Error ? err.message : '보증서 생성에 실패했습니다.'
       setError(message)

@@ -212,6 +212,13 @@ export interface WarrantyIssuanceRequestRecord extends WarrantyIssuanceRequest {
   sequenceNo: number
   /** 의뢰 등록 시 로그인 계정 이메일 — 발행 완료 알림 수신용 */
   requesterEmail?: string
+  /**
+   * 동일 제품·국가 내용의 기존 의뢰가 있음을 인지하고도 신규 의뢰한 경우.
+   * 담당자 확인용 안내 표시에 사용.
+   */
+  hasDuplicateHistory?: boolean
+  /** 비교 시 참고한 기존 의뢰 id (선택) */
+  duplicateOfRequestId?: string
 }
 
 export type TabId =
@@ -221,3 +228,4 @@ export type TabId =
   | 'certificateTemplate'
   | 'emailMail'
   | 'permission'
+  | 'activityLog'
