@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Warranty Management System — RDBMS ERD</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 28px 32px 40px;
+      width: 1600px;
+      font-family: "Malgun Gothic", "Segoe UI", sans-serif;
+      background: #f8fafc;
+      color: #111827;
+      font-size: 12.5px;
+    }
+    h1 { font-size: 24px; margin: 0 0 6px; }
+    .sub { color: #4b5563; margin: 0 0 22px; line-height: 1.45; }
+    h2 {
+      font-size: 15px;
+      margin: 22px 0 10px;
+      padding: 6px 10px;
+      background: #111827;
+      color: #fff;
+      border-radius: 4px;
+    }
+    .legend {
+      display: flex; gap: 18px; flex-wrap: wrap;
+      margin: 0 0 18px; font-size: 12px;
+    }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+    .dot.pk { background: #b45309; }
+    .dot.fk { background: #1d4ed8; }
+    .dot.uq { background: #047857; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      align-items: start;
+    }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .span-2 { grid-column: span 2; }
+    .span-3 { grid-column: span 3; }
+    table.entity {
+      width: 100%;
+      border-collapse: collapse;
+      border: 2px solid #1f2937;
+      background: #fff;
+      break-inside: avoid;
+    }
+    table.entity caption {
+      caption-side: top;
+      text-align: left;
+      font-weight: 700;
+      font-size: 13px;
+      background: #1f2937;
+      color: #fff;
+      padding: 7px 10px;
+      border: 2px solid #1f2937;
+      border-bottom: none;
+    }
+    table.entity caption .eng {
+      font-weight: 500; color: #93c5fd; margin-left: 8px; font-size: 11px;
+    }
+    table.entity th, table.entity td {
+      border: 1px solid #9ca3af;
+      padding: 4px 7px;
+      text-align: left;
+      vertical-align: top;
+    }
+    table.entity thead th {
+      background: #e5e7eb;
+      font-size: 11px;
+      color: #374151;
+    }
+    .pk { color: #b45309; font-weight: 700; }
+    .fk { color: #1d4ed8; font-weight: 700; }
+    .type { color: #4b5563; font-family: Consolas, monospace; font-size: 11px; }
+    .note { color: #6b7280; font-size: 11px; }
+    .rel {
+      margin-top: 18px;
+      padding: 12px 14px;
+      background: #fff;
+      border: 2px solid #1f2937;
+    }
+    .rel h3 { margin: 0 0 8px; font-size: 14px; }
+    .rel ul { margin: 0; padding-left: 18px; line-height: 1.55; }
+    code { font-family: Consolas, monospace; font-size: 11.5px; background: #f3f4f6; padding: 1px 4px; }
+  </style>
+</head>
+<body>
+  <h1>Warranty Management System — RDBMS 테이블 설계 (ERD)</h1>
+  <p class="sub">
+    현재 Firestore <code>app-data</code> / <code>activity-logs</code> 문서를 RDBMS로 정규화한 논리 스키마입니다.
+    PK·FK 관계와 주요 컬럼 타입을 표시합니다. (2026-07)
+  </p>
+  <div class="legend">
+    <span><i class="dot pk"></i> PK (Primary Key)</span>
+    <span><i class="dot fk"></i> FK (Foreign Key)</span>
+    <span>상태 ENUM: 승인 대기 → 접수 → 발행 완료 | 보증 불가</span>
+  </div>
+
+  <h2>1. 보증서 발행 의뢰 · 첨부 · 이력</h2>
+  <div class="grid">
+    <table class="entity span-2">
+      <caption>warranty_issuance_request <span class="eng">보증서 발행 의뢰</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td>의뢰 ID</td></tr>
+        <tr><td>sequence_no</td><td class="type">INT</td><td></td><td>표시 번호</td></tr>
+        <tr><td>status</td><td class="type">ENUM</td><td></td><td>승인 대기 / 접수 / 발행 완료 / 보증 불가</td></tr>
+        <tr><td>requester_email</td><td class="type">VARCHAR(255)</td><td></td><td>알림 수신 이메일</td></tr>
+        <tr><td>duplicate_of_request_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ warranty_issuance_request.id</td></tr>
+        <tr><td>has_duplicate_history</td><td class="type">BOOLEAN</td><td></td><td>동일 이력 인지 후 신규</td></tr>
+        <tr><td>request_date / issue_date</td><td class="type">DATE</td><td></td><td>의뢰일 / 발행일</td></tr>
+        <tr><td>request_team (+ _custom)</td><td class="type">VARCHAR</td><td></td><td>의뢰팀</td></tr>
+        <tr><td>requester_name</td><td class="type">VARCHAR</td><td></td><td>의뢰자</td></tr>
+        <tr><td>color_name, resin(+_custom)</td><td class="type">VARCHAR</td><td></td><td>색상·수지</td></tr>
+        <tr><td>paint_company(+_custom)</td><td class="type">VARCHAR</td><td></td><td>도료사</td></tr>
+        <tr><td>material(+_custom), coating_structure</td><td class="type">VARCHAR</td><td></td><td>소재·도장구조</td></tr>
+        <tr><td>product_item</td><td class="type">VARCHAR</td><td></td><td>PAINT / PRINT</td></tr>
+        <tr><td>region, detail_region(+_custom)</td><td class="type">VARCHAR</td><td></td><td>국가·상세지역</td></tr>
+        <tr><td>customer, usage, language</td><td class="type">VARCHAR</td><td></td><td>고객·용도·언어</td></tr>
+        <tr><td>warranty_term_mode / _custom</td><td class="type">VARCHAR</td><td></td><td>보증기간 모드</td></tr>
+        <tr><td>additional_request</td><td class="type">TEXT</td><td></td><td>추가 요청</td></tr>
+        <tr><td>quality_author</td><td class="type">VARCHAR</td><td></td><td>품질 작성자</td></tr>
+        <tr><td>total_coating_thickness</td><td class="type">VARCHAR</td><td></td><td>총도막두께</td></tr>
+        <tr><td>primer_thickness</td><td class="type">VARCHAR</td><td></td><td>프라이머두께</td></tr>
+        <tr><td>company_warranty_terms</td><td class="type">JSONB</td><td></td><td>당사 보증연한 ProductWarranty[]</td></tr>
+        <tr><td>company_warranty_terms_lookup_key</td><td class="type">VARCHAR</td><td></td><td>자동조회 키</td></tr>
+        <tr><td>review_result</td><td class="type">TEXT</td><td></td><td>검토 결과</td></tr>
+        <tr><td>created_at / updated_at</td><td class="type">TIMESTAMPTZ</td><td></td><td>감사 컬럼</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>file_attachment <span class="eng">첨부 파일 메타</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>owner_type</td><td class="type">ENUM</td><td></td><td>request / guide / template</td></tr>
+        <tr><td>owner_id</td><td class="type">VARCHAR</td><td class="fk">FK*</td><td>소유 엔티티 ID</td></tr>
+        <tr><td>slot</td><td class="type">VARCHAR</td><td></td><td>company-ko/en, supplier-ko/en, additional-request, PAINT:ko …</td></tr>
+        <tr><td>name</td><td class="type">VARCHAR</td><td></td><td>파일명</td></tr>
+        <tr><td>mime_type</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>size_bytes</td><td class="type">BIGINT</td><td></td><td></td></tr>
+        <tr><td>storage_path</td><td class="type">VARCHAR</td><td></td><td>Firebase Storage 경로</td></tr>
+        <tr><td>updated_at</td><td class="type">TIMESTAMPTZ</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>activity_log <span class="eng">사용자 이력 로그</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>created_at</td><td class="type">TIMESTAMPTZ</td><td></td><td>기록 시각</td></tr>
+        <tr><td>user_email</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>user_name</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>action</td><td class="type">VARCHAR</td><td></td><td>auth.login, request.submit …</td></tr>
+        <tr><td>action_label</td><td class="type">VARCHAR</td><td></td><td>한글 라벨</td></tr>
+        <tr><td>detail</td><td class="type">TEXT</td><td></td><td></td></tr>
+        <tr><td>meta</td><td class="type">JSONB</td><td></td><td>requestId 등</td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>external_test_record <span class="eng">외부시험</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>no</td><td class="type">VARCHAR</td><td></td><td>관리번호</td></tr>
+        <tr><td>purpose, sample_name, color_name</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>workshop, item_code, item_name, resin</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>request/receipt/completion_date</td><td class="type">DATE</td><td></td><td></td></tr>
+        <tr><td>status</td><td class="type">ENUM</td><td></td><td>진행대기/진행중/종결/취소</td></tr>
+        <tr><td>institution, notes</td><td class="type">TEXT</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <table class="entity">
+      <caption>warranty_issuance_record <span class="eng">구 발행 로그 (legacy)</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>request_date, issue_date</td><td class="type">DATE</td><td></td><td></td></tr>
+        <tr><td>requester, customer, region …</td><td class="type">VARCHAR</td><td></td><td>요약 필드</td></tr>
+        <tr><td>review_result</td><td class="type">TEXT</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>2. 보증연한 (정규화)</h2>
+  <div class="grid">
+    <table class="entity">
+      <caption>warranty_period <span class="eng">보증연한 루트</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td>싱글톤 가능</td></tr>
+        <tr><td>low_risk_note</td><td class="type">TEXT</td><td></td><td>저위험 비고</td></tr>
+        <tr><td>version</td><td class="type">INT</td><td></td><td>스키마 버전</td></tr>
+        <tr><td>updated_at / updated_by</td><td class="type">TIMESTAMPTZ / VARCHAR</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>period_risk_section</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>period_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ warranty_period</td></tr>
+        <tr><td>risk_level</td><td class="type">ENUM</td><td></td><td>high / low</td></tr>
+        <tr><td>title</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>period_country</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>section_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ period_risk_section</td></tr>
+        <tr><td>region</td><td class="type">VARCHAR</td><td></td><td>권역</td></tr>
+        <tr><td>countries</td><td class="type">TEXT</td><td></td><td>국가 목록</td></tr>
+      </tbody>
+    </table>
+    <table class="entity span-2">
+      <caption>period_product <span class="eng">제품군 보증연한</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>section_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ period_risk_section</td></tr>
+        <tr><td>product_group / product_line</td><td class="type">VARCHAR / ENUM</td><td></td><td>paint | print</td></tr>
+        <tr><td>peel_flake, perforation</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>color_fading(+_roof/_wall), chalk(+_roof/_wall)</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>color_fading_mode / chalk_mode</td><td class="type">ENUM</td><td></td><td>detail | merged</td></tr>
+        <tr><td>notes</td><td class="type">TEXT</td><td></td><td></td></tr>
+        <tr><td>custom_column_values / _modes</td><td class="type">JSONB</td><td></td><td>가변 열</td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>period_table_layout / period_custom_column</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>layout.id</td><td class="type">UUID</td><td class="pk">PK</td><td></td></tr>
+        <tr><td>layout.section_id</td><td class="type">UUID</td><td class="fk">FK</td><td></td></tr>
+        <tr><td>layout.product_line</td><td class="type">ENUM</td><td></td><td>paint | print</td></tr>
+        <tr><td>layout.column_order / builtin_labels</td><td class="type">JSONB</td><td></td><td></td></tr>
+        <tr><td>col.id / layout_id</td><td class="type">UUID</td><td class="pk">/FK</td><td></td></tr>
+        <tr><td>col.kind, title_en/ko, sub_columns</td><td class="type">ENUM / VARCHAR / JSONB</td><td></td><td>simple|grouped</td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>period_coastal_* <span class="eng">해안 Al</span></caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>coastal_section.id / period_id</td><td class="type">UUID</td><td class="pk">/FK</td><td></td></tr>
+        <tr><td>coastal_side.id / coastal_id / side</td><td class="type">UUID / ENUM</td><td class="pk">/FK</td><td>highRisk|lowRisk</td></tr>
+        <tr><td>color/chalk roof·wall</td><td class="type">VARCHAR</td><td></td><td></td></tr>
+        <tr><td>distance_row: distance, coat2, coat3</td><td class="type">VARCHAR</td><td class="fk">FK→side</td><td></td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>period_not_covered (+ item)</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id / period_id / title</td><td class="type">UUID / VARCHAR</td><td class="pk">/FK</td><td></td></tr>
+        <tr><td>item.id / section_id</td><td class="type">UUID</td><td class="pk">/FK</td><td></td></tr>
+        <tr><td>item_text, sort_order</td><td class="type">TEXT / INT</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>3. 권한 · 메일 · 양식 · 가이드</h2>
+  <div class="grid">
+    <table class="entity">
+      <caption>permission_role</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">ENUM</td><td class="pk">PK</td><td>admin / teamLeader / receiptAssignee / quality</td></tr>
+        <tr><td>label, description</td><td class="type">VARCHAR / TEXT</td><td></td><td>코드 기본값</td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>permission_role_email</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>role_id</td><td class="type">ENUM</td><td class="pk">PK, FK</td><td>→ permission_role</td></tr>
+        <tr><td>email</td><td class="type">VARCHAR</td><td class="pk">PK</td><td>소문자 정규화</td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>email_mail_template</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">ENUM</td><td class="pk">PK</td><td>pending | completed</td></tr>
+        <tr><td>to_list / cc_list</td><td class="type">TEXT</td><td></td><td>{{requester_email}} 가능</td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>certificate_template</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>slot</td><td class="type">VARCHAR</td><td class="pk">PK</td><td>PAINT:ko|en, PRINT:ko|en</td></tr>
+        <tr><td>attachment_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ file_attachment</td></tr>
+        <tr><td>updated_at</td><td class="type">TIMESTAMPTZ</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+    <table class="entity">
+      <caption>warranty_guide_file</caption>
+      <thead><tr><th>컬럼</th><th>타입</th><th>키</th><th>설명</th></tr></thead>
+      <tbody>
+        <tr><td>id</td><td class="type">UUID</td><td class="pk">PK</td><td>싱글톤</td></tr>
+        <tr><td>attachment_id</td><td class="type">UUID</td><td class="fk">FK</td><td>→ file_attachment</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="rel">
+    <h3>관계 요약</h3>
+    <ul>
+      <li><code>warranty_issuance_request</code> 1 — * <code>file_attachment</code> (owner_type=request, slot별)</li>
+      <li><code>warranty_issuance_request.duplicate_of_request_id</code> → self (동일 의뢰 참조)</li>
+      <li><code>warranty_period</code> 1 — 2 <code>period_risk_section</code> → * country / product / table_layout</li>
+      <li><code>warranty_period</code> 1 — 1 coastal_section → * side → * distance_row</li>
+      <li><code>permission_role</code> 1 — * <code>permission_role_email</code></li>
+      <li><code>certificate_template</code> / <code>warranty_guide_file</code> → <code>file_attachment</code></li>
+      <li><code>activity_log</code> append-only (soft ref: meta.requestId)</li>
+    </ul>
+  </div>
+</body>
+</html>

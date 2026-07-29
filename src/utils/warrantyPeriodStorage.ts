@@ -3,10 +3,20 @@ import type { CoastalAlSection, ProductLine, ProductRiskSection, ProductWarranty
 import { queueFirestorePush } from './firestoreSync'
 import { normalizeProductWarranty } from './productWarrantyHelpers'
 import { resolveProductTableLayouts } from './productTableLayoutHelpers'
+import {
+  decryptJsonPayload,
+  encryptJsonPayload,
+  isEncryptedBlob,
+} from './storageEncryption'
 
 const STORAGE_KEY = 'warranty-period-data'
 const STORAGE_VERSION_KEY = 'warranty-period-version'
+/** 스키마 버전 — 암호화 도입 후에도 데이터 스키마는 동일 */
 const CURRENT_VERSION = '10'
+
+/** 복호화된 보증연한 메모리 캐시 (localStorage/Firestore에는 암호문만 저장) */
+let periodCache: WarrantyPeriodData | null = null
+let hydratePromise: Promise<WarrantyPeriodData> | null = null
 
 const DEFAULT_COASTAL_COLOR_FADING = '≤ΔE5'
 const DEFAULT_COASTAL_CHALK = '≥#8'
@@ -157,29 +167,97 @@ function normalizeWarrantyPeriod(parsed: Partial<WarrantyPeriodData>): WarrantyP
   }
 }
 
-export function loadWarrantyPeriod(): WarrantyPeriodData {
+function defaultPeriodData(): WarrantyPeriodData {
+  return normalizeWarrantyPeriod(defaultData as Partial<WarrantyPeriodData>)
+}
+
+async function writeEncryptedPeriod(data: WarrantyPeriodData): Promise<void> {
+  const blob = await encryptJsonPayload(data)
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(blob))
+  localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+}
+
+/**
+ * Firestore pull 직후 호출 — 암호문 복호화 또는 평문 → 암호문 마이그레이션.
+ */
+export async function hydrateWarrantyPeriodStorage(): Promise<WarrantyPeriodData> {
+  if (hydratePromise) return hydratePromise
+
+  hydratePromise = (async () => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (!saved) {
+        const data = defaultPeriodData()
+        periodCache = data
+        return data
+      }
+
+      const parsed = JSON.parse(saved) as unknown
+      if (isEncryptedBlob(parsed)) {
+        const decrypted = await decryptJsonPayload<Partial<WarrantyPeriodData>>(parsed)
+        const data = normalizeWarrantyPeriod(decrypted)
+        periodCache = data
+        return data
+      }
+
+      // 레거시 평문 → 암호화 후 Firestore에도 반영
+      const data = normalizeWarrantyPeriod(parsed as Partial<WarrantyPeriodData>)
+      periodCache = data
+      await writeEncryptedPeriod(data)
+      queueFirestorePush('warranty-period-data')
+      return data
+    } catch (error) {
+      console.error('[warranty-period] 복호화/로드 실패', error)
+      const data = defaultPeriodData()
+      periodCache = data
+      return data
+    }
+  })()
+
   try {
-    const version = localStorage.getItem(STORAGE_VERSION_KEY)
+    return await hydratePromise
+  } finally {
+    hydratePromise = null
+  }
+}
+
+export function clearWarrantyPeriodCache(): void {
+  periodCache = null
+  hydratePromise = null
+}
+
+export function loadWarrantyPeriod(): WarrantyPeriodData {
+  if (periodCache) return periodCache
+
+  try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) {
-      const parsed = JSON.parse(saved) as Partial<WarrantyPeriodData>
-      const data = normalizeWarrantyPeriod(parsed)
-      if (version !== CURRENT_VERSION) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-        localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+      const parsed = JSON.parse(saved) as unknown
+      if (isEncryptedBlob(parsed)) {
+        // hydrate 전 동기 접근 — 기본값 반환 (AppGate에서 hydrate 후 재로드)
+        console.warn('[warranty-period] 암호화 데이터가 hydrate 전에 읽혔습니다.')
+        return defaultPeriodData()
       }
+      const data = normalizeWarrantyPeriod(parsed as Partial<WarrantyPeriodData>)
+      periodCache = data
       return data
     }
   } catch {
     // fall through
   }
-  const data = normalizeWarrantyPeriod(defaultData as Partial<WarrantyPeriodData>)
-  localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
+
+  const data = defaultPeriodData()
+  periodCache = data
   return data
 }
 
 export function saveWarrantyPeriod(data: WarrantyPeriodData): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  localStorage.setItem(STORAGE_VERSION_KEY, CURRENT_VERSION)
-  queueFirestorePush('warranty-period-data')
+  periodCache = data
+  void writeEncryptedPeriod(data)
+    .then(() => {
+      queueFirestorePush('warranty-period-data')
+    })
+    .catch((error) => {
+      console.error('[warranty-period] 암호화 저장 실패', error)
+    })
 }

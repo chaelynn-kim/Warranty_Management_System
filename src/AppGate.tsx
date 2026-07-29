@@ -5,6 +5,10 @@ import { LoginPage } from './pages/LoginPage'
 import App from './App.tsx'
 import { pullAllFromFirestore, setFirestoreSyncUser } from './utils/firestoreSync'
 import { migrateAllWarrantyRequestAttachments } from './utils/attachmentMigration'
+import {
+  clearWarrantyPeriodCache,
+  hydrateWarrantyPeriodStorage,
+} from './utils/warrantyPeriodStorage'
 
 function AppGate() {
   const { user, loading } = useAuth()
@@ -14,6 +18,7 @@ function AppGate() {
     setFirestoreSyncUser(user?.email ?? undefined)
 
     if (!user) {
+      clearWarrantyPeriodCache()
       setDataReady(false)
       return
     }
@@ -28,6 +33,8 @@ function AppGate() {
         } catch (migrationError) {
           console.error('[Storage] 첨부 파일 마이그레이션 실패', migrationError)
         }
+        clearWarrantyPeriodCache()
+        await hydrateWarrantyPeriodStorage()
       })
       .catch((error) => {
         console.error('[Firestore] 데이터 동기화 실패', error)
