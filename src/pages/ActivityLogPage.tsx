@@ -87,7 +87,7 @@ export function ActivityLogPage() {
     <div>
       <PageHeader
         title="이력 로그"
-        iconSrc="/icons/warranty-activity-log.png"
+        iconSrc="/icons/warranty-activity-log.png?v=2"
         iconMaskScale={88}
         description="사용자 기능 이용 이력을 Firebase에 기록·조회합니다. (최근 300건)"
         actions={

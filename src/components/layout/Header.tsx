@@ -73,8 +73,8 @@ const activityLogTab: TabItem = {
   id: 'activityLog',
   label: '이력 로그',
   shortLabel: '이력 로그',
-  iconSrc: '/icons/warranty-activity-log.png',
-  iconMaskScale: 85,
+  iconSrc: '/icons/warranty-activity-log.png?v=2',
+  iconMaskScale: 88,
 }
 
 export function Header({

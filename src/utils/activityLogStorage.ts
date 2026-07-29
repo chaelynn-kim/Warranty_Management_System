@@ -70,19 +70,26 @@ export async function fetchActivityLogs(
     )
   )
 
-  return snapshot.docs.map((item) => {
-    const data = item.data() as Omit<ActivityLogEntry, 'id'>
-    return {
-      id: item.id,
-      createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
-      userEmail: data.userEmail ?? '',
-      userName: data.userName || undefined,
-      action: data.action ?? '',
-      actionLabel: data.actionLabel || String(data.action ?? ''),
-      detail: data.detail || undefined,
-      meta: data.meta,
-    }
-  })
+  return snapshot.docs
+    .map((item) => {
+      const data = item.data() as Omit<ActivityLogEntry, 'id'>
+      return {
+        id: item.id,
+        createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
+        userEmail: data.userEmail ?? '',
+        userName: data.userName || undefined,
+        action: data.action ?? '',
+        actionLabel: data.actionLabel || String(data.action ?? ''),
+        detail: data.detail || undefined,
+        meta: data.meta,
+      }
+    })
+    // 과거 기록: 탭 이동은 더 이상 남기지 않으며 조회에서도 제외
+    .filter(
+      (item) =>
+        item.action !== 'tab.view' &&
+        item.actionLabel !== '탭 이동'
+    )
 }
 
 export async function deleteActivityLog(id: string): Promise<void> {
