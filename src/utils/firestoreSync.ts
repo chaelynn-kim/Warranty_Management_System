@@ -1,4 +1,4 @@
-import { readFirestoreDoc, writeFirestoreDoc } from '../lib/firestoreStore'
+import { readFirestoreDoc, writeFirestoreDoc, hasLegacyAppDataRootFields } from '../lib/firestoreStore'
 import { isFirestoreEnabled } from '../lib/firebase'
 import {
   decryptJsonPayload,
@@ -125,28 +125,37 @@ async function fromFirestorePayloadData(store: AppDataStore, remoteData: unknown
 export async function pullAllFromFirestore(userEmail?: string): Promise<void> {
   if (!isFirestoreEnabled) return
 
+  const actor = maskedActor(userEmail ?? currentUserEmail)
+
   await Promise.all(
     APP_DATA_STORES.map(async (store) => {
       const remote = await readFirestoreDoc(store.docId)
       const local = readLocalStore(store.storageKey, store.versionKey)
+      const replace = Boolean(store.confidential || store.localAlreadyEncrypted)
 
       if (remote?.data != null) {
         try {
           const localData = await fromFirestorePayloadData(store, remote.data)
           writeLocalStore(store.storageKey, store.versionKey, localData, remote.version)
 
-          // 레거시 평문이 Firestore에 남아 있으면 기밀화 형태로 재업로드
-          if (
-            store.confidential &&
-            !isEncryptedBlob(remote.data) &&
-            !store.localAlreadyEncrypted
-          ) {
-            const encrypted = await encryptJsonPayload(localData)
-            await writeFirestoreDoc(store.docId, {
-              version: remote.version,
-              data: encrypted,
-              updatedBy: maskedActor(userEmail ?? currentUserEmail),
-            })
+          // 레거시 평문·merge로 남은 옛 필드 → 암호문으로 문서 전체 교체
+          const needsConfidentialRewrite =
+            (store.confidential || store.localAlreadyEncrypted) &&
+            (!isEncryptedBlob(remote.data) || hasLegacyAppDataRootFields(remote.rootKeys))
+
+          if (needsConfidentialRewrite) {
+            const dataToWrite = isEncryptedBlob(localData)
+              ? localData
+              : await encryptJsonPayload(localData)
+            await writeFirestoreDoc(
+              store.docId,
+              {
+                version: remote.version,
+                data: dataToWrite,
+                updatedBy: actor,
+              },
+              { replace: true }
+            )
           }
         } catch (error) {
           console.error(`[Firestore] ${store.docId} 복호화 실패`, error)
@@ -156,11 +165,15 @@ export async function pullAllFromFirestore(userEmail?: string): Promise<void> {
 
       if (local) {
         const data = await toFirestorePayloadData(store, local.data)
-        await writeFirestoreDoc(store.docId, {
-          version: local.version,
-          data,
-          updatedBy: maskedActor(userEmail ?? currentUserEmail),
-        })
+        await writeFirestoreDoc(
+          store.docId,
+          {
+            version: local.version,
+            data,
+            updatedBy: actor,
+          },
+          { replace }
+        )
       }
     })
   )
@@ -176,11 +189,15 @@ export async function pushStoreToFirestore(docId: AppDataDocId, userEmail?: stri
   if (!local) return
 
   const data = await toFirestorePayloadData(store, local.data)
-  await writeFirestoreDoc(store.docId, {
-    version: local.version,
-    data,
-    updatedBy: maskedActor(userEmail ?? currentUserEmail),
-  })
+  await writeFirestoreDoc(
+    store.docId,
+    {
+      version: local.version,
+      data,
+      updatedBy: maskedActor(userEmail ?? currentUserEmail),
+    },
+    { replace: Boolean(store.confidential || store.localAlreadyEncrypted) }
+  )
 }
 
 export function queueFirestorePush(docId: AppDataDocId): void {
@@ -201,11 +218,69 @@ export async function writeConfidentialAppData(
   if (!store) return
 
   const data = await toFirestorePayloadData(store, payload.data)
-  await writeFirestoreDoc(docId, {
-    version: payload.version,
-    data,
-    updatedBy: maskedActor(payload.updatedBy),
-  })
+  await writeFirestoreDoc(
+    docId,
+    {
+      version: payload.version,
+      data,
+      updatedBy: maskedActor(payload.updatedBy),
+    },
+    { replace: true }
+  )
+}
+/**
+ * 로그인 직후 호출 — 기밀 문서가 평문이면 즉시 암호문으로 교체.
+ * (배포 후에도 콘솔에 templates 평문이 남는 문제 방지)
+ */
+export async function forceMigrateConfidentialAppData(userEmail?: string): Promise<void> {
+  if (!isFirestoreEnabled) return
+
+  const actor = maskedActor(userEmail ?? currentUserEmail)
+
+  for (const store of APP_DATA_STORES) {
+    if (!store.confidential && !store.localAlreadyEncrypted) continue
+
+    try {
+      const remote = await readFirestoreDoc(store.docId)
+      if (remote?.data == null) {
+        const local = readLocalStore(store.storageKey, store.versionKey)
+        if (!local) continue
+        const data = await toFirestorePayloadData(store, local.data)
+        await writeFirestoreDoc(
+          store.docId,
+          { version: local.version, data, updatedBy: actor },
+          { replace: true }
+        )
+        console.info(`[Firestore] ${store.docId} 로컬→암호문 업로드 완료`)
+        continue
+      }
+
+      const needsRewrite =
+        !isEncryptedBlob(remote.data) || hasLegacyAppDataRootFields(remote.rootKeys)
+
+      if (!needsRewrite) {
+        console.info(`[Firestore] ${store.docId} 이미 기밀화됨`)
+        continue
+      }
+
+      const plain = await fromFirestorePayloadData(store, remote.data)
+      writeLocalStore(store.storageKey, store.versionKey, plain, remote.version)
+
+      const dataToWrite = isEncryptedBlob(plain) ? plain : await encryptJsonPayload(plain)
+      await writeFirestoreDoc(
+        store.docId,
+        {
+          version: remote.version,
+          data: dataToWrite,
+          updatedBy: actor,
+        },
+        { replace: true }
+      )
+      console.info(`[Firestore] ${store.docId} 평문→암호문 마이그레이션 완료`)
+    } catch (error) {
+      console.error(`[Firestore] ${store.docId} 기밀화 마이그레이션 실패`, error)
+    }
+  }
 }
 
 /** 개별 모듈이 Firestore에서 직접 읽을 때 — 복호화 */
@@ -226,3 +301,4 @@ export async function readConfidentialAppData<T>(
     updatedAt: remote.updatedAt,
   }
 }
+

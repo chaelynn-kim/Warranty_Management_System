@@ -3,7 +3,7 @@ import { useAuth } from './contexts/AuthContext'
 import { LoadingSpinner } from './components/ui/LoadingSpinner'
 import { LoginPage } from './pages/LoginPage'
 import App from './App.tsx'
-import { pullAllFromFirestore, setFirestoreSyncUser } from './utils/firestoreSync'
+import { pullAllFromFirestore, forceMigrateConfidentialAppData, setFirestoreSyncUser } from './utils/firestoreSync'
 import { migrateAllWarrantyRequestAttachments } from './utils/attachmentMigration'
 import {
   clearWarrantyPeriodCache,
@@ -33,6 +33,8 @@ function AppGate() {
         } catch (migrationError) {
           console.error('[Storage] 첨부 파일 마이그레이션 실패', migrationError)
         }
+        // 기존 평문 Firestore 문서를 암호문으로 강제 교체
+        await forceMigrateConfidentialAppData(user.email ?? undefined)
         clearWarrantyPeriodCache()
         await hydrateWarrantyPeriodStorage()
       })
