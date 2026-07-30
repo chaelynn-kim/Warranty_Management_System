@@ -16,6 +16,7 @@ import {
   type ActivityLogEntry,
   type ActivityLogWriteInput,
 } from './activityLogTypes'
+import { maskEmail, maskEmailsInText, maskPersonName } from './piiMasking'
 
 export const ACTIVITY_LOGS_COLLECTION = 'activity-logs'
 const DEFAULT_FETCH_LIMIT = 300
@@ -28,11 +29,13 @@ export async function writeActivityLog(input: ActivityLogWriteInput): Promise<st
   if (!isFirestoreEnabled || !db) return null
 
   const current = auth?.currentUser
-  const userEmail = normalizeEmail(input.userEmail ?? current?.email)
-  const userName = input.userName?.trim() || current?.displayName?.trim() || ''
+  const userEmail = maskEmail(normalizeEmail(input.userEmail ?? current?.email))
+  const userName = maskPersonName(input.userName?.trim() || current?.displayName?.trim() || '')
   const actionLabel =
     ACTIVITY_ACTION_LABELS[input.action as ActivityAction] ?? String(input.action)
   const createdAt = new Date().toISOString()
+  const detail = maskEmailsInText(input.detail?.trim() || '')
+  const meta = maskMetaEmails(input.meta ?? {})
 
   try {
     const ref = await addDoc(collection(db, ACTIVITY_LOGS_COLLECTION), {
@@ -42,14 +45,28 @@ export async function writeActivityLog(input: ActivityLogWriteInput): Promise<st
       userName,
       action: input.action,
       actionLabel,
-      detail: input.detail?.trim() || '',
-      meta: input.meta ?? {},
+      detail,
+      meta,
     })
     return ref.id
   } catch (error) {
     console.warn('[activity-log] write failed', error)
     return null
   }
+}
+
+function maskMetaEmails(
+  meta: Record<string, string | number | boolean | null>
+): Record<string, string | number | boolean | null> {
+  const next: Record<string, string | number | boolean | null> = {}
+  for (const [key, value] of Object.entries(meta)) {
+    if (typeof value === 'string' && (key.toLowerCase().includes('email') || value.includes('@'))) {
+      next[key] = value.includes('@') ? maskEmail(value) : maskEmailsInText(value)
+    } else {
+      next[key] = value
+    }
+  }
+  return next
 }
 
 /** UI를 막지 않도록 fire-and-forget */

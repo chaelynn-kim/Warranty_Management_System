@@ -1,5 +1,4 @@
-import { readFirestoreDoc, writeFirestoreDoc } from '../lib/firestoreStore'
-import { queueFirestorePush } from './firestoreSync'
+import { readConfidentialAppData, writeConfidentialAppData, queueFirestorePush } from './firestoreSync'
 import {
   PERMISSION_ROLE_ORDER,
   createDefaultPermissionConfig,
@@ -70,7 +69,7 @@ function writePermissionConfigLocal(record: PermissionConfigRecord): void {
 
 export async function loadPermissionConfig(): Promise<PermissionConfigRecord> {
   try {
-    const remote = await readFirestoreDoc<PermissionConfigRecord>(FIRESTORE_DOC_ID)
+    const remote = await readConfidentialAppData<PermissionConfigRecord>(FIRESTORE_DOC_ID)
     if (remote?.data != null) {
       const record = normalizePermissionConfig(remote.data)
       writePermissionConfigLocal(record)
@@ -89,7 +88,7 @@ export async function savePermissionConfig(
   const normalized = normalizePermissionConfig(record)
   writePermissionConfigLocal(normalized)
   try {
-    await writeFirestoreDoc(FIRESTORE_DOC_ID, {
+    await writeConfidentialAppData(FIRESTORE_DOC_ID, {
       version: CURRENT_VERSION,
       data: normalized,
       updatedBy,

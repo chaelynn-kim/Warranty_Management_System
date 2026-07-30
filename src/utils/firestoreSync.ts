@@ -1,26 +1,51 @@
 import { readFirestoreDoc, writeFirestoreDoc } from '../lib/firestoreStore'
 import { isFirestoreEnabled } from '../lib/firebase'
+import {
+  decryptJsonPayload,
+  encryptJsonPayload,
+  isEncryptedBlob,
+} from './storageEncryption'
+import { maskEmail } from './piiMasking'
 
-export const APP_DATA_STORES = [
+type AppDataStore = {
+  docId: string
+  storageKey: string
+  versionKey: string
+  /**
+   * Firestore에는 암호문으로만 저장. 로컬(localStorage)은 평문 유지 → 앱 동작용.
+   * (권한 매칭·메일 발송 등에 원본 필요)
+   */
+  confidential?: boolean
+  /**
+   * 로컬에도 이미 암호문인 저장소(보증연한). push/pull 시 재암호화하지 않음.
+   */
+  localAlreadyEncrypted?: boolean
+}
+
+export const APP_DATA_STORES: readonly AppDataStore[] = [
   {
     docId: 'external-test-records',
     storageKey: 'external-test-records',
     versionKey: 'external-test-version',
+    confidential: true,
   },
   {
     docId: 'warranty-issuance-requests',
     storageKey: 'warranty-issuance-requests',
     versionKey: 'warranty-issuance-requests-version',
+    confidential: true,
   },
   {
     docId: 'warranty-issuance-records',
     storageKey: 'warranty-issuance-records',
     versionKey: 'warranty-issuance-version',
+    confidential: true,
   },
   {
     docId: 'warranty-period-data',
     storageKey: 'warranty-period-data',
     versionKey: 'warranty-period-version',
+    localAlreadyEncrypted: true,
   },
   {
     docId: 'warranty-guide-file',
@@ -36,11 +61,13 @@ export const APP_DATA_STORES = [
     docId: 'warranty-email-mail-config',
     storageKey: 'warranty-email-mail-config',
     versionKey: 'warranty-email-mail-config-version',
+    confidential: true,
   },
   {
     docId: 'warranty-permission-config',
     storageKey: 'warranty-permission-config',
     versionKey: 'warranty-permission-config-version',
+    confidential: true,
   },
 ] as const
 
@@ -71,6 +98,30 @@ function writeLocalStore(storageKey: string, versionKey: string, data: unknown, 
   localStorage.setItem(versionKey, version)
 }
 
+function maskedActor(email: string | undefined): string | undefined {
+  if (!email) return undefined
+  return maskEmail(email)
+}
+
+/** 로컬 값 → Firestore 저장 형태 */
+async function toFirestorePayloadData(store: AppDataStore, localData: unknown): Promise<unknown> {
+  if (store.localAlreadyEncrypted) return localData
+  if (store.confidential) {
+    if (isEncryptedBlob(localData)) return localData
+    return encryptJsonPayload(localData)
+  }
+  return localData
+}
+
+/** Firestore 값 → 로컬 저장 형태 */
+async function fromFirestorePayloadData(store: AppDataStore, remoteData: unknown): Promise<unknown> {
+  if (store.localAlreadyEncrypted) return remoteData
+  if (store.confidential && isEncryptedBlob(remoteData)) {
+    return decryptJsonPayload(remoteData)
+  }
+  return remoteData
+}
+
 export async function pullAllFromFirestore(userEmail?: string): Promise<void> {
   if (!isFirestoreEnabled) return
 
@@ -80,15 +131,35 @@ export async function pullAllFromFirestore(userEmail?: string): Promise<void> {
       const local = readLocalStore(store.storageKey, store.versionKey)
 
       if (remote?.data != null) {
-        writeLocalStore(store.storageKey, store.versionKey, remote.data, remote.version)
+        try {
+          const localData = await fromFirestorePayloadData(store, remote.data)
+          writeLocalStore(store.storageKey, store.versionKey, localData, remote.version)
+
+          // 레거시 평문이 Firestore에 남아 있으면 기밀화 형태로 재업로드
+          if (
+            store.confidential &&
+            !isEncryptedBlob(remote.data) &&
+            !store.localAlreadyEncrypted
+          ) {
+            const encrypted = await encryptJsonPayload(localData)
+            await writeFirestoreDoc(store.docId, {
+              version: remote.version,
+              data: encrypted,
+              updatedBy: maskedActor(userEmail ?? currentUserEmail),
+            })
+          }
+        } catch (error) {
+          console.error(`[Firestore] ${store.docId} 복호화 실패`, error)
+        }
         return
       }
 
       if (local) {
+        const data = await toFirestorePayloadData(store, local.data)
         await writeFirestoreDoc(store.docId, {
           version: local.version,
-          data: local.data,
-          updatedBy: userEmail ?? currentUserEmail,
+          data,
+          updatedBy: maskedActor(userEmail ?? currentUserEmail),
         })
       }
     })
@@ -104,10 +175,11 @@ export async function pushStoreToFirestore(docId: AppDataDocId, userEmail?: stri
   const local = readLocalStore(store.storageKey, store.versionKey)
   if (!local) return
 
+  const data = await toFirestorePayloadData(store, local.data)
   await writeFirestoreDoc(store.docId, {
     version: local.version,
-    data: local.data,
-    updatedBy: userEmail ?? currentUserEmail,
+    data,
+    updatedBy: maskedActor(userEmail ?? currentUserEmail),
   })
 }
 
@@ -117,4 +189,40 @@ export function queueFirestorePush(docId: AppDataDocId): void {
   void pushStoreToFirestore(docId).catch((error) => {
     console.error(`[Firestore] ${docId} 업로드 실패`, error)
   })
+}
+
+/** 개별 모듈이 Firestore에 직접 쓸 때 — 암호문 + updatedBy 마스킹 */
+export async function writeConfidentialAppData(
+  docId: AppDataDocId,
+  payload: { version: string; data: unknown; updatedBy?: string }
+): Promise<void> {
+  if (!isFirestoreEnabled) return
+  const store = APP_DATA_STORES.find((item) => item.docId === docId)
+  if (!store) return
+
+  const data = await toFirestorePayloadData(store, payload.data)
+  await writeFirestoreDoc(docId, {
+    version: payload.version,
+    data,
+    updatedBy: maskedActor(payload.updatedBy),
+  })
+}
+
+/** 개별 모듈이 Firestore에서 직접 읽을 때 — 복호화 */
+export async function readConfidentialAppData<T>(
+  docId: AppDataDocId
+): Promise<{ version: string; data: T; updatedAt?: string } | null> {
+  if (!isFirestoreEnabled) return null
+  const store = APP_DATA_STORES.find((item) => item.docId === docId)
+  if (!store) return null
+
+  const remote = await readFirestoreDoc(docId)
+  if (remote?.data == null) return null
+
+  const data = (await fromFirestorePayloadData(store, remote.data)) as T
+  return {
+    version: remote.version,
+    data,
+    updatedAt: remote.updatedAt,
+  }
 }

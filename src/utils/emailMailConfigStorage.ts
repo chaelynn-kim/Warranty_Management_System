@@ -1,5 +1,4 @@
-import { readFirestoreDoc, writeFirestoreDoc } from '../lib/firestoreStore'
-import { queueFirestorePush } from './firestoreSync'
+import { readConfidentialAppData, writeConfidentialAppData, queueFirestorePush } from './firestoreSync'
 import {
   createDefaultWarrantyEmailMailConfig,
   type WarrantyEmailMailConfigRecord,
@@ -57,7 +56,7 @@ function writeLocalRecord(record: WarrantyEmailMailConfigRecord): void {
 
 export async function loadWarrantyEmailMailConfig(): Promise<WarrantyEmailMailConfigRecord> {
   try {
-    const remote = await readFirestoreDoc<WarrantyEmailMailConfigRecord>(FIRESTORE_DOC_ID)
+    const remote = await readConfidentialAppData<WarrantyEmailMailConfigRecord>(FIRESTORE_DOC_ID)
     if (remote?.data != null) {
       const record = normalizeRecord(remote.data)
       writeLocalRecord(record)
@@ -76,7 +75,7 @@ export async function saveWarrantyEmailMailConfig(
   const normalized = normalizeRecord(record)
   writeLocalRecord(normalized)
   try {
-    await writeFirestoreDoc(FIRESTORE_DOC_ID, {
+    await writeConfidentialAppData(FIRESTORE_DOC_ID, {
       version: CURRENT_VERSION,
       data: normalized,
       updatedBy,
